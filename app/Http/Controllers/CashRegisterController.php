@@ -12,11 +12,27 @@ class CashRegisterController extends Controller
     /**
      * Display a listing of cash registers.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $cashRegisters = CashRegister::with('user')->orderBy('created_at', 'desc')->get();
+        $query = CashRegister::with('user');
+
+        // Filter by status
+        if ($request->filled('status') && $request->status !== 'todos') {
+            $query->where('status', $request->status);
+        }
+
+        // Filter by date range
+        if ($request->filled('date_from')) {
+            $query->whereDate('opened_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('opened_at', '<=', $request->date_to);
+        }
+
+        $cashRegisters = $query->orderBy('created_at', 'desc')->paginate(15);
         $openRegister = CashRegister::where('status', 'aberto')->first();
-        return view('cash_registers.index', compact('cashRegisters', 'openRegister'));
+
+        return view('admin.cash_register.cash_registers', compact('cashRegisters', 'openRegister'));
     }
 
     /**
@@ -31,7 +47,7 @@ class CashRegisterController extends Controller
                 ->with('error', 'Já existe um caixa aberto!');
         }
 
-        return view('cash_registers.create');
+        return view('admin.cash_register.cash_register-form', ['cashRegister' => null, 'isEditing' => false]);
     }
 
     /**
@@ -67,18 +83,41 @@ class CashRegisterController extends Controller
      */
     public function show(CashRegister $cashRegister)
     {
-        $cashRegister->load('user', 'sales', 'expenses');
+        $cashRegister->load(['user', 'sales.customer', 'sales.items.product', 'expenses']);
+
+        // Estatísticas do caixa
         $totalSales = $cashRegister->getTotalSales();
         $totalExpenses = $cashRegister->getTotalExpenses();
         $totalRevenues = $cashRegister->getTotalRevenues();
         $expectedBalance = $cashRegister->getExpectedBalance();
 
-        return view('cash_registers.show', compact(
+        // Estatísticas adicionais
+        $salesCount = $cashRegister->sales()->whereNotIn('status', ['cancelado'])->count();
+        $expensesCount = $cashRegister->expenses()->where('type', 'saida')->count();
+        $revenuesCount = $cashRegister->expenses()->where('type', 'entrada')->count();
+
+        // Maior venda do dia
+        $topSale = $cashRegister->sales()->whereNotIn('status', ['cancelado'])->orderBy('total', 'desc')->first();
+
+        // Método de pagamento mais usado
+        $paymentMethods = $cashRegister->sales()
+            ->whereNotIn('status', ['cancelado'])
+            ->selectRaw('payment_method, COUNT(*) as count, SUM(total) as total')
+            ->groupBy('payment_method')
+            ->orderBy('count', 'desc')
+            ->first();
+
+        return view('admin.cash_register.cash_register-show', compact(
             'cashRegister',
             'totalSales',
             'totalExpenses',
             'totalRevenues',
-            'expectedBalance'
+            'expectedBalance',
+            'salesCount',
+            'expensesCount',
+            'revenuesCount',
+            'topSale',
+            'paymentMethods'
         ));
     }
 
@@ -93,7 +132,7 @@ class CashRegisterController extends Controller
                 ->with('error', 'Apenas caixas abertos podem ser editados!');
         }
 
-        return view('cash_registers.edit', compact('cashRegister'));
+        return view('admin.cash_register.cash_register-form', ['cashRegister' => $cashRegister, 'isEditing' => true]);
     }
 
     /**
@@ -141,6 +180,56 @@ class CashRegisterController extends Controller
 
         return redirect()->route('cash-registers.show', $cashRegister)
             ->with('success', 'Caixa fechado com sucesso!');
+    }
+
+    /**
+     * Get cash register statistics.
+     */
+    public function sales(Request $request, CashRegister $cashRegister)
+    {
+        $query = $cashRegister->sales()->with(['customer', 'items.product', 'user']);
+
+        // Filter by status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Filter by payment method
+        if ($request->filled('payment_method')) {
+            $query->where('payment_method', $request->payment_method);
+        }
+
+        // Filter by date range
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        // Search by customer name or code
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('code', 'like', "%{$search}%")
+                  ->orWhereHas('customer', function($q) use ($search) {
+                      $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $sales = $query->orderBy('created_at', 'desc')->paginate(15);
+
+        // Estatísticas das vendas do caixa
+        $stats = [
+            'total_sales_count' => $cashRegister->sales()->whereNotIn('status', ['cancelado'])->count(),
+            'total_sales_amount' => $cashRegister->sales()->whereNotIn('status', ['cancelado'])->sum('total'),
+            'cancelled_sales_count' => $cashRegister->sales()->where('status', 'cancelado')->count(),
+            'cancelled_sales_amount' => $cashRegister->sales()->where('status', 'cancelado')->sum('total'),
+        ];
+
+        return view('admin.cash_register.cash_register_sales', compact('cashRegister', 'sales', 'stats'));
     }
 
     /**

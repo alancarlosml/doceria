@@ -2,7 +2,7 @@
 <div class="hidden md:flex md:flex-shrink-0">
     <div class="flex flex-col w-64 bg-white shadow-lg">
         <!-- Logo -->
-        <div class="flex items-center justify-center h-16 px-4 border-b border-gray-200">
+        <div class="flex items-center justify-center h-16 px-4 py-4 border-b border-gray-200">
             <div class="flex items-center gap-3">
                 <div class="w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-600 rounded-full flex items-center justify-center">
                     <img class="rounded-full" src="{{ asset('imgs/logo_docedoce.jpeg') }}" alt="">
@@ -16,6 +16,11 @@
             <a href="{{ route('gestor.dashboard') }}" class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('gestor.dashboard') ? 'bg-blue-50 text-blue-600' : '' }}">
                 <span class="mr-3">📊</span>
                 Dashboard
+            </a>
+
+            <a href="{{route('cash-registers.index')}}" class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900">
+                <span class="mr-3">💰</span>
+                Caixas
             </a>
 
             <a href="#" class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900">
@@ -43,7 +48,7 @@
                 Produtos
             </a>
 
-            <a href="#" class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900">
+            <a href="{{route('customers.index')}}" class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900">
                 <span class="mr-3">👥</span>
                 Clientes
             </a>
@@ -57,7 +62,7 @@
             </a>
 
             <a href="{{ route('expenses.index') }}" class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('expenses.*') ? 'bg-blue-50 text-blue-600' : '' }}">
-                <span class="mr-3">💰</span>
+                <span class="mr-3">💲</span>
                 Entradas/Saídas
             </a>
 

@@ -17,7 +17,7 @@ class ProductController extends Controller
     {
         $products = Product::with('category')->paginate(10);
 
-        return view('admin.products', compact('products'));
+        return view('admin.product.products', compact('products'));
     }
 
     /**
@@ -27,7 +27,7 @@ class ProductController extends Controller
     {
         $categories = Category::where('active', true)->get();
 
-        return view('admin.product-form', ['product' => null, 'categories' => $categories, 'isEditing' => false]);
+        return view('admin.product.product-form', ['product' => null, 'categories' => $categories, 'isEditing' => false]);
     }
 
     /**
@@ -73,7 +73,28 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        //
+        $product->load('category');
+
+        // Estatísticas do produto
+        $totalSales = $product->saleItems()->sum('quantity');
+        $totalRevenue = $product->saleItems()->sum('subtotal');
+        $totalOrders = $product->saleItems()->distinct('sale_id')->count();
+
+        // Produtos similares (mesma categoria)
+        $similarProducts = Product::where('category_id', $product->category_id)
+            ->where('id', '!=', $product->id)
+            ->where('active', true)
+            ->orderBy('name')
+            ->limit(5)
+            ->get();
+
+        return view('admin.product.product-show', compact(
+            'product',
+            'totalSales',
+            'totalRevenue',
+            'totalOrders',
+            'similarProducts'
+        ));
     }
 
     /**
@@ -83,7 +104,7 @@ class ProductController extends Controller
     {
         $categories = Category::where('active', true)->get();
 
-        return view('admin.product-form', ['product' => $product, 'categories' => $categories, 'isEditing' => true]);
+        return view('admin.product.product-form', ['product' => $product, 'categories' => $categories, 'isEditing' => true]);
     }
 
     /**

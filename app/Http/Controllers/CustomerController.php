@@ -27,7 +27,7 @@ class CustomerController extends Controller
 
         $customers = $query->orderBy('name')->paginate(15);
 
-        return view('customers.index', compact('customers'));
+        return view('admin.customer.customers', compact('customers'));
     }
 
     /**
@@ -35,7 +35,7 @@ class CustomerController extends Controller
      */
     public function create()
     {
-        return view('customers.create');
+        return view('admin.customer.customer-form', ['customer' => null, 'isEditing' => false]);
     }
 
     /**
@@ -66,12 +66,50 @@ class CustomerController extends Controller
      */
     public function show(Customer $customer)
     {
+        // Estatísticas do cliente
+        $totalSales = $customer->sales()->count();
+        $totalOrders = $customer->sales()->sum('total');
+        $totalProducts = $customer->sales()
+            ->with('items')
+            ->get()
+            ->pluck('items')
+            ->flatten()
+            ->sum('quantity');
+
+        // Vendas recentes com produtos
         $recentSales = $customer->sales()
+            ->with(['items.product', 'items.product.category'])
             ->orderBy('created_at', 'desc')
-            ->limit(5)
+            ->limit(10)
             ->get();
 
-        return view('customers.show', compact('customer', 'recentSales'));
+        // Produto mais comprado
+        $mostPurchasedProduct = $customer->sales()
+            ->with('items.product')
+            ->get()
+            ->pluck('items')
+            ->flatten()
+            ->groupBy('product_id')
+            ->map(function ($items) {
+                return $items->sum('quantity');
+            })
+            ->sortDesc()
+            ->keys()
+            ->first();
+
+        $favoriteProduct = null;
+        if ($mostPurchasedProduct) {
+            $favoriteProduct = \App\Models\Product::find($mostPurchasedProduct);
+        }
+
+        return view('admin.customer.customer-show', compact(
+            'customer',
+            'totalSales',
+            'totalOrders',
+            'totalProducts',
+            'recentSales',
+            'favoriteProduct'
+        ));
     }
 
     /**
@@ -79,7 +117,7 @@ class CustomerController extends Controller
      */
     public function edit(Customer $customer)
     {
-        return view('customers.edit', compact('customer'));
+        return view('admin.customer.customer-form', ['customer' => $customer, 'isEditing' => true]);
     }
 
     /**

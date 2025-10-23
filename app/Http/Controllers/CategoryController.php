@@ -13,7 +13,7 @@ class CategoryController extends Controller
     public function index()
     {
         $categories = Category::withCount('products')->paginate(15);
-        return view('admin.categories', compact('categories'));
+        return view('admin.category.categories', compact('categories'));
     }
 
     /**
@@ -21,7 +21,7 @@ class CategoryController extends Controller
      */
     public function create()
     {
-        return view('admin.category-form', ['isEditing' => false]);
+        return view('admin.category.category-form', ['isEditing' => false]);
     }
 
     /**
@@ -49,8 +49,16 @@ class CategoryController extends Controller
      */
     public function show(Category $category)
     {
-        $category->load('products');
-        return view('categories.show', compact('category'));
+        $productCount = $category->products()->count();
+        $activeProductCount = $category->products()->where('active', true)->count();
+
+        $recentProducts = $category->products()
+            ->with('category')
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        return view('admin.category.category-show', compact('category', 'productCount', 'activeProductCount', 'recentProducts'));
     }
 
     /**
@@ -58,7 +66,7 @@ class CategoryController extends Controller
      */
     public function edit(Category $category)
     {
-        return view('admin.category-form', ['category' => $category, 'isEditing' => true]);
+        return view('admin.category.category-form', ['category' => $category, 'isEditing' => true]);
     }
 
     /**

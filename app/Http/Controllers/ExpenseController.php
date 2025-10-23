@@ -37,7 +37,7 @@ class ExpenseController extends Controller
 
         $expenses = $query->orderBy('date', 'desc')->paginate(15);
 
-        return view('admin.expenses', compact('expenses'));
+        return view('admin.expense.expenses', compact('expenses'));
     }
 
     /**
@@ -47,7 +47,7 @@ class ExpenseController extends Controller
     {
         $isEditing = false;
 
-        return view('admin.expense-form', compact( 'isEditing'));
+        return view('admin.expense.expense-form', compact( 'isEditing'));
     }
 
     /**
@@ -66,6 +66,12 @@ class ExpenseController extends Controller
 
         $validated['user_id'] = Auth::id();
 
+        // Associar com caixa aberto atual se existir
+        $openRegister = CashRegister::where('status', 'aberto')->first();
+        if ($openRegister) {
+            $validated['cash_register_id'] = $openRegister->id;
+        }
+
         Expense::create($validated);
 
         return redirect()->route('expenses.index')
@@ -77,7 +83,24 @@ class ExpenseController extends Controller
      */
     public function show(Expense $expense)
     {
-        return view('expenses.show', compact('expense'));
+        $expense->load('user');
+
+        // Estatísticas das despesas
+        $totalMonthlyExpenses = Expense::where('type', 'saida')
+            ->whereMonth('date', now()->month)
+            ->whereYear('date', now()->year)
+            ->sum('amount');
+
+        $totalMonthlyRevenues = Expense::where('type', 'entrada')
+            ->whereMonth('date', now()->month)
+            ->whereYear('date', now()->year)
+            ->sum('amount');
+
+        return view('admin.expense.expense-show', compact(
+            'expense',
+            'totalMonthlyExpenses',
+            'totalMonthlyRevenues'
+        ));
     }
 
     /**
@@ -87,7 +110,7 @@ class ExpenseController extends Controller
     {
         $isEditing = true;
 
-        return view('admin.expense-form', compact('expense', 'isEditing'));
+        return view('admin.expense.expense-form', compact('expense', 'isEditing'));
     }
 
     /**

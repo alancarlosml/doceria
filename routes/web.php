@@ -92,6 +92,7 @@ Route::middleware('auth')->group(function () {
     // Cash Register Management
     Route::middleware('permission:cash_registers.view')->group(function () {
         Route::resource('cash-registers', CashRegisterController::class);
+        Route::get('cash-registers/{cashRegister}/sales', [CashRegisterController::class, 'sales'])->name('cash-registers.sales');
         Route::post('cash-registers/{cashRegister}/close', [CashRegisterController::class, 'close'])->name('cash-registers.close');
         Route::get('cash-registers-statistics', [CashRegisterController::class, 'statistics'])->name('cash-registers.statistics');
     });

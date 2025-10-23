@@ -32,7 +32,7 @@ class MotoboyController extends Controller
 
         $motoboys = $query->orderBy('name')->paginate(15);
 
-        return view('admin.motoboys', compact('motoboys'));
+        return view('admin.motoboy.motoboys', compact('motoboys'));
     }
 
     /**
@@ -41,7 +41,7 @@ class MotoboyController extends Controller
     public function create()
     {
         $isEditing = false;
-        return view('admin.motoboy-form', compact('isEditing'));
+        return view('admin.motoboy.motoboy-form', compact('isEditing'));
     }
 
     /**
@@ -77,7 +77,10 @@ class MotoboyController extends Controller
             ->limit(10)
             ->get();
 
-        return view('motoboys.show', compact('motoboy', 'recentDeliveries'));
+        $totalDeliveries = $motoboy->sales()->where('type', 'delivery')->count();
+        $totalEarnings = $motoboy->sales()->where('type', 'delivery')->sum('total');
+
+        return view('admin.motoboy.motoboy-show', compact('motoboy', 'recentDeliveries', 'totalDeliveries', 'totalEarnings'));
     }
 
     /**
@@ -86,7 +89,7 @@ class MotoboyController extends Controller
     public function edit(Motoboy $motoboy)
     {
         $isEditing = true;
-        return view('admin.motoboy-form', compact('motoboy', 'isEditing'));
+        return view('admin.motoboy.motoboy-form', compact('motoboy', 'isEditing'));
     }
 
     /**
