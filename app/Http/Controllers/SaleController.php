@@ -316,20 +316,20 @@ class SaleController extends Controller
     {
         $sale->load(['customer', 'table', 'motoboy', 'user', 'cashRegister', 'items.product.category']);
 
-        // Format items for POS
+        // Format items for POS - CORRIGIDO
         $items = $sale->items->map(function ($item) {
             return [
                 'product_id' => $item->product_id,
                 'name' => $item->product->name,
-                'price' => $item->unit_price,
+                'price' => (float) $item->unit_price, // Convertido para float
                 'category' => $item->product->category?->name ?? 'Sem categoria',
-                'quantity' => $item->quantity,
-                'subtotal' => $item->subtotal,
+                'quantity' => (int) $item->quantity, // Convertido para int
+                'subtotal' => (float) $item->subtotal, // Convertido para float
                 'notes' => $item->notes ?? ''
             ];
-        });
+        })->toArray();
 
-        // Return sale data formatted for POS
+        // Return sale data formatted for POS - CORRIGIDO
         return response()->json([
             'success' => true,
             'sale' => [
@@ -340,14 +340,14 @@ class SaleController extends Controller
                 'table_id' => $sale->table_id,
                 'motoboy_id' => $sale->motoboy_id,
                 'payment_method' => $sale->payment_method,
-                'delivery_date' => $sale->delivery_date,
+                'delivery_date' => $sale->delivery_date?->format('Y-m-d'),
                 'delivery_time' => $sale->delivery_time,
                 'delivery_address' => $sale->delivery_address,
-                'delivery_fee' => $sale->delivery_fee,
-                'discount' => $sale->discount,
+                'delivery_fee' => (float) ($sale->delivery_fee ?? 0),
+                'discount' => (float) ($sale->discount ?? 0),
                 'notes' => $sale->notes,
-                'subtotal' => $sale->subtotal,
-                'total' => $sale->total,
+                'subtotal' => (float) $sale->subtotal,
+                'total' => (float) $sale->total,
                 'items' => $items
             ]
         ]);

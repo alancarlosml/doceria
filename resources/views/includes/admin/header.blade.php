@@ -7,15 +7,16 @@
 
     <div class="flex-1 px-4 flex justify-between">
         <div class="flex-1 flex">
-            <div class="w-full flex md:ml-0">
-                <label for="search-field" class="sr-only">Search</label>
-                <div class="relative w-full text-gray-400 focus-within:text-gray-600">
-                    <div class="absolute inset-y-0 left-0 flex items-center pointer-events-none">
-                        <span>🔍</span>
-                    </div>
-                    <input id="search-field" class="block w-full h-full pl-8 pr-3 py-2 border-transparent text-gray-900 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-0 focus:border-transparent" placeholder="Buscar..." type="search">
-                </div>
-            </div>
+            <!-- Toggle Sidebar Button -->
+            <button
+                id="sidebarToggleBtn"
+                type="button"
+                class="flex items-center justify-center w-10 h-full text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors rounded-md mr-4"
+                title="Ocultar/Mostrar Menu Lateral">
+                <svg xmlns="http://www.w3.org/2000/svg" id="toggleIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 48 48">
+                    <path fill="#607D8B" d="M6 22H42V26H6zM6 10H42V14H6zM6 34H42V38H6z"></path>
+                </svg>
+            </button>
         </div>
 
         <div class="ml-4 flex items-center md:ml-6">

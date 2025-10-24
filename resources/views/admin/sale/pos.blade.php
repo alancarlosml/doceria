@@ -96,35 +96,35 @@
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
                         <span class="text-2xl">🧾</span>
-                        <span>Pedido Atual</span>
+                        <span x-text="currentSaleId ? 'Venda #' + currentSaleId : 'Novo Pedido'"></span>
                     </h3>
                     <button 
-                        @click="clearCart()"
+                        @click="newSale()"
                         x-show="cart.items.length > 0"
-                        class="text-red-600 hover:text-red-800 font-medium text-sm"
+                        class="text-blue-600 hover:text-blue-800 font-medium text-sm"
                     >
-                        🗑️ Limpar
+                        ➕ Novo
                     </button>
                 </div>
 
                 <!-- Tipo de Venda -->
                 <div class="flex gap-2">
                     <button
-                        @click="cart.type = 'balcao'; cart.table_id = null; cart.delivery_fee = 0; cart.motoboy_id = null; calculateTotals();"
+                        @click="setType('balcao')"
                         :class="cart.type === 'balcao' ? 'bg-green-500 text-white' : 'bg-white text-gray-700 border border-gray-300'"
                         class="flex-1 py-2 rounded-lg font-medium text-sm transition-colors"
                     >
                         🏪 Balcão
                     </button>
                     <button
-                        @click="cart.type = 'delivery'; cart.table_id = null; if(cart.delivery_fee === 0) cart.delivery_fee = 5.00; calculateTotals();"
+                        @click="setType('delivery')"
                         :class="cart.type === 'delivery' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 border border-gray-300'"
                         class="flex-1 py-2 rounded-lg font-medium text-sm transition-colors"
                     >
                         🏍️ Delivery
                     </button>
                     <button
-                        @click="cart.type = 'encomenda'; cart.table_id = null; cart.delivery_fee = 0; cart.motoboy_id = null; calculateTotals();"
+                        @click="setType('encomenda')"
                         :class="cart.type === 'encomenda' ? 'bg-purple-500 text-white' : 'bg-white text-gray-700 border border-gray-300'"
                         class="flex-1 py-2 rounded-lg font-medium text-sm transition-colors"
                     >
@@ -149,14 +149,15 @@
                     </select>
                 </div>
 
-                <!-- Delivery - Endereço -->
+                <!-- Delivery - Campos lado a lado -->
                 <template x-if="cart.type === 'delivery'">
-                    <div>
-                        <div class="mb-3">
+                    <div class="space-y-3">
+                        <!-- Linha 1: Endereço completo -->
+                        <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 Endereço de Entrega <span class="text-red-500">*</span>
                             </label>
-                            <textarea 
+                            <textarea
                                 x-model="cart.delivery_address"
                                 rows="2"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
@@ -164,55 +165,59 @@
                             ></textarea>
                         </div>
 
-                        <!-- Taxa de Entrega -->
-                        <div class="mb-3">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Taxa de Entrega (R$)</label>
-                            <input 
-                                type="number" 
-                                x-model.number="cart.delivery_fee"
-                                @input="calculateTotals()"
-                                step="0.50"
-                                min="0"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                                placeholder="Ex: 5.00"
-                            >
-                            <p class="text-xs text-gray-500 mt-1">Padrão: R$ 5,00 - Digite 0 para frete grátis</p>
-                        </div>
-
-                        <!-- Motoboy -->
-                        <div class="mb-3">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Motoboy <span class="text-red-500">*</span>
-                            </label>
-                            <select 
-                                x-model="cart.motoboy_id"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="">Selecione um motoboy</option>
-                                @foreach($motoboys as $motoboy)
-                                <option value="{{ $motoboy->id }}">{{ $motoboy->name }} - {{ $motoboy->phone }}</option>
-                                @endforeach
-                            </select>
+                        <!-- Linha 2: Taxa + Motoboy lado a lado -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Taxa Entrega (R$)</label>
+                                <input
+                                    type="number"
+                                    x-model.number="cart.delivery_fee"
+                                    @input="calculateTotals()"
+                                    step="0.50"
+                                    min="0"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                    placeholder="5.00"
+                                >
+                                <p class="text-xs text-gray-500 mt-1">0 = frete grátis</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Motoboy <span class="text-red-500">*</span>
+                                </label>
+                                <select
+                                    x-model="cart.motoboy_id"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="">Selecione...</option>
+                                    @foreach($motoboys as $motoboy)
+                                    <option value="{{ $motoboy->id }}">{{ $motoboy->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </template>
 
-                <!-- Encomenda - Data e Hora -->
+                <!-- Encomenda - Data e Hora lado a lado -->
                 <template x-if="cart.type === 'encomenda'">
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Data</label>
-                            <input 
-                                type="date" 
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Data Entrega <span class="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="date"
                                 x-model="cart.delivery_date"
                                 :min="new Date().toISOString().split('T')[0]"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
                             >
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Hora</label>
-                            <input 
-                                type="time" 
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Hora <span class="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="time"
                                 x-model="cart.delivery_time"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
                             >
@@ -263,8 +268,8 @@
                                     </button>
                                 </div>
                                 <div class="text-right">
-                                    <p class="text-xs text-gray-500">R$ <span x-text="item.price.toFixed(2).replace('.', ',')"></span> cada</p>
-                                    <p class="font-bold text-green-600">R$ <span x-text="item.subtotal.toFixed(2).replace('.', ',')"></span></p>
+                                    <p class="text-xs text-gray-500">R$ <span x-text="formatMoney(item.price)"></span> cada</p>
+                                    <p class="font-bold text-green-600">R$ <span x-text="formatMoney(item.subtotal)"></span></p>
                                 </div>
                             </div>
 
@@ -300,25 +305,25 @@
                 <!-- Subtotal -->
                 <div class="flex items-center justify-between text-sm mb-2">
                     <span class="text-gray-600">Subtotal:</span>
-                    <span class="font-medium">R$ <span x-text="cart.subtotal.toFixed(2).replace('.', ',')"></span></span>
+                    <span class="font-medium">R$ <span x-text="formatMoney(cart.subtotal)"></span></span>
                 </div>
 
                 <!-- Taxa de Entrega (só para delivery) -->
                 <div x-show="cart.type === 'delivery'" class="flex items-center justify-between text-sm mb-2">
                     <span class="text-gray-600">Taxa de Entrega:</span>
-                    <span class="font-medium text-blue-600">R$ <span x-text="cart.delivery_fee.toFixed(2).replace('.', ',')"></span></span>
+                    <span class="font-medium text-blue-600">R$ <span x-text="formatMoney(cart.delivery_fee)"></span></span>
                 </div>
 
                 <!-- Desconto Aplicado -->
                 <div x-show="cart.discount > 0" class="flex items-center justify-between text-sm mb-2">
                     <span class="text-gray-600">Desconto:</span>
-                    <span class="font-medium text-red-600">- R$ <span x-text="cart.discount.toFixed(2).replace('.', ',')"></span></span>
+                    <span class="font-medium text-red-600">- R$ <span x-text="formatMoney(cart.discount)"></span></span>
                 </div>
 
                 <!-- Total -->
                 <div class="flex items-center justify-between pt-2 border-t border-gray-300 mb-3">
                     <span class="text-lg font-bold text-gray-800">TOTAL:</span>
-                    <span class="text-2xl font-bold text-green-600">R$ <span x-text="cart.total.toFixed(2).replace('.', ',')"></span></span>
+                    <span class="text-2xl font-bold text-green-600">R$ <span x-text="formatMoney(cart.total)"></span></span>
                 </div>
 
                 <!-- Observações Gerais -->
@@ -334,13 +339,13 @@
                 <!-- Botões de Ação - SEMPRE VISÍVEIS -->
                 <div class="grid grid-cols-2 gap-3">
                     <button
-                        @click="savePending()"
+                        @click="saveOrder()"
                         :disabled="cart.items.length === 0"
-                        :class="cart.items.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-yellow-600'"
-                        class="bg-yellow-500 text-white py-3 rounded-lg font-bold transition-colors flex items-center justify-center"
+                        :class="cart.items.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'"
+                        class="bg-blue-500 text-white py-3 rounded-lg font-bold transition-colors flex items-center justify-center"
                     >
-                        <span class="mr-1">⏸️</span>
-                        <span>Pendente</span>
+                        <span class="mr-1">💾</span>
+                        <span>Salvar</span>
                     </button>
                     <button
                         @click="finalizeSale()"
@@ -371,7 +376,7 @@
                     :class="rightPanelTab === 'pedidos' ? 'bg-white text-pink-600 border-b-2 border-pink-600' : 'bg-gray-100 text-gray-600'"
                     class="flex-1 py-3 font-medium text-sm"
                 >
-                    📋 Pedidos
+                    📋 Pedidos ({{ $pendingSales->count() }})
                 </button>
             </div>
 
@@ -530,19 +535,19 @@
             <div class="bg-gray-50 rounded-lg p-4 mb-4">
                 <div class="flex justify-between mb-2">
                     <span class="text-gray-600">Subtotal:</span>
-                    <span class="font-bold">R$ <span x-text="cart.subtotal.toFixed(2).replace('.', ',')"></span></span>
+                    <span class="font-bold">R$ <span x-text="formatMoney(cart.subtotal)"></span></span>
                 </div>
                 <div x-show="cart.type === 'delivery'" class="flex justify-between mb-2">
                     <span class="text-gray-600">Taxa de Entrega:</span>
-                    <span class="font-bold text-blue-600">R$ <span x-text="cart.delivery_fee.toFixed(2).replace('.', ',')"></span></span>
+                    <span class="font-medium text-blue-600">R$ <span x-text="formatMoney(cart.delivery_fee)"></span></span>
                 </div>
                 <div x-show="cart.discount > 0" class="flex justify-between mb-2">
                     <span class="text-gray-600">Desconto:</span>
-                    <span class="font-bold text-red-600">- R$ <span x-text="cart.discount.toFixed(2).replace('.', ',')"></span></span>
+                    <span class="font-bold text-red-600">- R$ <span x-text="formatMoney(cart.discount)"></span></span>
                 </div>
                 <div class="flex justify-between pt-2 border-t border-gray-300">
                     <span class="text-lg font-bold">TOTAL:</span>
-                    <span class="text-2xl font-bold text-green-600">R$ <span x-text="cart.total.toFixed(2).replace('.', ',')"></span></span>
+                    <span class="text-2xl font-bold text-green-600">R$ <span x-text="formatMoney(cart.total)"></span></span>
                 </div>
             </div>
 
@@ -610,9 +615,11 @@ function posSystem() {
         selectedCategory: null,
         rightPanelTab: 'mesas',
         showFinalizationModal: false,
+        currentSaleId: null, // ID da venda atual sendo editada
         
         // Carrinho
         cart: {
+            id: null, // Para vendas existentes
             type: 'balcao',
             customer_id: null,
             table_id: null,
@@ -634,6 +641,39 @@ function posSystem() {
             this.calculateTotals();
         },
 
+        // Formatar valor monetário
+        formatMoney(value) {
+            const num = parseFloat(value) || 0;
+            return num.toFixed(2).replace('.', ',');
+        },
+
+        // Setar tipo de venda
+        setType(type) {
+            this.cart.type = type;
+            
+            // Resetar campos específicos
+            if (type === 'balcao') {
+                this.cart.delivery_fee = 0;
+                this.cart.motoboy_id = '';
+                this.cart.delivery_address = '';
+                this.cart.delivery_date = '';
+                this.cart.delivery_time = '';
+            } else if (type === 'delivery') {
+                if (this.cart.delivery_fee === 0) {
+                    this.cart.delivery_fee = 5.00;
+                }
+                this.cart.table_id = null;
+                this.cart.delivery_date = '';
+                this.cart.delivery_time = '';
+            } else if (type === 'encomenda') {
+                this.cart.delivery_fee = 0;
+                this.cart.motoboy_id = '';
+                this.cart.table_id = null;
+            }
+            
+            this.calculateTotals();
+        },
+
         // Adicionar item ao carrinho
         addItem(productId, name, price, category) {
             const existingItem = this.cart.items.find(item => item.product_id === productId);
@@ -645,10 +685,10 @@ function posSystem() {
                 this.cart.items.push({
                     product_id: productId,
                     name: name,
-                    price: price,
+                    price: parseFloat(price),
                     category: category,
                     quantity: 1,
-                    subtotal: price,
+                    subtotal: parseFloat(price),
                     notes: ''
                 });
             }
@@ -661,6 +701,7 @@ function posSystem() {
         removeItem(index) {
             this.cart.items.splice(index, 1);
             this.calculateTotals();
+            this.showToast('Item removido!', 'info');
         },
 
         // Atualizar quantidade
@@ -678,9 +719,15 @@ function posSystem() {
 
         // Calcular totais
         calculateTotals() {
-            this.cart.subtotal = this.cart.items.reduce((sum, item) => sum + item.subtotal, 0);
-            this.cart.delivery_fee = this.cart.type === 'delivery' ? 5.00 : 0;
-            this.cart.total = this.cart.subtotal + this.cart.delivery_fee - this.cart.discount;
+            this.cart.subtotal = this.cart.items.reduce((sum, item) => {
+                const subtotal = parseFloat(item.subtotal) || 0;
+                return sum + subtotal;
+            }, 0);
+            
+            const deliveryFee = parseFloat(this.cart.delivery_fee) || 0;
+            const discount = parseFloat(this.cart.discount) || 0;
+            
+            this.cart.total = this.cart.subtotal + deliveryFee - discount;
         },
 
         // Filtrar produtos
@@ -697,38 +744,91 @@ function posSystem() {
         selectTable(tableId, tableNumber) {
             this.cart.type = 'balcao';
             this.cart.table_id = tableId;
+            this.cart.delivery_fee = 0;
+            this.cart.motoboy_id = '';
+            this.cart.delivery_address = '';
+            this.calculateTotals();
             this.showToast(`Mesa ${tableNumber} selecionada!`, 'success');
         },
 
-        // Limpar carrinho
-        clearCart() {
-            if (confirm('Deseja realmente limpar o carrinho?')) {
-                this.cart = {
-                    type: 'balcao',
-                    customer_id: null,
-                    table_id: null,
-                    motoboy_id: null,
-                    payment_method: null,
-                    delivery_date: null,
-                    delivery_time: null,
-                    delivery_address: '',
-                    notes: '',
-                    items: [],
-                    subtotal: 0,
-                    discount: 0,
-                    delivery_fee: 0,
-                    total: 0
-                };
-                this.showToast('Carrinho limpo!', 'info');
+        // Novo pedido (limpar carrinho)
+        newSale() {
+            if (this.cart.items.length > 0) {
+                if (!confirm('Deseja iniciar um novo pedido? O pedido atual será perdido se não for salvo.')) {
+                    return;
+                }
             }
+            
+            this.resetCart();
+            this.showToast('Novo pedido iniciado!', 'info');
         },
 
-        // Salvar como pendente
-        async savePending() {
+        // Reset completo do carrinho
+        resetCart() {
+            this.currentSaleId = null;
+            this.cart = {
+                type: 'balcao',
+                customer_id: '',
+                table_id: null,
+                motoboy_id: '',
+                payment_method: null,
+                delivery_date: '',
+                delivery_time: '',
+                delivery_address: '',
+                notes: '',
+                items: [],
+                subtotal: 0,
+                discount: 0,
+                delivery_fee: 0,
+                total: 0
+            };
+        },
+
+        // Validar campos obrigatórios
+        validateCart() {
             if (this.cart.items.length === 0) {
-                this.showToast('Adicione itens ao carrinho!', 'error');
+                this.showToast('Adicione produtos ao carrinho!', 'error');
+                return false;
+            }
+
+            if (this.cart.type === 'delivery') {
+                if (!this.cart.delivery_address || this.cart.delivery_address.trim() === '') {
+                    this.showToast('Endereço de entrega é obrigatório para delivery!', 'error');
+                    return false;
+                }
+                if (!this.cart.motoboy_id || this.cart.motoboy_id === '') {
+                    this.showToast('Selecione um motoboy para delivery!', 'error');
+                    return false;
+                }
+            }
+
+            if (this.cart.type === 'encomenda') {
+                if (!this.cart.delivery_date || this.cart.delivery_date === '') {
+                    this.showToast('Data de entrega é obrigatória para encomendas!', 'error');
+                    return false;
+                }
+                if (!this.cart.delivery_time || this.cart.delivery_time === '') {
+                    this.showToast('Horário de entrega é obrigatório para encomendas!', 'error');
+                    return false;
+                }
+            }
+
+            return true;
+        },
+
+        // Salvar pedido (sem finalizar)
+        async saveOrder() {
+            if (!this.validateCart()) {
                 return;
             }
+
+            const saleData = {
+                ...this.cart,
+                customer_id: this.cart.customer_id || null,
+                motoboy_id: this.cart.motoboy_id || null,
+                discount: parseFloat(this.cart.discount) || 0,
+                delivery_fee: parseFloat(this.cart.delivery_fee) || 0
+            };
 
             try {
                 const response = await fetch('/sales', {
@@ -738,75 +838,106 @@ function posSystem() {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Accept': 'application/json'
                     },
-                    body: JSON.stringify(this.cart)
+                    body: JSON.stringify(saleData)
                 });
 
                 const data = await response.json();
 
                 if (data.success) {
-                    this.showToast('Pedido salvo como pendente!', 'success');
-                    this.clearCart();
-                    setTimeout(() => window.location.reload(), 1000);
+                    this.showToast('Pedido salvo com sucesso!', 'success');
+                    this.currentSaleId = data.sale.id;
+                    
+                    // Recarregar página após 1 segundo
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
                 } else {
                     throw new Error(data.message || 'Erro ao salvar pedido');
                 }
             } catch (error) {
                 console.error('Erro:', error);
-                this.showToast('Erro ao salvar pedido: ' + (error.message || 'Erro desconhecido'), 'error');
+                this.showToast('Erro ao salvar pedido: ' + error.message, 'error');
             }
         },
 
-        // Finalizar venda
+        // Finalizar venda (abrir modal de pagamento)
         finalizeSale() {
-            if (this.cart.items.length === 0) {
-                this.showToast('Adicione itens ao carrinho!', 'error');
+            if (!this.validateCart()) {
                 return;
             }
 
             this.showFinalizationModal = true;
         },
 
-        // Confirmar finalização
+        // Confirmar finalização com pagamento
         async confirmFinalization() {
             if (!this.cart.payment_method) {
                 this.showToast('Selecione um método de pagamento!', 'error');
                 return;
             }
 
+            const saleData = {
+                ...this.cart,
+                customer_id: this.cart.customer_id || null,
+                motoboy_id: this.cart.motoboy_id || null,
+                discount: parseFloat(this.cart.discount) || 0,
+                delivery_fee: parseFloat(this.cart.delivery_fee) || 0,
+                payment_method: this.cart.payment_method
+            };
+
             try {
-                const response = await fetch('/sales', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        ...this.cart,
-                        status: 'finalizado'
-                    })
-                });
+                let response;
+                
+                if (this.currentSaleId) {
+                    // Atualizar venda existente e finalizar
+                    response = await fetch(`/sales/${this.currentSaleId}/finalize`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            payment_method: this.cart.payment_method,
+                            discount: parseFloat(this.cart.discount) || 0
+                        })
+                    });
+                } else {
+                    // Criar e finalizar nova venda
+                    response = await fetch('/sales', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(saleData)
+                    });
+                }
 
                 const data = await response.json();
 
                 if (data.success) {
                     this.showToast('Venda finalizada com sucesso!', 'success');
                     this.showFinalizationModal = false;
-                    this.clearCart();
-                    setTimeout(() => window.location.reload(), 1000);
+                    this.resetCart();
+                    
+                    // Recarregar página após 1 segundo
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
                 } else {
-                    throw new Error(data.message || 'Erro desconhecido ao finalizar venda');
+                    throw new Error(data.message || 'Erro ao finalizar venda');
                 }
             } catch (error) {
                 console.error('Erro:', error);
-                this.showToast('Erro ao finalizar venda: ' + (error.message || 'Erro desconhecido'), 'error');
+                this.showToast('Erro ao finalizar venda: ' + error.message, 'error');
             }
         },
 
         // Carregar venda existente
         async loadSale(saleId) {
-            console.log('Carregando venda:', saleId);
-            this.showToast('Carregando venda #' + saleId + '...', 'info');
+            this.showToast('Carregando venda...', 'info');
 
             try {
                 const response = await fetch(`/sales/${saleId}/pos-data`, {
@@ -822,39 +953,49 @@ function posSystem() {
                 if (data.success && data.sale) {
                     const saleData = data.sale;
 
-                    // Limpar carrinho atual
-                    this.clearCart();
+                    // Resetar carrinho
+                    this.resetCart();
+
+                    // Carregar ID da venda
+                    this.currentSaleId = saleData.id;
 
                     // Popular cart com dados da venda
-                    this.cart = {
-                        type: saleData.type,
-                        customer_id: saleData.customer_id,
-                        table_id: saleData.table_id,
-                        motoboy_id: saleData.motoboy_id,
-                        payment_method: saleData.payment_method,
-                        delivery_date: saleData.delivery_date,
-                        delivery_time: saleData.delivery_time,
-                        delivery_address: saleData.delivery_address,
-                        delivery_fee: parseFloat(saleData.delivery_fee || 0),
-                        discount: parseFloat(saleData.discount || 0),
-                        notes: saleData.notes || '',
-                        items: saleData.items || [],
-                        subtotal: parseFloat(saleData.subtotal || 0),
-                        total: parseFloat(saleData.total || 0)
-                    };
+                    this.cart.type = saleData.type || 'balcao';
+                    this.cart.customer_id = saleData.customer_id || '';
+                    this.cart.table_id = saleData.table_id || null;
+                    this.cart.motoboy_id = saleData.motoboy_id || '';
+                    this.cart.payment_method = saleData.payment_method || null;
+                    this.cart.delivery_date = saleData.delivery_date || '';
+                    this.cart.delivery_time = saleData.delivery_time || '';
+                    this.cart.delivery_address = saleData.delivery_address || '';
+                    this.cart.notes = saleData.notes || '';
+                    this.cart.discount = parseFloat(saleData.discount) || 0;
+                    this.cart.delivery_fee = parseFloat(saleData.delivery_fee) || 0;
 
-                    // Recalcular totais para garantir consistência
+                    // Carregar itens
+                    if (saleData.items && Array.isArray(saleData.items)) {
+                        this.cart.items = saleData.items.map(item => ({
+                            product_id: item.product_id,
+                            name: item.name,
+                            price: parseFloat(item.price) || 0,
+                            category: item.category || '',
+                            quantity: parseInt(item.quantity) || 1,
+                            subtotal: parseFloat(item.subtotal) || 0,
+                            notes: item.notes || ''
+                        }));
+                    }
+
+                    // Recalcular totais
                     this.calculateTotals();
-                    this.calculateTotals(); // Chamada dupla para garantir delivery_fee correta
 
-                    console.log('Venda carregada com sucesso:', this.cart);
-                    this.showToast('✅ Venda carregada!', 'success');
+                    console.log('Venda carregada:', this.cart);
+                    this.showToast('Venda carregada com sucesso!', 'success');
                 } else {
                     throw new Error(data.message || 'Erro ao carregar venda');
                 }
             } catch (error) {
                 console.error('Erro ao carregar venda:', error);
-                this.showToast('❌ Erro ao carregar venda: ' + (error.message || 'Erro desconhecido'), 'error');
+                this.showToast('Erro ao carregar venda: ' + error.message, 'error');
             }
         },
 

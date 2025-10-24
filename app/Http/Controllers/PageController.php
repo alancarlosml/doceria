@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Sale;
+use App\Models\Table;
 use App\Models\Menu;
 use App\Models\Product;
 use App\Models\Category;
@@ -123,7 +125,68 @@ class PageController extends Controller
      */
     public function dashboard()
     {
-        // This will be protected by auth middleware
-        return view('gestor.dashboard');
+        // Buscar vendas do dia atual
+        $today = now()->format('Y-m-d');
+        $todaySales = Sale::whereDate('created_at', $today)->sum('total');
+        $todaySalesCount = Sale::whereDate('created_at', $today)->count();
+
+        // Vendas pendentes (mesas ocupadas e pedidos em processamento)
+        $pendingSales = Sale::whereIn('status', ['pendente', 'em_preparo', 'pronto'])
+            ->with(['customer', 'table', 'motoboy', 'items.product'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Mesas ocupadas com vendas pendentes
+        $occupiedTables = Table::where('status', 'ocupada')
+            ->with(['sales' => function($query) {
+                $query->whereIn('status', ['pendente', 'em_preparo', 'pronto', 'finalizado'])
+                      ->with(['items.product', 'customer'])
+                      ->latest();
+            }])
+            ->orderBy('number')
+            ->get();
+
+        // Encomendas próximas (prontas ou saiu para entrega)
+        $upcomingDeliveries = Sale::whereIn('status', ['pronto', 'saiu_entrega', 'pendente', 'finalizado'])
+            ->where('type', 'delivery')
+            ->with(['customer', 'motoboy'])
+            ->orderBy('updated_at', 'desc')
+            ->get();
+
+        // Encomendas pendentes
+        $pendingEncomendas = Sale::whereIn('status', ['pendente', 'em_preparo'])
+            ->where('type', 'encomenda')
+            ->with(['customer'])
+            ->whereDate('delivery_date', '>=', now()->format('Y-m-d'))
+            ->orderBy('delivery_date')
+            ->orderBy('delivery_time')
+            ->get();
+
+        // Estatísticas rápidas
+        $pendingSalesCount = $pendingSales->count();
+        $occupiedTablesCount = $occupiedTables->count();
+        $upcomingDeliveriesCount = $upcomingDeliveries->count();
+        $pendingEncomendasCount = $pendingEncomendas->count();
+
+        // Vendas recentes concluídas
+        $recentSales = Sale::where('status', 'finalizado')
+            ->with(['customer', 'items.product'])
+            ->orderBy('updated_at', 'desc')
+            ->take(5)
+            ->get();
+
+        return view('gestor.dashboard', compact(
+            'todaySales',
+            'todaySalesCount',
+            'pendingSales',
+            'occupiedTables',
+            'upcomingDeliveries',
+            'pendingEncomendas',
+            'pendingSalesCount',
+            'occupiedTablesCount',
+            'upcomingDeliveriesCount',
+            'pendingEncomendasCount',
+            'recentSales'
+        ));
     }
 }
