@@ -68,7 +68,7 @@
             <!-- Divider -->
             <div class="sidebar-divider border-t border-gray-200 my-4"></div>
 
-            <a href="#" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900" title="Relatórios">
+            <a href="{{ route('reports.dashboard') }}" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('reports.*') ? 'bg-blue-50 text-blue-600' : '' }}" title="Relatórios">
                 <span class="mr-3">📊</span>
                 <span class="sidebar-text">Relatórios</span>
             </a>
@@ -80,12 +80,12 @@
 
             {{-- @if(auth()->user()->hasPermission('users.view')) --}}
             <a href="{{ route('users.index') }}" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('users.*') ? 'bg-blue-50 text-blue-600' : '' }}" title="Usuários">
-                <span class="mr-3">👥</span>
+                <span class="mr-3">👤</span>
                 <span class="sidebar-text">Usuários</span>
             </a>
             {{-- @endif --}}
 
-            <a href="#" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900" title="Configurações">
+            <a href="{{ route('settings.index') }}" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('settings.*') ? 'bg-blue-50 text-blue-600' : '' }}" title="Configurações">
                 <span class="mr-3">⚙️</span>
                 <span class="sidebar-text">Configurações</span>
             </a>

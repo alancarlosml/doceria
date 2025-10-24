@@ -10,7 +10,7 @@
             <!-- Welcome Section -->
             <div class="mb-8">
                 <h1 class="text-2xl font-semibold text-gray-900">
-                    👋 Controle Operacional - {{ Auth::user()->name }}
+                    👋 Controle Operacional
                 </h1>
                 <p class="mt-2 text-gray-600">
                     Gerencie pedidos pendentes, mesas ocupadas e entregas em tempo real.

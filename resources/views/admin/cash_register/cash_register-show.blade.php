@@ -72,6 +72,85 @@
                 </div>
             @endif
 
+            <!-- Sales Summary -->
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="rounded-md bg-green-100 p-3">
+                                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M7 11h10a2 2 0 012 2v6a2 2 0 01-2 2H7a2 2 0 01-2-2v-6a2 2 0 012-2z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Total de Vendas</dt>
+                                <dd class="text-2xl font-semibold text-gray-900">{{ $salesCount }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="rounded-md bg-blue-100 p-3">
+                                <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Ticket Médio</dt>
+                                <dd class="text-2xl font-semibold text-gray-900">
+                                    R$ {{ $salesCount > 0 ? number_format($totalSales / $salesCount, 2, ',', '.') : '0,00' }}
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="rounded-md bg-yellow-100 p-3">
+                                <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2m0 0V9a2 2 0 01-2 2H9z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Despesas</dt>
+                                <dd class="text-2xl font-semibold text-gray-900">{{ $expensesCount }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="rounded-md bg-purple-100 p-3">
+                                <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Método Mais Usado</dt>
+                                <dd class="text-lg font-semibold text-gray-900">
+                                    {{ $paymentMethods ? ($paymentMethods->count . 'x ' . ucfirst(str_replace('_', ' ', $paymentMethods->payment_method))) : 'Sem vendas' }}
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Cash Register Information -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                 <!-- Opening Information -->
@@ -176,84 +255,196 @@
                 </div>
             </div>
 
-            <!-- Sales Summary -->
-            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-                <div class="bg-white rounded-lg shadow p-5">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="rounded-md bg-green-100 p-3">
-                                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M7 11h10a2 2 0 012 2v6a2 2 0 01-2 2H7a2 2 0 01-2-2v-6a2 2 0 012-2z"></path>
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="ml-5 w-0 flex-1">
-                            <dl>
-                                <dt class="text-sm font-medium text-gray-500 truncate">Total de Vendas</dt>
-                                <dd class="text-2xl font-semibold text-gray-900">{{ $salesCount }}</dd>
-                            </dl>
-                        </div>
-                    </div>
+            <!-- Daily Summary for Cash Register -->
+            @if(isset($dailySummary) && $dailySummary['sales_count'] > 0)
+            <div class="mt-8 bg-gradient-to-r from-green-50 to-blue-50 shadow-lg rounded-lg overflow-hidden border-2 border-green-200 mb-8">
+                <div class="px-6 py-4 bg-green-600 text-white">
+                    <h3 class="text-xl font-bold flex items-center">
+                        <span class="mr-3">📊</span>Resumo Operacional - {{ $cashRegister->isOpen() ? 'Caixa Atual' : 'Dia ' . $dailySummary['date'] }}
+                    </h3>
+                    <p class="mt-1 text-green-100">Resumo das vendas e pagamentos {{ $cashRegister->isOpen() ? 'do período atual' : 'do caixa completo' }}</p>
                 </div>
 
-                <div class="bg-white rounded-lg shadow p-5">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="rounded-md bg-blue-100 p-3">
-                                <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                                </svg>
+                <div class="p-6">
+                    <!-- Principais Métricas -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <!-- Total de Vendas -->
+                        <div class="bg-white rounded-lg p-4 shadow border">
+                            <div class="flex items-center">
+                                <div class="rounded-full bg-green-100 p-3 mr-4">
+                                    <svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 font-medium">Total de Vendas</p>
+                                    <p class="text-2xl font-bold text-gray-900">R$ {{ number_format($dailySummary['total_sales'], 2, ',', '.') }}</p>
+                                    <p class="text-xs text-gray-600">{{ $dailySummary['sales_count'] }} vendas</p>
+                                </div>
                             </div>
                         </div>
-                        <div class="ml-5 w-0 flex-1">
-                            <dl>
-                                <dt class="text-sm font-medium text-gray-500 truncate">Ticket Médio</dt>
-                                <dd class="text-2xl font-semibold text-gray-900">
-                                    R$ {{ $salesCount > 0 ? number_format($totalSales / $salesCount, 2, ',', '.') : '0,00' }}
-                                </dd>
-                            </dl>
+
+                        <!-- Encomendas Pagas -->
+                        <div class="bg-white rounded-lg p-4 shadow border">
+                            <div class="flex items-center">
+                                <div class="rounded-full bg-blue-100 p-3 mr-4">
+                                    <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 font-medium">Encomendas Pagas</p>
+                                    <p class="text-2xl font-bold text-gray-900">{{ $dailySummary['paid_orders_count'] }}</p>
+                                    <p class="text-xs text-gray-600">R$ {{ number_format($dailySummary['paid_orders_total'], 2, ',', '.') }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Saldo Operacional -->
+                        <div class="bg-white rounded-lg p-4 shadow border">
+                            <div class="flex items-center">
+                                <div class="rounded-full bg-yellow-100 p-3 mr-4">
+                                    <svg class="h-8 w-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 font-medium">{{ $cashRegister->isOpen() ? 'Saldo Atual' : 'Resultado Final' }}</p>
+                                    <p class="text-2xl font-bold text-gray-900">R$ {{ number_format($dailySummary['current_expected'], 2, ',', '.') }}</p>
+                                    <p class="text-xs text-gray-600">Saldo inicial: R$ {{ number_format($dailySummary['opening_balance'], 2, ',', '.') }}</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="bg-white rounded-lg shadow p-5">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="rounded-md bg-yellow-100 p-3">
-                                <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2m0 0V9a2 2 0 01-2 2H9z"></path>
-                                </svg>
+                    <!-- Informações Financeiras Adicionais -->
+                    @if($cashRegister->isOpen() || ($totalExpenses > 0 || $totalRevenues > 0))
+                    <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        @if($totalExpenses > 0)
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                            <div class="flex items-center">
+                                <div class="rounded-full bg-red-100 p-2 mr-3">
+                                    <span class="text-red-600 text-xs">💸</span>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-red-600 font-medium">Despesas</p>
+                                    <p class="text-sm font-bold text-red-700">- R$ {{ number_format($totalExpenses, 2, ',', '.') }}</p>
+                                </div>
                             </div>
                         </div>
-                        <div class="ml-5 w-0 flex-1">
-                            <dl>
-                                <dt class="text-sm font-medium text-gray-500 truncate">Despesas</dt>
-                                <dd class="text-2xl font-semibold text-gray-900">{{ $expensesCount }}</dd>
-                            </dl>
+                        @endif
+
+                        @if($totalRevenues > 0)
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <div class="flex items-center">
+                                <div class="rounded-full bg-blue-100 p-2 mr-3">
+                                    <span class="text-blue-600 text-xs">➕</span>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-blue-600 font-medium">Entradas Extras</p>
+                                    <p class="text-sm font-bold text-blue-700">+ R$ {{ number_format($totalRevenues, 2, ',', '.') }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
+
+                        <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+                            <div class="flex items-center">
+                                <div class="rounded-full bg-indigo-100 p-2 mr-3">
+                                    <span class="text-indigo-600 text-xs">📊</span>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-indigo-600 font-medium">Lucro Operacional</p>
+                                    <p class="text-sm font-bold text-indigo-700">
+                                        {{ $totalSales - $totalExpenses + $totalRevenues >= 0 ? '+' : '-' }}
+                                        R$ {{ number_format(abs($totalSales - $totalExpenses + $totalRevenues), 2, ',', '.') }}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
+                    @endif
 
-                <div class="bg-white rounded-lg shadow p-5">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="rounded-md bg-purple-100 p-3">
-                                <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                                </svg>
+                    <!-- Formas de Pagamento e Motoboys -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Formas de Pagamento -->
+                        <div class="bg-white rounded-lg p-4 shadow border">
+                            <h4 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                <span class="mr-2">💳</span>Formas de Pagamento
+                            </h4>
+
+                            <div class="space-y-3">
+                                <!-- PIX -->
+                                <div class="flex justify-between items-center p-3 bg-green-50 rounded border">
+                                    <div class="flex items-center">
+                                        <div class="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
+                                        <span class="font-medium text-gray-700">PIX</span>
+                                    </div>
+                                    <span class="font-bold text-green-700">R$ {{ number_format($dailySummary['payment_methods']['pix'], 2, ',', '.') }}</span>
+                                </div>
+
+                                <!-- Cartão -->
+                                <div class="flex justify-between items-center p-3 bg-blue-50 rounded border">
+                                    <div class="flex items-center">
+                                        <div class="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
+                                        <span class="font-medium text-gray-700">Cartão</span>
+                                    </div>
+                                    <span class="font-bold text-blue-700">R$ {{ number_format($dailySummary['payment_methods']['cartao'], 2, ',', '.') }}</span>
+                                </div>
+
+                                <!-- Dinheiro -->
+                                <div class="flex justify-between items-center p-3 bg-yellow-50 rounded border">
+                                    <div class="flex items-center">
+                                        <div class="w-3 h-3 bg-yellow-500 rounded-full mr-3"></div>
+                                        <span class="font-medium text-gray-700">Dinheiro</span>
+                                    </div>
+                                    <span class="font-bold text-yellow-700">R$ {{ number_format($dailySummary['payment_methods']['dinheiro'], 2, ',', '.') }}</span>
+                                </div>
+
+                                @if($dailySummary['payment_methods']['outros'] > 0)
+                                <!-- Outros -->
+                                <div class="flex justify-between items-center p-3 bg-purple-50 rounded border">
+                                    <div class="flex items-center">
+                                        <div class="w-3 h-3 bg-purple-500 rounded-full mr-3"></div>
+                                        <span class="font-medium text-gray-700">Outros</span>
+                                    </div>
+                                    <span class="font-bold text-purple-700">R$ {{ number_format($dailySummary['payment_methods']['outros'], 2, ',', '.') }}</span>
+                                </div>
+                                @endif
                             </div>
                         </div>
-                        <div class="ml-5 w-0 flex-1">
-                            <dl>
-                                <dt class="text-sm font-medium text-gray-500 truncate">Método Mais Usado</dt>
-                                <dd class="text-lg font-semibold text-gray-900">
-                                    {{ $paymentMethods ? ($paymentMethods->count . 'x ' . ucfirst(str_replace('_', ' ', $paymentMethods->payment_method))) : 'Sem vendas' }}
-                                </dd>
-                            </dl>
+
+                        <!-- Valores por Motoboy -->
+                        <div class="bg-white rounded-lg p-4 shadow border">
+                            <h4 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                <span class="mr-2">🏍️</span>Valores dos Motoboys
+                            </h4>
+
+                            <div class="text-sm text-gray-600 mb-4">
+                                <p>{{ $dailySummary['delivery_orders_count'] }} entregas realizadas</p>
+                                <p class="font-medium text-gray-900">Total em entregas: R$ {{ number_format($dailySummary['delivery_orders_total'], 2, ',', '.') }}</p>
+                            </div>
+
+                            @if(count($dailySummary['motoboy_earnings']) > 0)
+                                <div class="space-y-2">
+                                    @foreach($dailySummary['motoboy_earnings'] as $earning)
+                                    <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+                                        <div>
+                                            <span class="font-medium text-gray-800">{{ $earning['name'] }}</span>
+                                            <span class="text-xs text-gray-600 ml-2">({{ $earning['orders_count'] }} entregas)</span>
+                                        </div>
+                                        <span class="font-bold text-green-600">R$ {{ number_format($earning['total_value'], 2, ',', '.') }}</span>
+                                    </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <p class="text-gray-500 text-center py-4">Nenhuma entrega realizada</p>
+                            @endif
                         </div>
                     </div>
                 </div>
             </div>
+            @endif
 
             <!-- Recent Sales & Expenses -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">

@@ -54,7 +54,7 @@
             </div>
 
             <!-- Grid de Produtos -->
-            <div class="flex-1 overflow-y-auto p-4">
+            <div class="flex-1 overflow-y-auto p-4 max-h-[70vh]">
                 <div class="grid grid-cols-3 gap-3">
                     @foreach($products as $product)
                     <button
@@ -74,8 +74,8 @@
                         </div>
                         
                         <!-- Info do Produto -->
-                        <h4 class="font-bold text-gray-800 text-sm mb-1 line-clamp-2">{{ $product->name }}</h4>
-                        <p class="text-lg font-bold text-pink-600">R$ {{ number_format($product->price, 2, ',', '.') }}</p>
+                        <h4 class="font-bold text-gray-800 text-xs mb-1 line-clamp-2">{{ $product->name }}</h4>
+                        <p class="text-sm font-bold text-pink-600">R$ {{ number_format($product->price, 2, ',', '.') }}</p>
                         
                         <!-- Badge Categoria -->
                         <div class="mt-2">
@@ -90,9 +90,9 @@
         </div>
 
         <!-- COLUNA 2: Carrinho/Pedido Atual (35%) -->
-        <div class="w-2/5 bg-white flex flex-col">
+        <div class="w-2/5 bg-white flex flex-col h-screen">
             <!-- Header do Carrinho -->
-            <div class="p-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-blue-50">
+            <div class="flex-shrink-0 p-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-blue-50">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
                         <span class="text-2xl">🧾</span>
@@ -131,107 +131,123 @@
                         📦 Encomenda
                     </button>
                 </div>
-            </div>
 
-            <!-- Informações Adicionais Baseadas no Tipo -->
-            <div class="p-4 border-b border-gray-200 bg-gray-50" x-show="cart.type !== 'balcao'">
-                <!-- Cliente -->
-                <div class="mb-3">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
-                    <select 
-                        x-model="cart.customer_id"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500"
+                <!-- Botão para Abrir Detalhes (Delivery/Encomenda) -->
+                <div x-show="cart.type !== 'balcao'" class="mt-3" x-data="{ detailsOpen: false }">
+                    <button 
+                        @click="detailsOpen = !detailsOpen"
+                        class="w-full flex items-center justify-between px-3 py-2 bg-white border-2 rounded-lg text-sm font-medium transition-all"
+                        :class="detailsOpen ? 'border-blue-500 text-blue-700' : 'border-gray-300 text-gray-700 hover:border-gray-400'"
                     >
-                        <option value="">Selecione um cliente</option>
-                        @foreach($recentCustomers as $customer)
-                        <option value="{{ $customer->id }}">{{ $customer->name }} - {{ $customer->phone }}</option>
-                        @endforeach
-                    </select>
+                        <span x-show="cart.type === 'delivery'">📋 Detalhes da Entrega</span>
+                        <span x-show="cart.type === 'encomenda'">📋 Detalhes da Encomenda</span>
+                        <svg class="w-5 h-5 transition-transform" :class="detailsOpen && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+
+                    <!-- Collapse com Campos Adicionais -->
+                    <div 
+                        x-show="detailsOpen" 
+                        x-collapse
+                        class="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-3"
+                    >
+                        <!-- Cliente -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+                            <select 
+                                x-model="cart.customer_id"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500"
+                            >
+                                <option value="">Selecione um cliente</option>
+                                @foreach($recentCustomers as $customer)
+                                <option value="{{ $customer->id }}">{{ $customer->name }} - {{ $customer->phone }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Delivery -->
+                        <template x-if="cart.type === 'delivery'">
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        Endereço <span class="text-red-500">*</span>
+                                    </label>
+                                    <textarea
+                                        x-model="cart.delivery_address"
+                                        rows="2"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Rua, número, complemento..."
+                                    ></textarea>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Taxa (R$)</label>
+                                        <input
+                                            type="number"
+                                            x-model.number="cart.delivery_fee"
+                                            @input="calculateTotals()"
+                                            step="0.50"
+                                            min="0"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                            placeholder="5.00"
+                                        >
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                                            Motoboy <span class="text-red-500">*</span>
+                                        </label>
+                                        <select
+                                            x-model="cart.motoboy_id"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="">Selecione...</option>
+                                            @foreach($motoboys as $motoboy)
+                                            <option value="{{ $motoboy->id }}">{{ $motoboy->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Encomenda -->
+                        <template x-if="cart.type === 'encomenda'">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        Data <span class="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="date"
+                                        x-model="cart.delivery_date"
+                                        :min="new Date().toISOString().split('T')[0]"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                                    >
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        Hora <span class="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="time"
+                                        x-model="cart.delivery_time"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                                    >
+                                </div>
+                            </div>
+                        </template>
+                    </div>
                 </div>
-
-                <!-- Delivery - Campos lado a lado -->
-                <template x-if="cart.type === 'delivery'">
-                    <div class="space-y-3">
-                        <!-- Linha 1: Endereço completo -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Endereço de Entrega <span class="text-red-500">*</span>
-                            </label>
-                            <textarea
-                                x-model="cart.delivery_address"
-                                rows="2"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                                placeholder="Rua, número, complemento..."
-                            ></textarea>
-                        </div>
-
-                        <!-- Linha 2: Taxa + Motoboy lado a lado -->
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Taxa Entrega (R$)</label>
-                                <input
-                                    type="number"
-                                    x-model.number="cart.delivery_fee"
-                                    @input="calculateTotals()"
-                                    step="0.50"
-                                    min="0"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                                    placeholder="5.00"
-                                >
-                                <p class="text-xs text-gray-500 mt-1">0 = frete grátis</p>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">
-                                    Motoboy <span class="text-red-500">*</span>
-                                </label>
-                                <select
-                                    x-model="cart.motoboy_id"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                                >
-                                    <option value="">Selecione...</option>
-                                    @foreach($motoboys as $motoboy)
-                                    <option value="{{ $motoboy->id }}">{{ $motoboy->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-
-                <!-- Encomenda - Data e Hora lado a lado -->
-                <template x-if="cart.type === 'encomenda'">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Data Entrega <span class="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="date"
-                                x-model="cart.delivery_date"
-                                :min="new Date().toISOString().split('T')[0]"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
-                            >
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Hora <span class="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="time"
-                                x-model="cart.delivery_time"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
-                            >
-                        </div>
-                    </div>
-                </template>
             </div>
 
-            <!-- Lista de Itens do Carrinho -->
-            <div class="flex-1 overflow-y-auto p-4" style="max-height: calc(100vh - 520px);">
-                <div x-show="cart.items.length === 0" class="text-center py-12 text-gray-400">
-                    <div class="text-6xl mb-4">🛒</div>
-                    <p class="text-lg">Carrinho vazio</p>
-                    <p class="text-sm">Adicione produtos para iniciar o pedido</p>
+            <!-- Lista de Itens - SCROLLÁVEL (com altura máxima limitada) -->
+            <div class="flex-1 p-4 overflow-y-auto max-h-[40vh]">
+                <div x-show="cart.items.length === 0" class="text-center py-6 text-gray-400">
+                    <div class="text-4xl mb-2">🛒</div>
+                    <p class="text-sm font-medium">Carrinho vazio</p>
+                    <p class="text-xs">Adicione produtos para iniciar</p>
                 </div>
 
                 <div class="space-y-2">
@@ -250,7 +266,6 @@
                                 </button>
                             </div>
                             
-                            <!-- Quantidade e Preço -->
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-2">
                                     <button 
@@ -273,7 +288,6 @@
                                 </div>
                             </div>
 
-                            <!-- Observações do Item -->
                             <div class="mt-2">
                                 <input 
                                     type="text" 
@@ -287,75 +301,71 @@
                 </div>
             </div>
 
-            <!-- Resumo e Totais - SEMPRE VISÍVEL -->
-            <div class="border-t border-gray-200 p-4 bg-gray-50" style="min-height: 280px;">
-                <!-- Desconto -->
-                <div class="flex items-center justify-between mb-2">
-                    <label class="text-sm font-medium text-gray-700">Desconto (R$)</label>
-                    <input 
-                        type="number" 
-                        x-model.number="cart.discount"
-                        @input="calculateTotals()"
-                        step="0.01"
-                        min="0"
-                        class="w-32 px-3 py-1 border border-gray-300 rounded-lg text-sm text-right"
-                    >
-                </div>
+            <!-- RODAPÉ FIXO - SEMPRE VISÍVEL -->
+            <div class="flex-shrink-0 border-t-2 border-gray-300 bg-white shadow-lg">
+                <div class="p-4 bg-gray-50">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-sm font-medium text-gray-700">Desconto (R$)</label>
+                        <input 
+                            type="number" 
+                            x-model.number="cart.discount"
+                            @input="calculateTotals()"
+                            step="0.01"
+                            min="0"
+                            class="w-32 px-3 py-1 border border-gray-300 rounded-lg text-sm text-right"
+                        >
+                    </div>
 
-                <!-- Subtotal -->
-                <div class="flex items-center justify-between text-sm mb-2">
-                    <span class="text-gray-600">Subtotal:</span>
-                    <span class="font-medium">R$ <span x-text="formatMoney(cart.subtotal)"></span></span>
-                </div>
+                    <div class="flex items-center justify-between text-sm mb-1">
+                        <span class="text-gray-600">Subtotal:</span>
+                        <span class="font-medium">R$ <span x-text="formatMoney(cart.subtotal)"></span></span>
+                    </div>
 
-                <!-- Taxa de Entrega (só para delivery) -->
-                <div x-show="cart.type === 'delivery'" class="flex items-center justify-between text-sm mb-2">
-                    <span class="text-gray-600">Taxa de Entrega:</span>
-                    <span class="font-medium text-blue-600">R$ <span x-text="formatMoney(cart.delivery_fee)"></span></span>
-                </div>
+                    <div x-show="cart.type === 'delivery'" class="flex items-center justify-between text-sm mb-1">
+                        <span class="text-gray-600">Taxa de Entrega:</span>
+                        <span class="font-medium text-blue-600">R$ <span x-text="formatMoney(cart.delivery_fee)"></span></span>
+                    </div>
 
-                <!-- Desconto Aplicado -->
-                <div x-show="cart.discount > 0" class="flex items-center justify-between text-sm mb-2">
-                    <span class="text-gray-600">Desconto:</span>
-                    <span class="font-medium text-red-600">- R$ <span x-text="formatMoney(cart.discount)"></span></span>
-                </div>
+                    <div x-show="cart.discount > 0" class="flex items-center justify-between text-sm mb-1">
+                        <span class="text-gray-600">Desconto:</span>
+                        <span class="font-medium text-red-600">- R$ <span x-text="formatMoney(cart.discount)"></span></span>
+                    </div>
 
-                <!-- Total -->
-                <div class="flex items-center justify-between pt-2 border-t border-gray-300 mb-3">
-                    <span class="text-lg font-bold text-gray-800">TOTAL:</span>
-                    <span class="text-2xl font-bold text-green-600">R$ <span x-text="formatMoney(cart.total)"></span></span>
-                </div>
+                    <div class="flex items-center justify-between pt-2 border-t border-gray-300 mb-3">
+                        <span class="text-lg font-bold text-gray-800">TOTAL:</span>
+                        <span class="text-2xl font-bold text-green-600">R$ <span x-text="formatMoney(cart.total)"></span></span>
+                    </div>
 
-                <!-- Observações Gerais -->
-                <div class="mb-3">
-                    <textarea 
-                        x-model="cart.notes"
-                        rows="2"
-                        placeholder="Observações gerais do pedido..."
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    ></textarea>
-                </div>
+                    <div class="mb-3">
+                        <textarea 
+                            x-model="cart.notes"
+                            rows="1"
+                            placeholder="Observações gerais do pedido..."
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none"
+                        ></textarea>
+                    </div>
 
-                <!-- Botões de Ação - SEMPRE VISÍVEIS -->
-                <div class="grid grid-cols-2 gap-3">
-                    <button
-                        @click="saveOrder()"
-                        :disabled="cart.items.length === 0"
-                        :class="cart.items.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'"
-                        class="bg-blue-500 text-white py-3 rounded-lg font-bold transition-colors flex items-center justify-center"
-                    >
-                        <span class="mr-1">💾</span>
-                        <span>Salvar</span>
-                    </button>
-                    <button
-                        @click="finalizeSale()"
-                        :disabled="cart.items.length === 0"
-                        :class="cart.items.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700 shadow-lg'"
-                        class="bg-green-600 text-white py-3 rounded-lg font-bold transition-colors flex items-center justify-center"
-                    >
-                        <span class="mr-1">✅</span>
-                        <span>Finalizar</span>
-                    </button>
+                    <!-- Botões de Ação -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <button
+                            @click="saveOrder()"
+                            :disabled="cart.items.length === 0"
+                            :class="cart.items.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'"
+                            class="bg-blue-500 text-white py-3 rounded-lg font-bold transition-colors flex items-center justify-center"
+                        >
+                            <span class="mr-1">💾</span>
+                            <span>Salvar</span>
+                        </button>
+                        <button
+                            @click="finalizeSale()"
+                            :disabled="cart.items.length === 0"
+                            :class="cart.items.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'"
+                            class="bg-green-600 text-white py-3 rounded-lg font-bold transition-colors flex items-center justify-center"
+                        >
+                            <span class="mr-1">✅</span>
+                            <span>Finalizar</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -377,6 +387,13 @@
                     class="flex-1 py-3 font-medium text-sm"
                 >
                     📋 Pedidos ({{ $pendingSales->count() }})
+                </button>
+                <button
+                    @click="rightPanelTab = 'entrega'"
+                    :class="rightPanelTab === 'entrega' ? 'bg-white text-pink-600 border-b-2 border-pink-600' : 'bg-gray-100 text-gray-600'"
+                    class="flex-1 py-3 font-medium text-sm"
+                >
+                    🏍️ Entrega ({{ $inDeliverySales->count() }})
                 </button>
             </div>
 
@@ -513,6 +530,91 @@
                 <div class="text-center py-12 text-gray-400">
                     <div class="text-5xl mb-3">📋</div>
                     <p class="text-sm">Nenhum pedido pendente</p>
+                </div>
+                @endif
+            </div>
+
+            <!-- Conteúdo dos Pedidos Em Entrega -->
+            <div x-show="rightPanelTab === 'entrega'" class="flex-1 overflow-y-auto p-4">
+                <h4 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <span class="w-3 h-3 bg-purple-500 rounded-full"></span>
+                    Pedidos Em Entrega ({{ $inDeliverySales->count() }})
+                </h4>
+
+                @if($inDeliverySales->count() > 0)
+                <div class="space-y-2">
+                    @foreach($inDeliverySales as $sale)
+                    <div class="w-full bg-purple-50 border-2 border-purple-200 rounded-lg p-3 text-left transition-all">
+                        <!-- Header do Pedido -->
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-bold text-sm">
+                                @if($sale->type === 'balcao')
+                                    🏪 Balcão #{{ $sale->id }}
+                                @elseif($sale->type === 'delivery')
+                                    🏍️ Delivery #{{ $sale->id }}
+                                @else
+                                    📦 Encomenda #{{ $sale->id }}
+                                @endif
+                            </span>
+                            <span class="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-800">
+                                Em Entrega
+                            </span>
+                        </div>
+
+                        <!-- Info do Cliente -->
+                        @if($sale->customer)
+                        <div class="text-xs text-gray-600 mb-1">
+                            👤 {{ $sale->customer->name }}
+                        </div>
+                        @endif
+
+                        <!-- Motoboy (se aplicável) -->
+                        @if($sale->motoboy)
+                        <div class="text-xs text-gray-600 mb-1">
+                            🏍️ {{ $sale->motoboy->name }}
+                        </div>
+                        @endif
+
+                        <!-- Endereço (se aplicável) -->
+                        @if($sale->delivery_address)
+                        <div class="text-xs text-gray-600 mb-2 max-w-full">
+                            📍 {{ Str::limit($sale->delivery_address, 40) }}
+                        </div>
+                        @endif
+
+                        <!-- Resumo -->
+                        <div class="text-xs text-gray-600 mb-2">
+                            🧾 {{ $sale->items->count() }} itens - <span class="font-bold text-green-600">R$ {{ number_format($sale->total, 2, ',', '.') }}</span>
+                        </div>
+
+                        <!-- Horário de saída -->
+                        <div class="text-xs text-gray-400 mb-3">
+                            ⏰ Saiu às {{ $sale->updated_at->format('H:i') }}
+                        </div>
+
+                        <!-- Botões de Ação -->
+                        <div class="flex gap-1">
+                            <button
+                                @click="markAsDelivered({{ $sale->id }})"
+                                class="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs font-bold py-2 px-3 rounded-md transition-colors flex items-center justify-center gap-1"
+                            >
+                                ✅ Entregue
+                            </button>
+                            <button
+                                @click="markAsProblem({{ $sale->id }})"
+                                class="flex-1 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold py-2 px-3 rounded-md transition-colors flex items-center justify-center gap-1"
+                            >
+                                ⚠️ Problema
+                            </button>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+                @else
+                <div class="text-center py-12 text-gray-400">
+                    <div class="text-5xl mb-3">🏍️</div>
+                    <p class="text-sm">Nenhum pedido em entrega</p>
+                    <p class="text-xs">Pedidos aparecerão aqui quando saírem para entrega</p>
                 </div>
                 @endif
             </div>
@@ -996,6 +1098,85 @@ function posSystem() {
             } catch (error) {
                 console.error('Erro ao carregar venda:', error);
                 this.showToast('Erro ao carregar venda: ' + error.message, 'error');
+            }
+        },
+
+        // Marcar pedido como entregue
+        async markAsDelivered(saleId) {
+            if (!confirm('Confirmar que o pedido foi entregue com sucesso?')) {
+                return;
+            }
+
+            this.showToast('Marcando como entregue...', 'info');
+
+            try {
+                const response = await fetch(`/sales/${saleId}/status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        status: 'entregue'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    this.showToast('Pedido marcado como entregue! ✅', 'success');
+                    // Recarregar página após 1 segundo
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    throw new Error(data.message || 'Erro ao atualizar pedido');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                this.showToast('Erro ao marcar como entregue: ' + error.message, 'error');
+            }
+        },
+
+        // Marcar pedido como problema
+        async markAsProblem(saleId) {
+            const reason = prompt('Digite o motivo do problema na entrega:');
+            if (!reason || reason.trim() === '') {
+                this.showToast('Motivo do problema é obrigatório!', 'error');
+                return;
+            }
+
+            this.showToast('Marcando como problema...', 'info');
+
+            try {
+                const response = await fetch(`/sales/${saleId}/status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        status: 'problema',
+                        notes: reason.trim()
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    this.showToast('Pedido marcado como problema!', 'success');
+                    // Recarregar página após 1 segundo
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    throw new Error(data.message || 'Erro ao atualizar pedido');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                this.showToast('Erro ao marcar como problema: ' + error.message, 'error');
             }
         },
 

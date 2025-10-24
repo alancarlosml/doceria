@@ -62,7 +62,7 @@
 
                         @if(!$sale->isCancelado() && !$sale->isFinalizado())
                             <div class="flex space-x-2">
-                                <select id="statusSelect" class="rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500">
+                                <select id="statusSelect" class="rounded-md text-sm border-gray-300 bg-transparent px-4 py-2.5">
                                     @foreach(\App\Models\Sale::getAvailableStatuses() as $status => $label)
                                         @if($status !== $sale->status)
                                             <option value="{{ $status }}">{{ $label }}</option>

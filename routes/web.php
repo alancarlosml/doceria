@@ -15,6 +15,7 @@ use App\Http\Controllers\MenuController;
 use App\Http\Controllers\SaleItemController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\API\AuthController;
+use App\Http\Controllers\ReportController;
 
 Route::get('/', [PageController::class, 'index'])->name('home');
 Route::get('/gestor', [PageController::class, 'gestor'])->name('gestor.login');
@@ -61,6 +62,18 @@ Route::middleware('auth')->group(function () {
         Route::post('permissions/assign-role-to-user', [PermissionController::class, 'assignRoleToUser'])->name('permissions.assign-role-to-user');
         Route::get('permissions/users/api', [PermissionController::class, 'getUsersWithPermissions'])->name('permissions.users.api');
         Route::patch('permissions/users/{user}/role', [PermissionController::class, 'updateUserRole'])->name('permissions.users.update-role');
+
+        // Granular user permissions management
+        Route::get('users/{user}/permissions', [PermissionController::class, 'manageUserPermissions'])->name('users.permissions.manage');
+        Route::post('users/{user}/permissions/assign', [PermissionController::class, 'assignPermissionsToUser'])->name('users.permissions.assign');
+        Route::delete('users/{user}/permissions/remove', [PermissionController::class, 'removePermissionFromUser'])->name('users.permissions.remove');
+        Route::get('permissions/users-complete', [PermissionController::class, 'getUsersPermissions'])->name('permissions.users.complete');
+    });
+
+    // Settings Management (Somente Admin)
+    Route::middleware('role:admin')->group(function () {
+        Route::get('settings', [\App\Http\Controllers\SettingController::class, 'index'])->name('settings.index');
+        Route::put('settings', [\App\Http\Controllers\SettingController::class, 'update'])->name('settings.update');
     });
 
     // Categories Management
@@ -138,6 +151,16 @@ Route::middleware('auth')->group(function () {
     Route::middleware('permission:sale_items.view')->group(function () {
         Route::resource('sale-items', SaleItemController::class);
         Route::get('sale-items-sale/{sale}', [SaleItemController::class, 'getBySale'])->name('sale-items.sale');
+    });
+
+    // Reports Management (Protected by permissions)
+    Route::middleware('permission:reports.view')->group(function () {
+        Route::get('reports/dashboard', [ReportController::class, 'dashboard'])->name('reports.dashboard');
+        Route::get('reports/products', [ReportController::class, 'products'])->name('reports.products');
+        Route::get('reports/cash-flow', [ReportController::class, 'cashFlow'])->name('reports.cash-flow');
+        Route::get('reports/employees', [ReportController::class, 'employees'])->name('reports.employees');
+        Route::get('reports/customers', [ReportController::class, 'customers'])->name('reports.customers');
+        Route::get('reports/export-csv', [ReportController::class, 'exportCSV'])->name('reports.export-csv');
     });
 });
 

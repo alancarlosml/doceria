@@ -79,8 +79,9 @@ class MotoboyController extends Controller
 
         $totalDeliveries = $motoboy->sales()->where('type', 'delivery')->count();
         $totalEarnings = $motoboy->sales()->where('type', 'delivery')->sum('total');
+        $totalFee = $motoboy->sales()->where('type', 'delivery')->sum('delivery_fee');
 
-        return view('admin.motoboy.motoboy-show', compact('motoboy', 'recentDeliveries', 'totalDeliveries', 'totalEarnings'));
+        return view('admin.motoboy.motoboy-show', compact('motoboy', 'recentDeliveries', 'totalDeliveries', 'totalEarnings', 'totalFee'));
     }
 
     /**

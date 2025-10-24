@@ -103,9 +103,16 @@ class SaleController extends Controller
 
         // Vendas pendentes do dia
         $pendingSales = Sale::where('cash_register_id', $openCashRegister->id)
-            ->whereIn('status', ['pendente', 'em_preparo', 'pronto', 'saiu_entrega'])
+            ->whereIn('status', ['pendente', 'em_preparo', 'pronto'])
             ->with(['customer', 'table', 'items.product', 'motoboy'])
             ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Vendas em entrega do dia
+        $inDeliverySales = Sale::where('cash_register_id', $openCashRegister->id)
+            ->where('status', 'saiu_entrega')
+            ->with(['customer', 'table', 'items.product', 'motoboy'])
+            ->orderBy('updated_at', 'desc')
             ->get();
 
         return view('admin.sale.pos', compact(
@@ -117,6 +124,7 @@ class SaleController extends Controller
             'recentCustomers',
             'motoboys',
             'pendingSales',
+            'inDeliverySales',
             'currentDayPt'
         ));
     }
@@ -368,7 +376,7 @@ class SaleController extends Controller
     public function updateStatus(Request $request, Sale $sale)
     {
         $validated = $request->validate([
-            'status' => 'required|in:pendente,em_preparo,pronto,saiu_entrega,entregue,cancelado,finalizado',
+            'status' => 'required|in:pendente,em_preparo,pronto,saiu_entrega,entregue,problema,cancelado,finalizado',
             'notes' => 'nullable|string',
         ]);
 

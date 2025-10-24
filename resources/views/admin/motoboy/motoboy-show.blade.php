@@ -103,7 +103,11 @@
                             </div>
                             <div>
                                 <dt class="text-sm font-medium text-gray-500">Total Ganho</dt>
-                                <dd class="mt-1 text-2xl font-bold text-blue-600">R$ {{ number_format($totalEarnings, 2, ',', '.') }}</dd>
+                                <dd class="mt-1 text-2xl font-bold text-blue-600">R$ {{ number_format($totalFee, 2, ',', '.') }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-sm font-medium text-gray-500">Total Entregue</dt>
+                                <dd class="mt-1 text-xl font-bold text-green-600">R$ {{ number_format($totalEarnings, 2, ',', '.') }}</dd>
                             </div>
                             <div>
                                 <dt class="text-sm font-medium text-gray-500">Média por Entrega</dt>

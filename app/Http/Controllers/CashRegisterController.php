@@ -83,7 +83,7 @@ class CashRegisterController extends Controller
      */
     public function show(CashRegister $cashRegister)
     {
-        $cashRegister->load(['user', 'sales.customer', 'sales.items.product', 'expenses']);
+        $cashRegister->load(['user', 'sales.customer', 'sales.items.product', 'sales.motoboy', 'expenses']);
 
         // Estatísticas do caixa
         $totalSales = $cashRegister->getTotalSales();
@@ -107,6 +107,9 @@ class CashRegisterController extends Controller
             ->orderBy('count', 'desc')
             ->first();
 
+        // Calcular resumo diário do caixa
+        $dailySummary = $this->calculateDailySummaryForRegister($cashRegister, $topSale, $paymentMethods->payment_method ?? null, $paymentMethods->count ?? 0);
+
         return view('admin.cash_register.cash_register-show', compact(
             'cashRegister',
             'totalSales',
@@ -117,7 +120,8 @@ class CashRegisterController extends Controller
             'expensesCount',
             'revenuesCount',
             'topSale',
-            'paymentMethods'
+            'paymentMethods',
+            'dailySummary'
         ));
     }
 
@@ -152,6 +156,152 @@ class CashRegisterController extends Controller
             'transferRegisters' => $transferRegisters,
             'expectedTotal' => $expectedTotal,
         ]);
+    }
+
+    /**
+     * Calculate daily summary for cash register show page
+     */
+    private function calculateDailySummaryForRegister(CashRegister $cashRegister, $topSale = null, $topPaymentMethod = null, $topPaymentCount = 0)
+    {
+        // Usar todas as vendas finalizadas do caixa (já carregadas)
+        $completedSales = $cashRegister->sales->whereNotIn('status', ['cancelado']);
+
+        // Agrupar formas de pagamento
+        $paymentMethods = $completedSales->groupBy('payment_method')->map(function($sales, $method) {
+            return [
+                'method' => $method,
+                'count' => $sales->count(),
+                'total' => $sales->sum('total')
+            ];
+        })->values();
+
+        // Encomendas (delivery) - vendas do tipo 'delivery'
+        $deliveryOrders = $completedSales->filter(function($sale) {
+            return $sale->type === 'delivery';
+        });
+
+        // Valores por motoboy (para entregas)
+        $motoboyEarnings = [];
+        if ($deliveryOrders->isNotEmpty()) {
+            foreach ($deliveryOrders as $order) {
+                $motoboyId = $order->motoboy_id ?? null;
+                if ($motoboyId) {
+                    if (!isset($motoboyEarnings[$motoboyId])) {
+                        $motoboyEarnings[$motoboyId] = [
+                            'name' => $order->motoboy ? $order->motoboy->name : 'Motoboy #' . $motoboyId,
+                            'orders_count' => 0,
+                            'total_value' => 0,
+                        ];
+                    }
+                    $motoboyEarnings[$motoboyId]['orders_count']++;
+                    $motoboyEarnings[$motoboyId]['total_value'] += $order->delivery_fee;
+                }
+            }
+        }
+
+        // Mapear métodos de pagamento para resumo
+        $paymentSummary = [
+            'pix' => $paymentMethods->firstWhere('method', 'pix')['total'] ?? 0,
+            'cartao' => ($paymentMethods->firstWhere('method', 'cartao_credito')['total'] ?? 0) +
+                       ($paymentMethods->firstWhere('method', 'cartao_debito')['total'] ?? 0) +
+                       ($paymentMethods->firstWhere('method', 'cartao')['total'] ?? 0),
+            'dinheiro' => $paymentMethods->firstWhere('method', 'dinheiro')['total'] ?? 0,
+            'outros' => $paymentMethods->whereNotIn('method', ['pix', 'cartao_credito', 'cartao_debito', 'cartao', 'dinheiro'])->sum('total')
+        ];
+
+        // Determinar data do caixa (abertura)
+        $caixaDate = $cashRegister->opened_at->format('d/m/Y');
+
+        // Calcular totais usando dados do caixa
+        $totalSales = $cashRegister->getTotalSales();
+        $totalExpenses = $cashRegister->getTotalExpenses();
+        $totalRevenues = $cashRegister->getTotalRevenues();
+
+        return [
+            'date' => $caixaDate,
+            'total_sales' => $totalSales,
+            'sales_count' => $completedSales->count(),
+            'payment_methods' => $paymentSummary,
+            'paid_orders_count' => $completedSales->count(),
+            'paid_orders_total' => $totalSales,
+            'delivery_orders_count' => $deliveryOrders->count(),
+            'delivery_orders_total' => $deliveryOrders->sum('total'),
+            'motoboy_earnings' => array_values($motoboyEarnings),
+            'opening_balance' => $cashRegister->opening_balance,
+            'current_expected' => $cashRegister->getExpectedBalance(),
+            'total_expenses' => $totalExpenses,
+            'total_revenues' => $totalRevenues,
+        ];
+    }
+
+    /**
+     * Calculate daily summary for cash register closing
+     */
+    private function calculateDailySummary(CashRegister $cashRegister)
+    {
+        $today = now()->toDateString();
+
+        // Vendas finalizadas do dia
+        $completedSales = $cashRegister->sales()
+            ->whereNotIn('status', ['cancelado'])
+            ->whereDate('created_at', $today)
+            ->with(['customer', 'items.product', 'motoboy'])
+            ->get();
+
+        // Formas de pagamento
+        $paymentMethods = $completedSales->groupBy('payment_method')->map(function($sales, $method) {
+            return [
+                'method' => $method,
+                'count' => $sales->count(),
+                'total' => $sales->sum('total')
+            ];
+        })->values();
+
+        // Encomendas (delivery) - vendas do tipo 'delivery'
+        $deliveryOrders = $completedSales->filter(function($sale) {
+            return $sale->type === 'delivery';
+        });
+
+        // Valores por motoboy (para entregas)
+        $motoboyEarnings = [];
+        foreach ($deliveryOrders as $order) {
+            $motoboyId = $order->motoboy_id ?? null;
+            if ($motoboyId) {
+                if (!isset($motoboyEarnings[$motoboyId])) {
+                    $motoboy = $order->motoboy; // Assumindo relacionamento
+                    $motoboyEarnings[$motoboyId] = [
+                        'name' => $motoboy ? $motoboy->name : 'Motoboy #' . $motoboyId,
+                        'orders_count' => 0,
+                        'total_value' => 0,
+                    ];
+                }
+                $motoboyEarnings[$motoboyId]['orders_count']++;
+                $motoboyEarnings[$motoboyId]['total_value'] += $order->total;
+            }
+        }
+
+        // Mapear métodos de pagamento para resumo
+        $paymentSummary = [
+            'pix' => $paymentMethods->firstWhere('method', 'pix')['total'] ?? 0,
+            'cartao' => ($paymentMethods->firstWhere('method', 'cartao_credito')['total'] ?? 0) +
+                       ($paymentMethods->firstWhere('method', 'cartao_debito')['total'] ?? 0),
+            'dinheiro' => $paymentMethods->firstWhere('method', 'dinheiro')['total'] ?? 0,
+            'outros' => $paymentMethods->whereNotIn('method', ['pix', 'cartao_credito', 'cartao_debito', 'dinheiro'])->sum('total')
+        ];
+
+        return [
+            'date' => now()->format('d/m/Y'),
+            'total_sales' => $completedSales->sum('total'),
+            'sales_count' => $completedSales->count(),
+            'payment_methods' => $paymentSummary,
+            'paid_orders_count' => $completedSales->count(), // Todas são pagas/finalizadas
+            'paid_orders_total' => $completedSales->sum('total'),
+            'delivery_orders_count' => $deliveryOrders->count(),
+            'delivery_orders_total' => $deliveryOrders->sum('total'),
+            'motoboy_earnings' => array_values($motoboyEarnings),
+            'opening_balance' => $cashRegister->opening_balance,
+            'current_expected' => $cashRegister->getExpectedBalance(),
+        ];
     }
 
     /**

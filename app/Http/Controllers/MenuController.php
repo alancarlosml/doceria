@@ -37,7 +37,7 @@ class MenuController extends Controller
 
         $currentDayName = $dayNames[$currentDay];
 
-        return view('admin.menus', compact('products', 'currentDayName'));
+        return view('admin.menu.menus', compact('products', 'currentDayName'));
     }
 
     /**
@@ -60,7 +60,7 @@ class MenuController extends Controller
 
         $currentDayName = $day;
 
-        return view('admin.menus', compact('products', 'currentDayName'));
+        return view('admin.menu.menus', compact('products', 'currentDayName'));
     }
 
     /**

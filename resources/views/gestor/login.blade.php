@@ -8,7 +8,7 @@
         <!-- Header -->
         <div class="text-center">
             <div class="mx-auto h-16 w-16 bg-white rounded-full shadow-lg flex items-center justify-center mb-6">
-                <span class="text-3xl">🍰</span>
+                <img class="rounded-full" src="{{ asset('imgs/logo_docedoce.jpeg') }}" alt="">
             </div>
             <h2 class="text-3xl font-bold text-gray-900">
                 Área do Gestor

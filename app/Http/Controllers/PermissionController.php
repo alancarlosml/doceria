@@ -191,4 +191,113 @@ class PermissionController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Show user permissions management page.
+     */
+    public function manageUserPermissions(User $user)
+    {
+        $permissions = Permission::orderBy('module')->orderBy('action')->get();
+        $permissionsByModule = $permissions->groupBy('module');
+
+        $userPermissions = $user->permissions->pluck('id')->toArray();
+        $userRoles = $user->roles;
+
+        return view('admin.permissions.user-permissions', compact(
+            'user',
+            'permissions',
+            'permissionsByModule',
+            'userPermissions',
+            'userRoles'
+        ));
+    }
+
+    /**
+     * Assign permissions directly to user (granular permissions).
+     */
+    public function assignPermissionsToUser(Request $request, User $user)
+    {
+        // Temporário: apenas teste de resposta JSON
+        return response()->json([
+            'success' => true,
+            'message' => 'Teste: Permissões atribuídas com sucesso!',
+            'user_id' => $user->id,
+            'data' => $request->all()
+        ]);
+
+        /*
+        try {
+            $validated = $request->validate([
+                'permission_ids' => 'array',
+                'permission_ids.*' => 'exists:permissions,id',
+            ]);
+
+            // Sync direct permissions (not from roles)
+            $permissionIds = $request->permission_ids ?? [];
+            $user->syncPermissions($permissionIds, false); // false = direct permissions only
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Permissões atribuídas com sucesso!',
+                'user_permissions' => $user->permissions->pluck('name')->toArray()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao atribuir permissões: ' . $e->getMessage(),
+                'error' => $e->getMessage()
+            ], 500);
+        }
+        */
+    }
+
+    /**
+     * Remove specific permission from user.
+     */
+    public function removePermissionFromUser(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'permission_id' => 'required|exists:permissions,id',
+        ]);
+
+        $permission = Permission::find($request->permission_id);
+        $user->revokePermissionTo($permission);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Permissão removida com sucesso!',
+            'permission' => $permission->name
+        ]);
+    }
+
+    /**
+     * Get all users with complete permissions info.
+     */
+    public function getUsersPermissions()
+    {
+        $users = User::with(['roles.permissions', 'permissions'])->get()->map(function($user) {
+            $rolePermissions = $user->roles->flatMap->permissions->unique('id');
+            $directPermissions = $user->permissions;
+
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'active' => $user->active,
+                'roles' => $user->roles->map(function($role) {
+                    return [
+                        'name' => $role->name,
+                        'label' => $role->label,
+                        'permission_count' => $role->permissions->count(),
+                    ];
+                }),
+                'role_permissions' => $rolePermissions->pluck('name')->toArray(),
+                'direct_permissions' => $directPermissions->pluck('name')->toArray(),
+                'all_permissions' => $rolePermissions->merge($directPermissions)->unique('name')->pluck('name')->toArray(),
+                'permission_count' => $rolePermissions->merge($directPermissions)->unique('id')->count(),
+            ];
+        });
+
+        return response()->json($users);
+    }
 }

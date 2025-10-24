@@ -27,7 +27,6 @@
         const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
         const sidebar = document.getElementById('sidebar');
         const toggleIcon = document.getElementById('toggleIcon');
-        const headerLogo = document.getElementById('headerLogo');
 
         // Sidebar states
         const state = {
@@ -56,7 +55,6 @@
                 sidebarContent.classList.remove('sidebar-expanded');
                 sidebarLogoExpanded.classList.add('hidden');
                 sidebarLogoCollapsed.classList.remove('hidden');
-                headerLogo.classList.remove('hidden');
 
                 // Hide text but keep icons
                 sidebarTexts.forEach(text => text.classList.add('hidden'));
@@ -70,7 +68,6 @@
                 sidebarContent.classList.remove('sidebar-collapsed');
                 sidebarLogoExpanded.classList.remove('hidden');
                 sidebarLogoCollapsed.classList.add('hidden');
-                headerLogo.classList.add('hidden');
 
                 // Show text
                 sidebarTexts.forEach(text => text.classList.remove('hidden'));
