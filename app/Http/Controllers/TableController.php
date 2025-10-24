@@ -13,7 +13,7 @@ class TableController extends Controller
     public function index()
     {
         $tables = Table::orderBy('number')->get();
-        return view('tables.index', compact('tables'));
+        return view('admin.table.tables', compact('tables'));
     }
 
     /**
@@ -21,7 +21,7 @@ class TableController extends Controller
      */
     public function create()
     {
-        return view('tables.create');
+        return view('admin.table.table-form');
     }
 
     /**
@@ -50,7 +50,7 @@ class TableController extends Controller
     public function show(Table $table)
     {
         $currentSale = $table->sales()->where('status', '!=', 'finalizado')->where('status', '!=', 'cancelado')->first();
-        return view('tables.show', compact('table', 'currentSale'));
+        return view('admin.table.table-show', compact('table', 'currentSale'));
     }
 
     /**
@@ -58,7 +58,7 @@ class TableController extends Controller
      */
     public function edit(Table $table)
     {
-        return view('tables.edit', compact('table'));
+        return view('admin.table.table-form', compact('table'));
     }
 
     /**

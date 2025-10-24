@@ -40,6 +40,11 @@
                 <span class="sidebar-text">Cardápio Semanal</span>
             </a>
 
+            <a href="{{ route('tables.index') }}" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('tables.*') ? 'bg-blue-50 text-blue-600' : '' }}" title="Mesas">
+                <span class="mr-3">🪑</span>
+                <span class="sidebar-text">Mesas</span>
+            </a>
+
             <a href="{{ route('motoboys.index') }}" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('motoboys.*') ? 'bg-blue-50 text-blue-600' : '' }}" title="Motoboys">
                 <span class="mr-3">🏍️</span>
                 <span class="sidebar-text">Motoboys</span>
