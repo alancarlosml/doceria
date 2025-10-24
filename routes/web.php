@@ -76,6 +76,8 @@ Route::middleware('auth')->group(function () {
     // Sales Management
     Route::middleware('permission:sales.view')->group(function () {
         Route::resource('sales', SaleController::class);
+        Route::get('/pos', [SaleController::class, 'pos'])->name('sales.pos');
+        Route::get('sales/{sale}/pos-data', [SaleController::class, 'getPosData'])->name('sales.pos-data');
         Route::post('sales/{sale}/update-status', [SaleController::class, 'updateStatus'])->name('sales.update-status');
         Route::post('sales/{sale}/cancel', [SaleController::class, 'cancel'])->name('sales.cancel');
         Route::get('sales-statistics', [SaleController::class, 'statistics'])->name('sales.statistics');
@@ -165,6 +167,7 @@ Route::middleware('auth.api')->prefix('api')->group(function () {
     Route::middleware('permission:sales.view')->group(function () {
         Route::resource('sales', App\Http\Controllers\SaleController::class)->only(['index', 'show', 'store', 'update']);
         Route::post('sales/{sale}/update-status', [App\Http\Controllers\SaleController::class, 'updateStatus']);
+        Route::post('sales/{sale}/finalize', [SaleController::class, 'finalize']);
         Route::post('sales/{sale}/cancel', [App\Http\Controllers\SaleController::class, 'cancel']);
         Route::get('sales-statistics', [App\Http\Controllers\SaleController::class, 'statistics']);
     });

@@ -23,7 +23,7 @@
                 Caixas
             </a>
 
-            <a href="#" class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900">
+            <a href="{{ route('sales.pos') }}" class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900">
                 <span class="mr-3">🛒</span>
                 Vendas
             </a>

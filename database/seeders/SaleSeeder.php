@@ -92,5 +92,53 @@ class SaleSeeder extends Seeder
         foreach ($sales as $sale) {
             Sale::create($sale);
         }
+
+        // Criar vendas pendentes para teste do POS
+        $pendingSales = [
+            [
+                'cash_register_id' => $cashRegisters->first()->id,
+                'user_id' => $users->first()->id,
+                'customer_id' => $customers->first()->id,
+                'table_id' => $tables->first()?->id,
+                'motoboy_id' => null,
+                'code' => 'VEN-PEND-' . strtoupper(uniqid()),
+                'type' => 'balcao',
+                'status' => 'pendente',
+                'subtotal' => 45.00,
+                'discount' => 0.00,
+                'delivery_fee' => 0.00,
+                'total' => 45.00,
+                'payment_method' => 'dinheiro',
+                'delivery_date' => null,
+                'delivery_time' => null,
+                'notes' => 'Pedido pendente na mesa',
+                'delivery_address' => null,
+            ],
+            [
+                'cash_register_id' => $cashRegisters->first()->id,
+                'user_id' => $users->first()->id,
+                'customer_id' => $customers->skip(1)->first()->id,
+                'table_id' => null,
+                'motoboy_id' => $motoboys->first()?->id,
+                'code' => 'VEN-DELIV-' . strtoupper(uniqid()),
+                'type' => 'delivery',
+                'status' => 'pronto',
+                'subtotal' => 78.90,
+                'discount' => 0.00,
+                'delivery_fee' => 5.00,
+                'total' => 83.90,
+                'payment_method' => 'dinheiro',
+                'delivery_date' => now()->format('Y-m-d'),
+                'delivery_time' => '18:30:00',
+                'notes' => 'Pedido pronto aguardando retirada',
+                'delivery_address' => 'Av. Paulista, 1000, Bela Vista, São Paulo - SP',
+            ],
+        ];
+
+        foreach ($pendingSales as $sale) {
+            Sale::create($sale);
+        }
+
+        $this->command->info('Vendas criadas com sucesso incluindo vendas pendentes para teste do POS!');
     }
 }
