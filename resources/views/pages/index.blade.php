@@ -21,7 +21,7 @@
             Sabor e alegria em cada mordida! Confira nosso cardápio especial de hoje.
         </p>
         <div class="text-lg font-semibold text-gray-700 bg-white bg-opacity-80 rounded-full px-6 py-2 inline-block">
-            📅 Menu de {{ $currentDayDisplay ?? ucfirst($currentDayPt) }}
+            📅 Cardápio de {{ $currentDayDisplay ?? ucfirst($currentDayPt) }}
         </div>
     </div>
 </section>

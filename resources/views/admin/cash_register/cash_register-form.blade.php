@@ -11,10 +11,17 @@
             <div class="md:flex md:items-center md:justify-between mb-8">
                 <div class="flex-1 min-w-0">
                     <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-                        <span class="mr-3">{{ $isEditing ? '✏️' : '💰' }}</span>{{ $isEditing ? 'Editar Caixa Aberto' : 'Abrir Novo Caixa' }}
+                        <span class="mr-3">{{ $isClosing ? '🔒' : ($isEditing ? '✏️' : '🆕') }}</span>
+                        {{ $isClosing ? 'Fechar Caixa' : ($isEditing ? 'Editar Caixa Aberto' : 'Abrir Novo Caixa') }}
                     </h2>
                     <p class="mt-1 text-sm text-gray-500">
-                        {{ $isEditing ? 'Ajuste as informações do caixa aberto' : 'Configure o saldo inicial e abra um novo caixa para vendas' }}
+                        @if($isClosing)
+                            Conte o dinheiro em mãos e registre o fechamento do caixa atual
+                        @elseif($isEditing)
+                            Ajuste as informações do caixa aberto se necessário
+                        @else
+                            Configure o saldo inicial e abra um novo caixa para vendas
+                        @endif
                     </p>
                 </div>
 
@@ -29,7 +36,7 @@
             </div>
 
             <!-- Warning Alert for Open Register -->
-            @if(!$isEditing)
+            @if(!$isEditing && !$isClosing)
             <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8">
                 <div class="flex">
                     <div class="flex-shrink-0">
@@ -45,7 +52,8 @@
                 </div>
             </div>
             @endif
-
+            
+            @if(!$isClosing)
             <!-- Form Card -->
             <div class="bg-white shadow-lg rounded-lg overflow-hidden">
                 <form method="POST" action="{{ $isEditing ? route('cash-registers.update', $cashRegister) : route('cash-registers.store') }}">
@@ -115,7 +123,7 @@
 
                     <!-- Form Actions -->
                     <div class="px-4 py-4 sm:px-6 bg-gray-50 border-t border-gray-200">
-                        <div class="flex justify-end space-x-3">
+                    <div class="flex justify-end space-x-3">
                             <a href="{{ route('cash-registers.index') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                 Cancelar
                             </a>
@@ -133,9 +141,59 @@
                     </div>
                 </form>
             </div>
+            @endif
 
             <!-- Additional Information -->
-            @if($isEditing)
+            @if($isClosing)
+                <!-- Pending Orders Warning/Alerts -->
+                @if(isset($pendingOrders) && $pendingOrders->count() > 0)
+                <div class="mt-8 bg-yellow-50 shadow-lg rounded-lg overflow-hidden border-l-4 border-yellow-400">
+                    <div class="px-4 py-5 sm:p-6">
+                        <h3 class="text-lg font-medium leading-6 text-yellow-800 mb-4 flex items-center">
+                            <span class="mr-3">⚠️</span>{{ $pendingOrders->count() }} Pedido(s) Pendente(s) Detectado(s)
+                        </h3>
+                        <p class="text-sm text-yellow-700 mb-4">
+                            Antes de fechar o caixa, você deve decidir o que fazer com os pedidos que ainda estão pendentes:
+                        </p>
+
+                        <!-- Pending Orders List -->
+                        <div class="bg-white border border-yellow-200 rounded-lg p-4 mb-4">
+                            <h4 class="text-sm font-medium text-gray-700 mb-3">Pedidos Pendentes:</h4>
+                            <div class="space-y-2 max-h-32 overflow-y-auto">
+                                @foreach($pendingOrders as $order)
+                                <div class="flex items-center justify-between py-2 px-3 bg-gray-50 rounded">
+                                    <div class="flex items-center space-x-3">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            #{{ $order->code }}
+                                        </span>
+                                        <span class="text-sm text-gray-600">
+                                            {{ $order->customer ? $order->customer->name : 'Cliente não informado' }}
+                                        </span>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="text-sm font-medium text-gray-900">R$ {{ number_format($order->total, 2, ',', '.') }}</span>
+                                        <span class="text-xs text-gray-500 block">{{ $order->created_at->format('H:i') }}</span>
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
+                            <div class="mt-3 pt-3 border-t border-gray-200">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm font-medium text-gray-700">Total pendente:</span>
+                                    <span class="text-lg font-bold text-yellow-800">R$ {{ number_format($pendingOrders->sum('total'), 2, ',', '.') }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-yellow-100 border border-yellow-300 rounded-lg p-4">
+                            <p class="text-sm text-yellow-900">
+                                🎯 <strong>O que fazer com estes pedidos?</strong> Escolha uma opção abaixo ao fechar o caixa.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
                 <!-- Close Register Section -->
                 <div class="mt-8 bg-white shadow-lg rounded-lg overflow-hidden">
                     <div class="px-4 py-5 sm:p-6">
@@ -161,15 +219,92 @@
                             </div>
                         </div>
 
-                        <div class="mt-6 text-center">
+                        <div class="mt-6">
                             <form method="POST" action="{{ route('cash-registers.close', $cashRegister) }}" onsubmit="return confirm('Tem certeza que deseja fechar este caixa?\n\nApós o fechamento, não será possível registrar novas vendas neste caixa.')">
                                 @csrf
 
-                                <div class="mb-4">
+                                <!-- Hidden field for pending action default -->
+                                <input type="hidden" name="pending_action" value="allow_close" class="default-action">
+
+                                <!-- Pending Orders Handling Section -->
+                                @if(isset($pendingOrders) && $pendingOrders->count() > 0)
+                                <div class="mb-6">
+                                    <h4 class="text-md font-medium text-gray-900 mb-3 flex items-center">
+                                        <span class="mr-2">🛠️</span>O que fazer com {{ $pendingOrders->count() }} pedido(s) pendente(s)?
+                                    </h4>
+
+                                    <div class="space-y-3">
+                                        <!-- Finalize All Option -->
+                                        <label class="relative flex items-start">
+                                            <div class="flex items-center h-5">
+                                                <input type="radio" name="pending_action" value="finalize_all"
+                                                       class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                                                       onchange="updateFormFields()">
+                                            </div>
+                                            <div class="ml-3 text-sm">
+                                                <span class="font-medium text-gray-700">✅ Finalizar todos pendentes</span>
+                                                <p class="text-gray-500">Marcar como pagos e finalizar todos os pedidos pendentes</p>
+                                            </div>
+                                        </label>
+
+                                        <!-- Cancel All Option -->
+                                        <label class="relative flex items-start">
+                                            <div class="flex items-center h-5">
+                                                <input type="radio" name="pending_action" value="cancel_all"
+                                                       class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                                                       onchange="updateFormFields()">
+                                            </div>
+                                            <div class="ml-3 text-sm">
+                                                <span class="font-medium text-gray-700">❌ Cancelar todos pendentes</span>
+                                                <p class="text-gray-500">Cancelar todos os pedidos que não foram pagos</p>
+                                            </div>
+                                        </label>
+
+                                        <!-- Transfer Option -->
+                                        @if(isset($transferRegisters) && $transferRegisters->count() > 0)
+                                        <label class="relative flex items-start">
+                                            <div class="flex items-center h-5">
+                                                <input type="radio" name="pending_action" value="transfer"
+                                                       class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                                                       onchange="updateFormFields()">
+                                            </div>
+                                            <div class="ml-3 text-sm">
+                                                <span class="font-medium text-gray-700">🔄 Transferir para outro caixa</span>
+                                                <p class="text-gray-500">Trocar o caixa responsável por estes pedidos</p>
+                                                <select name="transfer_to_register" id="transfer_to_register"
+                                                        class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        disabled>
+                                                    <option value="">Selecione um caixa aberto</option>
+                                                    @foreach($transferRegisters as $register)
+                                                    <option value="{{ $register->id }}">Caixa #{{ $register->id }} ({{ $register->user->name }})</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </label>
+                                        @endif
+
+                                        <!-- Allow Close Option -->
+                                        <label class="relative flex items-start">
+                                            <div class="flex items-center h-5">
+                                                <input type="radio" name="pending_action" value="allow_close" checked
+                                                       class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                                                       onchange="updateFormFields()">
+                                            </div>
+                                            <div class="ml-3 text-sm">
+                                                <span class="font-medium text-gray-700">⚠️ Fechar mesmo assim</span>
+                                                <p class="text-gray-500">Fechar o caixa deixando os pedidos pendentes (não recomendado)</p>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                                @endif
+
+                                <!-- Balance Section -->
+                                <div class="mb-6">
                                     <label for="closing_balance" class="block text-sm font-medium text-gray-700 mb-2">
-                                        Saldo Final (R$)
+                                        Saldo Final (R$) <span class="text-red-500">*</span>
                                     </label>
-                                    <div class="relative max-w-xs mx-auto">
+                                    <div class="relative max-w-xs">
                                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                             <span class="text-gray-500 sm:text-sm">R$</span>
                                         </div>
@@ -185,9 +320,16 @@
                                         >
                                     </div>
                                     <p class="mt-1 text-xs text-gray-500">Valor contado no momento do fechamento</p>
+                                    @if(isset($expectedTotal))
+                                    <p class="mt-1 text-xs text-blue-600">
+                                        Saldo esperado: R$ {{ number_format($expectedTotal, 2, ',', '.') }}
+                                        <span class="text-gray-500">(considerando {{ isset($pendingOrders) ? $pendingOrders->count() : 0 }} pedidos pendentes)</span>
+                                    </p>
+                                    @endif
                                 </div>
 
-                                <div class="mb-4">
+                                <!-- Notes Section -->
+                                <div class="mb-6">
                                     <label for="closing_notes" class="block text-sm font-medium text-gray-700 mb-2">
                                         Observações de Fechamento
                                     </label>
@@ -195,17 +337,20 @@
                                         id="closing_notes"
                                         name="closing_notes"
                                         rows="3"
-                                        class="w-full max-w-lg mx-auto rounded-lg border border-gray-300 px-4 py-2 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+                                        class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
                                         placeholder="Ex: Caixa fechado com dinheiro contado..."
                                     ></textarea>
                                 </div>
 
-                                <button type="submit" class="inline-flex items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                    <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                                    </svg>
-                                    Fechar Caixa
-                                </button>
+                                <!-- Action Button -->
+                                <div class="text-center">
+                                    <button type="submit" class="inline-flex items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                        <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                        </svg>
+                                        Fechar Caixa
+                                    </button>
+                                </div>
                             </form>
                         </div>
                     </div>
@@ -242,6 +387,31 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             e.target.value = value;
         });
+    });
+
+    // Handle pending orders radio buttons
+    function updateFormFields() {
+        const transferRadio = document.querySelector('input[name="pending_action"][value="transfer"]');
+        const transferSelect = document.getElementById('transfer_to_register');
+
+        if (transferRadio && transferSelect) {
+            if (transferRadio.checked) {
+                transferSelect.disabled = false;
+                transferSelect.required = true;
+            } else {
+                transferSelect.disabled = true;
+                transferSelect.required = false;
+                transferSelect.value = ''; // Clear selection
+            }
+        }
+    }
+
+    // Initial call to set correct state
+    updateFormFields();
+
+    // Add event listeners to all pending action radios
+    document.querySelectorAll('input[name="pending_action"]').forEach(function(radio) {
+        radio.addEventListener('change', updateFormFields);
     });
 });
 </script>

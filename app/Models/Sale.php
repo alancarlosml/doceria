@@ -117,4 +117,60 @@ class Sale extends Model
     {
         return $this->status === 'finalizado';
     }
+
+    public static function getStatusConfig($status)
+    {
+        $configs = [
+            'pendente' => [
+                'label' => 'Pendente',
+                'icon' => '⏳',
+                'bg' => 'bg-yellow-100'
+            ],
+            'em_preparo' => [
+                'label' => 'Em Preparo',
+                'icon' => '👨‍🍳',
+                'bg' => 'bg-orange-100'
+            ],
+            'pronto' => [
+                'label' => 'Pronto',
+                'icon' => '✅',
+                'bg' => 'bg-blue-100'
+            ],
+            'saiu_entrega' => [
+                'label' => 'Saiu para Entrega',
+                'icon' => '🚴',
+                'bg' => 'bg-purple-100'
+            ],
+            'entregue' => [
+                'label' => 'Entregue',
+                'icon' => '📦',
+                'bg' => 'bg-green-100'
+            ],
+            'cancelado' => [
+                'label' => 'Cancelado',
+                'icon' => '❌',
+                'bg' => 'bg-red-100'
+            ],
+            'finalizado' => [
+                'label' => 'Finalizado',
+                'icon' => '💰',
+                'bg' => 'bg-green-100'
+            ],
+        ];
+
+        return $configs[$status] ?? $configs['pendente'];
+    }
+
+    public static function getAvailableStatuses()
+    {
+        return [
+            'pendente' => 'Pendente',
+            'em_preparo' => 'Em Preparo',
+            'pronto' => 'Pronto',
+            'saiu_entrega' => 'Saiu para Entrega',
+            'entregue' => 'Entregue',
+            'cancelado' => 'Cancelado',
+            'finalizado' => 'Finalizado'
+        ];
+    }
 }

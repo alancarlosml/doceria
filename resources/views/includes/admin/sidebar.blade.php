@@ -78,6 +78,13 @@
                 <span class="sidebar-text">Entradas/Saídas</span>
             </a>
 
+            {{-- @if(auth()->user()->hasPermission('users.view')) --}}
+            <a href="{{ route('users.index') }}" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('users.*') ? 'bg-blue-50 text-blue-600' : '' }}" title="Usuários">
+                <span class="mr-3">👥</span>
+                <span class="sidebar-text">Usuários</span>
+            </a>
+            {{-- @endif --}}
+
             <a href="#" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900" title="Configurações">
                 <span class="mr-3">⚙️</span>
                 <span class="sidebar-text">Configurações</span>

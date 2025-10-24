@@ -48,6 +48,12 @@ Route::middleware('auth')->group(function () {
         Route::post('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
     });
 
+    // Profile Management (All authenticated users)
+    Route::middleware('auth')->group(function () {
+        Route::get('profile/edit', [UserController::class, 'editProfile'])->name('profile.edit');
+        Route::put('profile/update', [UserController::class, 'updateProfile'])->name('profile.update');
+    });
+
     // Permissions Management (Somente Admin)
     Route::middleware('role:admin')->group(function () {
         Route::resource('permissions', PermissionController::class);
@@ -95,6 +101,7 @@ Route::middleware('auth')->group(function () {
     // Cash Register Management
     Route::middleware('permission:cash_registers.view')->group(function () {
         Route::resource('cash-registers', CashRegisterController::class);
+        Route::get('cash-registers-close', [CashRegisterController::class, 'closeForm'])->name('cash-registers.close-form');
         Route::get('cash-registers/{cashRegister}/sales', [CashRegisterController::class, 'sales'])->name('cash-registers.sales');
         Route::post('cash-registers/{cashRegister}/close', [CashRegisterController::class, 'close'])->name('cash-registers.close');
         Route::get('cash-registers-statistics', [CashRegisterController::class, 'statistics'])->name('cash-registers.statistics');

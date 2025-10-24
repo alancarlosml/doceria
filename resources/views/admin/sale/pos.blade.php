@@ -55,7 +55,7 @@
 
             <!-- Grid de Produtos -->
             <div class="flex-1 overflow-y-auto p-4">
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-3 gap-3">
                     @foreach($products as $product)
                     <button
                         @click="addItem({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $product->price }}, '{{ $product->category->name ?? 'Sem categoria' }}')"

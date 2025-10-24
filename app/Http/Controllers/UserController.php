@@ -13,10 +13,27 @@ class UserController extends Controller
     /**
      * Display a listing of users.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::orderBy('name')->get();
-        return view('users.index', compact('users'));
+        $query = User::with('roles');
+
+        // Filter by active status
+        if ($request->filled('active') && $request->active !== 'todos') {
+            $query->where('active', $request->active === 'ativo');
+        }
+
+        // Search by name or email
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $users = $query->orderBy('name')->paginate(15);
+
+        return view('admin.users.users', compact('users'));
     }
 
     /**
@@ -24,7 +41,8 @@ class UserController extends Controller
      */
     public function create()
     {
-        return view('users.create');
+        $roles = \App\Models\Role::orderBy('name')->get();
+        return view('admin.users.user-form', compact('roles'));
     }
 
     /**
@@ -36,14 +54,22 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
-            'role' => ['required', Rule::in(['admin', 'gestor', 'atendente'])],
+            'roles' => 'array|nullable',
+            'roles.*' => 'exists:roles,id',
             'active' => 'boolean',
         ]);
 
-        $validated['password'] = Hash::make($validated['password']);
-        $validated['active'] = $request->has('active');
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'active' => $request->has('active'),
+        ]);
 
-        User::create($validated);
+        // Assign roles
+        if (!empty($validated['roles'])) {
+            $user->syncRoles($validated['roles']);
+        }
 
         return redirect()->route('users.index')
             ->with('success', 'Usuário criado com sucesso!');
@@ -54,7 +80,8 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
-        return view('users.show', compact('user'));
+        $user->load('roles', 'sales', 'cashRegisters');
+        return view('admin.users.user-show', compact('user'));
     }
 
     /**
@@ -62,7 +89,8 @@ class UserController extends Controller
      */
     public function edit(User $user)
     {
-        return view('users.edit', compact('user'));
+        $roles = \App\Models\Role::orderBy('name')->get();
+        return view('admin.users.user-form', compact('user', 'roles'));
     }
 
     /**
@@ -74,19 +102,29 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'password' => 'nullable|string|min:8|confirmed',
-            'role' => ['required', Rule::in(['admin', 'gestor', 'atendente'])],
+            'roles' => 'array|nullable',
+            'roles.*' => 'exists:roles,id',
             'active' => 'boolean',
         ]);
 
+        // Update basic fields
+        $updateData = [
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'active' => $request->has('active'),
+        ];
+
+        // Add password if provided
         if ($request->filled('password')) {
-            $validated['password'] = Hash::make($validated['password']);
-        } else {
-            unset($validated['password']);
+            $updateData['password'] = Hash::make($validated['password']);
         }
 
-        $validated['active'] = $request->has('active');
+        $user->update($updateData);
 
-        $user->update($validated);
+        // Sync roles
+        if (isset($validated['roles'])) {
+            $user->syncRoles($validated['roles']);
+        }
 
         return redirect()->route('users.index')
             ->with('success', 'Usuário atualizado com sucesso!');
@@ -129,5 +167,70 @@ class UserController extends Controller
             'active' => $user->active,
             'message' => $user->active ? 'Usuário ativado!' : 'Usuário desativado!'
         ]);
+    }
+
+    /**
+     * Show the form for editing the current authenticated user profile.
+     */
+    public function editProfile()
+    {
+        $user = auth()->user();
+
+        // If admin, can change roles, else just basic info
+        if (auth()->user()->hasRole('admin')) {
+            $roles = \App\Models\Role::orderBy('name')->get();
+        } else {
+            $roles = null;
+        }
+
+        return view('admin.users.profile', compact('user', 'roles'));
+    }
+
+    /**
+     * Update the current authenticated user profile.
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'password' => 'nullable|string|min:8|confirmed',
+            'active' => 'boolean',
+        ]);
+
+        if ($user->hasRole('admin')) {
+            // Admin can also update roles
+            $additionalValidation = $request->validate([
+                'roles' => 'array|nullable',
+                'roles.*' => 'exists:roles,id',
+            ]);
+
+            if (isset($additionalValidation['roles'])) {
+                $validated['roles'] = $additionalValidation['roles'];
+            }
+        }
+
+        // Update basic fields
+        $updateData = [
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'active' => $request->has('active'),
+        ];
+
+        // Add password if provided
+        if ($request->filled('password')) {
+            $updateData['password'] = Hash::make($validated['password']);
+        }
+
+        $user->update($updateData);
+
+        // Sync roles if admin
+        if ($user->hasRole('admin') && isset($validated['roles'])) {
+            $user->syncRoles($validated['roles']);
+        }
+
+        return redirect()->route('profile.edit')->with('success', 'Perfil atualizado com sucesso!');
     }
 }

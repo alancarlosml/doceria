@@ -93,7 +93,7 @@ class SaleSeeder extends Seeder
             Sale::create($sale);
         }
 
-        // Criar vendas pendentes para teste do POS
+        // Criar vendas pendentes para teste do POS e fechamento de caixa
         $pendingSales = [
             [
                 'cash_register_id' => $cashRegisters->first()->id,
@@ -111,18 +111,18 @@ class SaleSeeder extends Seeder
                 'payment_method' => 'dinheiro',
                 'delivery_date' => null,
                 'delivery_time' => null,
-                'notes' => 'Pedido pendente na mesa',
+                'notes' => 'Pedido pendente na mesa - cliente disse que volta logo',
                 'delivery_address' => null,
             ],
             [
                 'cash_register_id' => $cashRegisters->first()->id,
                 'user_id' => $users->first()->id,
                 'customer_id' => $customers->skip(1)->first()->id,
-                'table_id' => null,
+                'table_id' => $tables->skip(1)->first()?->id,
                 'motoboy_id' => $motoboys->first()?->id,
-                'code' => 'VEN-DELIV-' . strtoupper(uniqid()),
+                'code' => 'VEN-PEND-' . strtoupper(uniqid()),
                 'type' => 'delivery',
-                'status' => 'pronto',
+                'status' => 'pendente',
                 'subtotal' => 78.90,
                 'discount' => 0.00,
                 'delivery_fee' => 5.00,
@@ -130,8 +130,27 @@ class SaleSeeder extends Seeder
                 'payment_method' => 'dinheiro',
                 'delivery_date' => now()->format('Y-m-d'),
                 'delivery_time' => '18:30:00',
-                'notes' => 'Pedido pronto aguardando retirada',
-                'delivery_address' => 'Av. Paulista, 1000, Bela Vista, São Paulo - SP',
+                'notes' => 'Cliente pediu entrega urgente mas ainda não pagou',
+                'delivery_address' => 'Rua da Mata, 456, Santana, São Paulo - SP',
+            ],
+            [
+                'cash_register_id' => $cashRegisters->first()->id,
+                'user_id' => $users->first()->id,
+                'customer_id' => $customers->skip(2)->first()->id,
+                'table_id' => $tables->skip(2)->first()?->id,
+                'motoboy_id' => null,
+                'code' => 'VEN-PEND-' . strtoupper(uniqid()),
+                'type' => 'balcao',
+                'status' => 'pendente',
+                'subtotal' => 35.50,
+                'discount' => 0.00,
+                'delivery_fee' => 0.00,
+                'total' => 35.50,
+                'payment_method' => 'cartao_credito',
+                'delivery_date' => null,
+                'delivery_time' => null,
+                'notes' => 'Cliente foi atender telefone, voltará em seguida',
+                'delivery_address' => null,
             ],
         ];
 

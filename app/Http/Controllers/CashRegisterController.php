@@ -47,7 +47,7 @@ class CashRegisterController extends Controller
                 ->with('error', 'Já existe um caixa aberto!');
         }
 
-        return view('admin.cash_register.cash_register-form', ['cashRegister' => null, 'isEditing' => false]);
+        return view('admin.cash_register.cash_register-form', ['cashRegister' => null, 'isEditing' => false, 'isClosing' => false]);
     }
 
     /**
@@ -122,7 +122,40 @@ class CashRegisterController extends Controller
     }
 
     /**
-     * Show the form for editing the specified cash register.
+     * Show the form for closing the open cash register (entry point from menu).
+     */
+    public function closeForm()
+    {
+        $cashRegister = CashRegister::where('status', 'aberto')->first();
+
+        if (!$cashRegister) {
+            return redirect()->route('cash-registers.index', ['list' => 1])
+                ->with('error', 'Nenhum caixa aberto para fechar!');
+        }
+
+        // Get pending orders for this register
+        $pendingOrders = $cashRegister->sales()->where('status', 'pendente')->with(['customer', 'items.product'])->get();
+
+        // Get alternative open registers for transfer (excluding current)
+        $transferRegisters = CashRegister::where('status', 'aberto')
+            ->where('id', '!=', $cashRegister->id)
+            ->get();
+
+        // Calculate expected balance (including pending orders)
+        $expectedTotal = $cashRegister->getExpectedBalance();
+
+        return view('admin.cash_register.cash_register-form', [
+            'cashRegister' => $cashRegister,
+            'isEditing' => false,
+            'isClosing' => true,
+            'pendingOrders' => $pendingOrders,
+            'transferRegisters' => $transferRegisters,
+            'expectedTotal' => $expectedTotal,
+        ]);
+    }
+
+    /**
+     * Show the form for editing the specified cash register (used from list view).
      */
     public function edit(CashRegister $cashRegister)
     {
@@ -132,7 +165,11 @@ class CashRegisterController extends Controller
                 ->with('error', 'Apenas caixas abertos podem ser editados!');
         }
 
-        return view('admin.cash_register.cash_register-form', ['cashRegister' => $cashRegister, 'isEditing' => true]);
+        return view('admin.cash_register.cash_register-form', [
+            'cashRegister' => $cashRegister,
+            'isEditing' => true,
+            'isClosing' => false
+        ]);
     }
 
     /**
@@ -157,7 +194,7 @@ class CashRegisterController extends Controller
     }
 
     /**
-     * Close the specified cash register.
+     * Close the specified cash register with smart handling of pending orders.
      */
     public function close(Request $request, CashRegister $cashRegister)
     {
@@ -169,13 +206,72 @@ class CashRegisterController extends Controller
         $validated = $request->validate([
             'closing_balance' => 'required|numeric|min:0',
             'closing_notes' => 'nullable|string',
+            'pending_action' => 'required|string|in:allow_close,finalize_all,cancel_all,transfer',
+            'transfer_to_register' => 'nullable|integer|exists:cash_registers,id',
         ]);
 
+        // Check for pending orders
+        $pendingOrders = $cashRegister->sales()->where('status', 'pendente')->get();
+
+        if ($pendingOrders->count() > 0) {
+            // Handle pending orders based on user choice
+            switch ($validated['pending_action']) {
+                case 'finalize_all':
+                    // Automatically finalize all pending orders as paid
+                    foreach ($pendingOrders as $order) {
+                        // Convert to finalizado (assuming payment was completed)
+                        $order->update([
+                            'status' => 'finalizado',
+                            'payment_method' => 'dinheiro', // Default method
+                            'finalized_at' => now(),
+                        ]);
+                    }
+                    $closingNotesSuffix = "\n\n• Finalizados automaticamente: {$pendingOrders->count()} pedidos pendentes.";
+                    break;
+
+                case 'cancel_all':
+                    // Cancel all pending orders
+                    foreach ($pendingOrders as $order) {
+                        $order->update(['status' => 'cancelado']);
+                    }
+                    $closingNotesSuffix = "\n\n• Cancelados automaticamente: {$pendingOrders->count()} pedidos pendentes.";
+                    break;
+
+                case 'transfer':
+                    // Transfer pending orders to another register
+                    if (!$validated['transfer_to_register']) {
+                        return back()->with('error', 'Selecione um caixa para transferir os pedidos pendentes.');
+                    }
+
+                    $transferRegister = CashRegister::find($validated['transfer_to_register']);
+                    if (!$transferRegister || $transferRegister->status !== 'aberto') {
+                        return back()->with('error', 'O caixa selecionado para transferência não está aberto.');
+                    }
+
+                    foreach ($pendingOrders as $order) {
+                        $order->update(['cash_register_id' => $transferRegister->id]);
+                    }
+                    $closingNotesSuffix = "\n\n• Transferidos para caixa #{$transferRegister->id}: {$pendingOrders->count()} pedidos pendentes.";
+                    break;
+
+                case 'allow_close':
+                    // Allow closing despite pending orders
+                    $closingNotesSuffix = "\n\n• ⚠️ Fechamento com {$pendingOrders->count()} pedidos pendentes (não finalizados).";
+                    break;
+
+                default:
+                    return back()->with('error', 'Ação para pedidos pendentes inválida.');
+            }
+        } else {
+            $closingNotesSuffix = '';
+        }
+
+        // Close the cash register
         $cashRegister->update([
             'closing_balance' => $validated['closing_balance'],
             'closed_at' => now(),
             'status' => 'fechado',
-            'closing_notes' => $validated['closing_notes'],
+            'closing_notes' => ($validated['closing_notes'] ?? '') . $closingNotesSuffix,
         ]);
 
         return redirect()->route('cash-registers.show', $cashRegister)
