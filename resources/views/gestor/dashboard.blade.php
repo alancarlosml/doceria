@@ -110,7 +110,7 @@
                             <span class="mr-3">📋</span>
                             Pedidos Pendentes ({{ $pendingSalesCount }})
                         </h3>
-                        <p class="text-yellow-100 text-sm">Agurdando produção ou mesa</p>
+                        <p class="text-yellow-100 text-sm">Aguardando produção ou mesa</p>
                     </div>
                     <div class="p-6">
                         @if($pendingSales->count() > 0)
@@ -381,6 +381,11 @@
                             Novo Pedido
                         </a>
 
+                        <a href="{{ route('encomendas.create') }}" class="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                            <span class="mr-2">📝</span>
+                            Nova Encomenda
+                        </a>
+
                         <a href="{{ route('tables.index') }}" class="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
                             <span class="mr-2">🪑</span>
                             Gerenciar Mesas
@@ -394,6 +399,11 @@
                         <a href="{{ route('cash-registers.index') }}" class="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
                             <span class="mr-2">💰</span>
                             Controle Caixas
+                        </a>
+
+                        <a href="{{ route('encomendas.index') }}" class="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                            <span class="mr-2">📦</span>
+                            Encomendas
                         </a>
                     </div>
                 </div>

@@ -137,7 +137,7 @@
                             <label class="inline-flex items-center cursor-pointer">
                                 <input type="checkbox"
                                        name="banner_active"
-                                       {{ App\Models\Setting::get('banner_active', false) ? 'checked' : '' }}
+                                       {{ App\Models\Setting::get('banner_active', false) === true ? 'checked' : '' }}
                                        class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
                                 <span class="ml-3 text-sm">
                                     <span class="text-gray-700 font-medium">Mostrar banner de aviso</span>
@@ -156,7 +156,7 @@
                                     id="banner_message"
                                     name="banner_message"
                                     rows="3"
-                                    class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm @error('banner_message') border-red-300 @enderror"
+                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 w-full rounded-lg border border-gray-300  @error('banner_message') border-red-300 @enderror bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 mt-2"
                                     placeholder="Ex: Atenção, amanhã teremos promoção de 20% de desconto nas fatias"
                                     maxlength="500"
                                 >{{ old('banner_message', App\Models\Setting::get('banner_message', '')) }}</textarea>
@@ -175,7 +175,7 @@
                         <!-- Preview Section -->
                         <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
                             <h4 class="text-sm font-medium text-gray-900 mb-3">📋 Visualização do Banner:</h4>
-                            <div id="banner-preview" class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg {{ !App\Models\Setting::get('banner_active', false) ? 'opacity-50' : '' }}">
+                            <div id="banner-preview" class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg {{ App\Models\Setting::get('banner_active', false) !== true ? 'opacity-50' : '' }}">
                                 <div class="flex">
                                     <div class="flex-shrink-0">
                                         <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
@@ -190,7 +190,7 @@
                                 </div>
                             </div>
 
-                            @if(!App\Models\Setting::get('banner_active', false))
+                            @if(App\Models\Setting::get('banner_active', false) !== true)
                                 <p class="mt-2 text-xs text-gray-500 italic">
                                     O banner está desativado. Ative o switch acima para exibir na página inicial.
                                 </p>

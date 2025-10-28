@@ -217,15 +217,6 @@ class PermissionController extends Controller
      */
     public function assignPermissionsToUser(Request $request, User $user)
     {
-        // Temporário: apenas teste de resposta JSON
-        return response()->json([
-            'success' => true,
-            'message' => 'Teste: Permissões atribuídas com sucesso!',
-            'user_id' => $user->id,
-            'data' => $request->all()
-        ]);
-
-        /*
         try {
             $validated = $request->validate([
                 'permission_ids' => 'array',
@@ -236,10 +227,14 @@ class PermissionController extends Controller
             $permissionIds = $request->permission_ids ?? [];
             $user->syncPermissions($permissionIds, false); // false = direct permissions only
 
+            // Verify the changes
+            $actualPermissions = $user->permissions()->pluck('name')->toArray();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Permissões atribuídas com sucesso!',
-                'user_permissions' => $user->permissions->pluck('name')->toArray()
+                'user_permissions' => $actualPermissions,
+                'assigned_count' => count($permissionIds)
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -248,7 +243,6 @@ class PermissionController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
-        */
     }
 
     /**

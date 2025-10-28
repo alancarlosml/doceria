@@ -39,13 +39,13 @@
                             name="search"
                             value="{{ request('search') }}"
                             placeholder="Nome ou email"
-                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                         >
                     </div>
 
                     <div>
                         <label for="active" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                        <select id="active" name="active" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <select id="active" name="active" class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
                             <option value="todos" {{ request('active') === 'todos' ? 'selected' : '' }}>Todos</option>
                             <option value="ativo" {{ request('active') === 'ativo' ? 'selected' : '' }}>Ativos</option>
                             <option value="inativo" {{ request('active') === 'inativo' ? 'selected' : '' }}>Inativos</option>
@@ -54,11 +54,11 @@
 
                     <div class="flex items-end space-x-2">
                         <button type="submit" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                            Filtrar
+                            🔄 Filtrar
                         </button>
                         @if(request()->hasAny(['search', 'active']))
                             <a href="{{ route('users.index') }}" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                                Limpar
+                               🗑️ Limpar
                             </a>
                         @endif
                     </div>
@@ -141,7 +141,37 @@
             </div>
 
             <!-- Users Table -->
-            <div class="bg-white shadow rounded-lg overflow-hidden">
+            <div class="bg-white shadow rounded-lg overflow-hidden" x-data="{
+                userStatuses: {},
+                async toggleUserStatus(userId) {
+                    try {
+                        const response = await fetch(`/users/${userId}/toggle-status`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name=\"csrf-token\"]').getAttribute('content')
+                            },
+                            body: JSON.stringify({})
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.userStatuses[userId] = data.active;
+                            alert(data.message);
+                        } else {
+                            alert('Erro: ' + (data.message || 'Erro desconhecido'));
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('Erro ao processar requisição');
+                    }
+                }
+            }" x-init="
+                @foreach($users as $user)
+                    $el.userStatuses[{{ $user->id }}] = {{ $user->active ? 'true' : 'false' }};
+                @endforeach
+            ">
                 <div class="px-4 py-5 sm:p-6">
                     <h3 class="text-lg leading-6 font-medium text-gray-900">Usuários Cadastrados</h3>
                     <p class="mt-1 text-sm text-gray-600">Gerencie usuários, roles e permissões do sistema.</p>
@@ -272,18 +302,21 @@
                                                     </svg>
                                                 </a>
 
-                                                @if($user->id !== auth()->id() && $user->active)
-                                                    <button onclick="toggleStatus({{ $user->id }})" class="text-orange-600 hover:text-orange-900" title="Desativar">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                        </svg>
-                                                    </button>
-                                                @elseif($user->id !== auth()->id() && !$user->active)
-                                                    <button onclick="toggleStatus({{ $user->id }})" class="text-green-600 hover:text-green-900" title="Ativar">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                        </svg>
-                                                    </button>
+                                                @if($user->id !== auth()->id())
+                                                    <div class="flex items-center">
+                                                        <span class="mr-2 text-sm text-gray-500">{{ $user->active ? 'Ativo' : 'Inativo' }}</span>
+                                                        <button
+                                                            @click="toggleUserStatus({{ $user->id }})"
+                                                            :class="userStatuses[{{ $user->id }}] === true ? 'bg-green-600' : 'bg-gray-200'"
+                                                            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+                                                            type="button"
+                                                        >
+                                                            <span
+                                                                :class="userStatuses[{{ $user->id }}] === true ? 'translate-x-6' : 'translate-x-1'"
+                                                                class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                                                            ></span>
+                                                        </button>
+                                                    </div>
                                                 @endif
 
                                                 @if($user->id !== auth()->id())

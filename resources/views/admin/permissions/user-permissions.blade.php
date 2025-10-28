@@ -105,7 +105,6 @@
 
                 <form id="permissionsForm" action="{{ route('users.permissions.assign', $user) }}" method="POST">
                     @csrf
-                    @method('PUT')
 
                     <div class="p-6">
                         <!-- Role Permissions Alert -->

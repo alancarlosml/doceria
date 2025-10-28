@@ -109,40 +109,53 @@
                 </div>
             </div>
 
-            <!-- Filters -->
+            <!-- Filters and Search -->
             <div class="bg-white shadow rounded-lg mb-6 p-4">
                 <div class="flex items-center space-x-4">
                     <div class="flex-1">
-                        <input 
-                            type="text" 
-                            x-model="searchQuery"
-                            @input="filterProducts()"
-                            placeholder="Buscar produtos..." 
+                        <input
+                            type="text"
+                            id="search"
+                            name="search"
+                            value="{{ request()->input('search') }}"
+                            placeholder="Buscar produtos..."
                             class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                         >
                     </div>
-                    <div>
-                        <select 
-                            x-model="statusFilter"
-                            @change="filterProducts()"
+                    <div class="flex items-center gap-2">
+                        <select
+                            id="status"
+                            name="status"
                             class="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                         >
-                            <option value="all">Todos os Status</option>
-                            <option value="active">Apenas Ativos</option>
-                            <option value="inactive">Apenas Inativos</option>
+                            <option value="">Todos os Status</option>
+                            <option value="active" {{ request()->input('status') === 'active' ? 'selected' : '' }}>Apenas Ativos</option>
+                            <option value="inactive" {{ request()->input('status') === 'inactive' ? 'selected' : '' }}>Apenas Inativos</option>
                         </select>
+                        <button type="button"
+                                id="filter-btn"
+                                class="inline-flex items-center px-3 py-2 border border-blue-300 shadow-sm text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            🔄 Filtrar
+                        </button>
+                        <button type="button"
+                                id="clear-filters-btn"
+                                class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                            🗑️ Limpar
+                        </button>
                     </div>
                 </div>
             </div>
 
             <!-- Products by Category -->
             @php
-                $productsByCategory = \App\Models\Product::with('category')
-                    ->get()
+                $productsPaginator = $products; // Guardar o paginator completo
+                $productsByCategory = collect($products->items())
                     ->groupBy(function($product) {
                         return $product->category->name ?? 'Sem categoria';
                     })
                     ->sortKeys();
+
+                $hasPages = $productsPaginator->hasPages();
             @endphp
 
             @if($productsByCategory->isEmpty())
@@ -328,24 +341,105 @@
                     </div>
                 @endforeach
             @endif
+
+            <!-- Pagination -->
+            @if($hasPages)
+                <div class="mt-8 mb-8">
+                    <div class="flex items-center justify-between bg-white border-t border-gray-200 px-4 py-3 sm:px-6">
+                        <div class="flex flex-1 justify-between sm:hidden">
+                            {!! $productsPaginator->links() !!}
+                        </div>
+                        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                            <div>
+                                <p class="text-sm text-gray-700">
+                                    Mostrando
+                                    <span class="font-medium">{{ $productsPaginator->firstItem() }}</span>
+                                    a
+                                    <span class="font-medium">{{ $productsPaginator->lastItem() }}</span>
+                                    de
+                                    <span class="font-medium">{{ $productsPaginator->total() }}</span>
+                                    resultados
+                                </p>
+                            </div>
+                            <div>
+                                {!! $productsPaginator->links() !!}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 </main>
 
 <!-- Alpine.js Products Manager -->
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterBtn = document.getElementById('filter-btn');
+    const clearFiltersBtn = document.getElementById('clear-filters-btn');
+
+    // Função para aplicar filtros
+    function applyFilters() {
+        const search = document.getElementById('search').value;
+        const status = document.getElementById('status').value;
+
+        // Construir URL com parâmetros
+        let url = '{{ route("products.index") }}?';
+        const params = [];
+
+        if (search) params.push('search=' + encodeURIComponent(search));
+        if (status) params.push('status=' + encodeURIComponent(status));
+
+        url += params.join('&');
+
+        // Redirecionar para aplicar filtros
+        window.location.href = url;
+    }
+
+    // Função para limpar filtros
+    function clearFilters() {
+        document.getElementById('search').value = '';
+        document.getElementById('status').value = '';
+
+        // Voltar para URL sem filtros
+        window.location.href = '{{ route("products.index") }}';
+    }
+
+    // Event listeners
+    if (filterBtn) {
+        filterBtn.addEventListener('click', applyFilters);
+    }
+
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', clearFilters);
+    }
+
+    // Permitir filtrar pressionando Enter no campo de busca
+    const searchInput = document.getElementById('search');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                applyFilters();
+            }
+        });
+    }
+
+    // Permitir filtrar automaticamente ao mudar status
+    const statusSelect = document.getElementById('status');
+    if (statusSelect) {
+        statusSelect.addEventListener('change', function() {
+            setTimeout(applyFilters, 100);
+        });
+    }
+});
+
 function productsManager() {
     return {
         searchQuery: '',
         statusFilter: 'all',
-        
+
         init() {
             console.log('Products Manager initialized');
-        },
-
-        filterProducts() {
-            // Implementar filtro se necessário
-            console.log('Filtering:', this.searchQuery, this.statusFilter);
         },
 
         async toggleProduct(productId) {

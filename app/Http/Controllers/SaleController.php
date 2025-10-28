@@ -6,32 +6,31 @@ use App\Models\Sale;
 use App\Models\Customer;
 use App\Models\Table;
 use App\Models\Motoboy;
-use App\Models\User;
 use App\Models\CashRegister;
 use App\Models\Product;
 use App\Models\SaleItem;
 use App\Models\Category;
+use App\Services\ThermalPrinterService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class SaleController extends Controller
 {
     /**
-     * Display the main POS interface
+     * Display the POS interface
      */
     public function pos()
     {
-        // Verificar se há caixa aberto
+        // Verificar caixa aberto
         $openCashRegister = CashRegister::where('status', 'aberto')->first();
         
         if (!$openCashRegister) {
             return redirect()->route('cash-registers.index')
-                ->with('error', 'É necessário abrir o caixa antes de realizar vendas!');
+                ->with('error', 'Abra o caixa antes de realizar vendas!');
         }
 
-        // Buscar produtos ativos do dia
+        // Produtos do dia
         $currentDay = now()->locale('pt_BR')->dayName;
         $dayMapping = [
             'Monday' => 'segunda',
@@ -44,7 +43,6 @@ class SaleController extends Controller
         ];
         $currentDayPt = $dayMapping[$currentDay] ?? 'segunda';
 
-        // Produtos do menu de hoje
         $products = Product::where('active', true)
             ->whereHas('menus', function($query) use ($currentDayPt) {
                 $query->where('day_of_week', $currentDayPt)
@@ -55,7 +53,6 @@ class SaleController extends Controller
             ->orderBy('name')
             ->get();
 
-        // Agrupar por categoria
         $categories = Category::where('active', true)
             ->whereHas('products', function($query) use ($currentDayPt) {
                 $query->where('active', true)
@@ -80,38 +77,40 @@ class SaleController extends Controller
             ->orderBy('number')
             ->get();
 
-        // Mesas ocupadas com vendas pendentes
+        // Mesas ocupadas (para mostrar em vendas já criadas)
         $occupiedTables = Table::where('active', true)
             ->where('status', 'ocupada')
-            ->with(['sales' => function($query) {
-                $query->whereIn('status', ['pendente', 'em_preparo', 'pronto'])
-                      ->with(['items.product', 'customer'])
-                      ->latest();
-            }])
             ->orderBy('number')
             ->get();
 
+        // Mapa de mesas ocupadas com IDs de vendas
+        $occupiedTablesWithSales = $occupiedTables->mapWithKeys(function ($table) {
+            $sale = $table->sales()->where('status', '!=', 'finalizado')->where('status', '!=', 'cancelado')->first();
+            return [$table->id => $sale ? $sale->id : null];
+        })->toArray();
+
         // Clientes recentes
         $recentCustomers = Customer::orderBy('created_at', 'desc')
-            ->limit(10)
+            ->limit(20)
             ->get();
 
-        // Motoboys disponíveis
+        // Motoboys
         $motoboys = Motoboy::where('active', true)
             ->orderBy('name')
             ->get();
 
-        // Vendas pendentes do dia
+        // Vendas pendentes (balcão e delivery aguardando preparo)
         $pendingSales = Sale::where('cash_register_id', $openCashRegister->id)
             ->whereIn('status', ['pendente', 'em_preparo', 'pronto'])
-            ->with(['customer', 'table', 'items.product', 'motoboy'])
+            ->with(['customer', 'table', 'items.product', 'motoboy', 'user'])
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Vendas em entrega do dia
+        // Vendas em entrega (deliveries que saíram)
         $inDeliverySales = Sale::where('cash_register_id', $openCashRegister->id)
             ->where('status', 'saiu_entrega')
-            ->with(['customer', 'table', 'items.product', 'motoboy'])
+            ->where('type', 'delivery')
+            ->with(['customer', 'items.product', 'motoboy', 'user'])
             ->orderBy('updated_at', 'desc')
             ->get();
 
@@ -121,134 +120,213 @@ class SaleController extends Controller
             'categories',
             'tables',
             'occupiedTables',
+            'occupiedTablesWithSales',
             'recentCustomers',
             'motoboys',
             'pendingSales',
-            'inDeliverySales',
-            'currentDayPt'
+            'inDeliverySales'
         ));
     }
 
     /**
-     * Display a listing of sales.
+     * Update an existing sale
      */
-    public function index(Request $request)
-    {
-        $query = Sale::with(['customer', 'table', 'motoboy', 'user', 'cashRegister']);
-
-        // Filter by type
-        if ($request->filled('type')) {
-            $query->where('type', $request->type);
-        }
-
-        // Filter by status
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        // Filter by date range
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-
-        // Search by code or customer name
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('code', 'like', "%{$search}%")
-                  ->orWhereHas('customer', function($customerQuery) use ($search) {
-                      $customerQuery->where('name', 'like', "%{$search}%");
-                  });
-            });
-        }
-
-        $sales = $query->orderBy('created_at', 'desc')->paginate(15);
-
-        return view('sales.index', compact('sales'));
-    }
-
-    /**
-     * Store a newly created sale (API for POS)
-     */
-    public function store(Request $request)
+    public function update(Request $request, Sale $sale)
     {
         $validated = $request->validate([
-            'customer_id' => 'nullable|exists:customers,id',
+            'type' => 'required|in:balcao,delivery',
             'table_id' => 'nullable|exists:tables,id',
+            'customer_id' => 'nullable|exists:customers,id',
             'motoboy_id' => 'nullable|exists:motoboys,id',
-            'type' => 'required|in:balcao,delivery,encomenda',
-            'payment_method' => 'nullable|in:dinheiro,cartao_credito,cartao_debito,pix,transferencia',
-            'delivery_date' => 'nullable|date|after:today',
-            'delivery_time' => 'nullable|date_format:H:i',
-            'notes' => 'nullable|string',
             'delivery_address' => 'nullable|string',
             'delivery_fee' => 'nullable|numeric|min:0',
+            'discount' => 'nullable|numeric|min:0',
+            'payment_method' => 'required|in:dinheiro,pix,cartao_debito,cartao_credito',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
-            'items.*.notes' => 'nullable|string',
-            'discount' => 'nullable|numeric|min:0',
         ]);
 
-        // Validações adicionais baseadas no tipo
+        // Validações específicas
         if ($validated['type'] === 'delivery') {
             if (empty($validated['delivery_address'])) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'O endereço de entrega é obrigatório para deliveries!'
+                    'message' => 'Endereço é obrigatório para delivery!'
                 ], 422);
             }
             if (empty($validated['motoboy_id'])) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Selecione um motoboy para fazer a entrega!'
+                    'message' => 'Selecione um motoboy!'
                 ], 422);
             }
         }
 
-        if ($validated['type'] === 'encomenda') {
-            if (empty($validated['delivery_date'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'A data de entrega é obrigatória para encomendas!'
-                ], 422);
-            }
-            if (empty($validated['delivery_time'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'O horário de entrega é obrigatório para encomendas!'
-                ], 422);
-            }
-        }
-
-        // Check if there's an open cash register
         $openCashRegister = CashRegister::where('status', 'aberto')->first();
         if (!$openCashRegister) {
             return response()->json([
                 'success' => false,
-                'message' => 'É necessário abrir o caixa antes de realizar vendas!'
+                'message' => 'Caixa não está aberto!'
+            ], 400);
+        }
+
+        if ($sale->cash_register_id !== $openCashRegister->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Esta venda pertence a outro caixa!'
+            ], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Recalcular subtotal
+            $subtotal = 0;
+            foreach ($validated['items'] as $item) {
+                $product = Product::find($item['product_id']);
+                $subtotal += $product->price * $item['quantity'];
+            }
+
+            // Calcular total
+            $deliveryFee = $validated['delivery_fee'] ?? 0;
+            $discount = $validated['discount'] ?? 0;
+            $total = $subtotal + $deliveryFee - $discount;
+
+            // Limpar itens antigos e recriar
+            $sale->items()->delete();
+
+            // Atualizar venda
+            $sale->update([
+                'customer_id' => $validated['customer_id'] ?? null,
+                'table_id' => $validated['table_id'] ?? null,
+                'motoboy_id' => $validated['motoboy_id'] ?? null,
+                'type' => $validated['type'],
+                'status' => 'finalizado', // Assume que atualizando é finalizando
+                'subtotal' => $subtotal,
+                'discount' => $discount,
+                'delivery_fee' => $deliveryFee,
+                'total' => $total,
+                'payment_method' => $validated['payment_method'],
+                'delivery_address' => $validated['delivery_address'] ?? null,
+            ]);
+
+            // Criar itens novamente
+            foreach ($validated['items'] as $item) {
+                $product = Product::find($item['product_id']);
+                $itemSubtotal = $product->price * $item['quantity'];
+
+                SaleItem::create([
+                    'sale_id' => $sale->id,
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $product->price,
+                    'subtotal' => $itemSubtotal,
+                ]);
+            }
+
+            // Atualizar mesa se necessário
+            if ($sale->table_id) {
+                $sale->table->update(['status' => 'disponivel']);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Venda atualizada com sucesso!',
+                'sale' => $sale
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Store a new sale
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'type' => 'required|in:balcao,delivery',
+            'table_id' => 'nullable|exists:tables,id',
+            'customer_id' => 'nullable|exists:customers,id',
+            'motoboy_id' => 'nullable|exists:motoboys,id',
+            'delivery_address' => 'nullable|string',
+            'delivery_fee' => 'nullable|numeric|min:0',
+            'discount' => 'nullable|numeric|min:0',
+            'payment_method' => 'required|in:dinheiro,pix,cartao_debito,cartao_credito',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'finalize' => 'nullable|boolean',
+        ]);
+
+        // Validações específicas
+        if ($validated['type'] === 'delivery') {
+            if (empty($validated['delivery_address'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Endereço é obrigatório para delivery!'
+                ], 422);
+            }
+            if (empty($validated['motoboy_id'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Selecione um motoboy!'
+                ], 422);
+            }
+        }
+
+        $openCashRegister = CashRegister::where('status', 'aberto')->first();
+        if (!$openCashRegister) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Caixa não está aberto!'
             ], 400);
         }
 
         try {
             DB::beginTransaction();
 
-            // Calculate totals
+            // Calcular subtotal
             $subtotal = 0;
-            $deliveryFee = $validated['delivery_fee'] ?? 0; // Use custom delivery fee
+            foreach ($validated['items'] as $item) {
+                $product = Product::find($item['product_id']);
+                $subtotal += $product->price * $item['quantity'];
+            }
 
-            // Determine initial status based on type
-            $initialStatus = match($validated['type']) {
-                'balcao' => 'pendente',
-                'delivery' => 'pendente',
-                'encomenda' => 'pendente',
-                default => 'pendente'
-            };
+            // Calcular total
+            $deliveryFee = $validated['delivery_fee'] ?? 0;
+            $discount = $validated['discount'] ?? 0;
+            $total = $subtotal + $deliveryFee - $discount;
 
-            // Create sale
+            // Determinar status inicial
+            $finalize = $validated['finalize'] ?? false;
+            
+            if ($finalize) {
+                // Se está finalizando
+                if ($validated['type'] === 'delivery') {
+                    $status = 'saiu_entrega'; // Delivery vai direto para entrega
+                } else {
+                    // Balcão
+                    if (empty($validated['table_id'])) {
+                        $status = 'finalizado'; // Venda rápida sem mesa
+                    } else {
+                        $status = 'pendente'; // Com mesa, fica pendente
+                    }
+                }
+            } else {
+                $status = 'pendente'; // Salvando sem finalizar
+            }
+
+            // Criar venda
             $sale = Sale::create([
                 'cash_register_id' => $openCashRegister->id,
                 'user_id' => Auth::id(),
@@ -256,46 +334,31 @@ class SaleController extends Controller
                 'table_id' => $validated['table_id'] ?? null,
                 'motoboy_id' => $validated['motoboy_id'] ?? null,
                 'type' => $validated['type'],
-                'status' => $initialStatus,
-                'subtotal' => 0,
-                'discount' => $validated['discount'] ?? 0,
+                'status' => $status,
+                'subtotal' => $subtotal,
+                'discount' => $discount,
                 'delivery_fee' => $deliveryFee,
-                'total' => 0,
-                'payment_method' => $validated['payment_method'] ?? null,
-                'delivery_date' => $validated['delivery_date'] ?? null,
-                'delivery_time' => $validated['delivery_time'] ?? null,
-                'notes' => $validated['notes'] ?? null,
+                'total' => $total,
+                'payment_method' => $validated['payment_method'],
                 'delivery_address' => $validated['delivery_address'] ?? null,
             ]);
 
-            // Create sale items
+            // Criar itens
             foreach ($validated['items'] as $item) {
                 $product = Product::find($item['product_id']);
-                $unitPrice = $product->price;
-                $itemSubtotal = $unitPrice * $item['quantity'];
-                $subtotal += $itemSubtotal;
+                $itemSubtotal = $product->price * $item['quantity'];
 
                 SaleItem::create([
                     'sale_id' => $sale->id,
                     'product_id' => $item['product_id'],
                     'quantity' => $item['quantity'],
-                    'unit_price' => $unitPrice,
+                    'unit_price' => $product->price,
                     'subtotal' => $itemSubtotal,
-                    'notes' => $item['notes'] ?? null,
                 ]);
             }
 
-            // Calculate final total
-            $total = $subtotal - ($validated['discount'] ?? 0) + $deliveryFee;
-            
-            // Update sale totals
-            $sale->update([
-                'subtotal' => $subtotal,
-                'total' => $total,
-            ]);
-
-            // Update table status if it's a table order
-            if ($sale->table_id) {
+            // Atualizar mesa se necessário
+            if ($sale->table_id && $status !== 'finalizado') {
                 $sale->table->update(['status' => 'ocupada']);
             }
 
@@ -304,7 +367,7 @@ class SaleController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Venda criada com sucesso!',
-                'sale' => $sale->load(['items.product', 'customer', 'table'])
+                'sale' => $sale
             ]);
 
         } catch (\Exception $e) {
@@ -312,32 +375,29 @@ class SaleController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Erro ao criar venda: ' . $e->getMessage()
+                'message' => 'Erro: ' . $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Get POS data for a sale (for loading into POS interface)
+     * Get sale data for POS
      */
     public function getPosData(Sale $sale)
     {
-        $sale->load(['customer', 'table', 'motoboy', 'user', 'cashRegister', 'items.product.category']);
+        $sale->load(['customer', 'table', 'motoboy', 'items.product.category']);
 
-        // Format items for POS - CORRIGIDO
         $items = $sale->items->map(function ($item) {
             return [
                 'product_id' => $item->product_id,
                 'name' => $item->product->name,
-                'price' => (float) $item->unit_price, // Convertido para float
+                'price' => (float) $item->unit_price,
                 'category' => $item->product->category?->name ?? 'Sem categoria',
-                'quantity' => (int) $item->quantity, // Convertido para int
-                'subtotal' => (float) $item->subtotal, // Convertido para float
-                'notes' => $item->notes ?? ''
+                'quantity' => (int) $item->quantity,
+                'subtotal' => (float) $item->subtotal,
             ];
         })->toArray();
 
-        // Return sale data formatted for POS - CORRIGIDO
         return response()->json([
             'success' => true,
             'sale' => [
@@ -348,12 +408,9 @@ class SaleController extends Controller
                 'table_id' => $sale->table_id,
                 'motoboy_id' => $sale->motoboy_id,
                 'payment_method' => $sale->payment_method,
-                'delivery_date' => $sale->delivery_date?->format('Y-m-d'),
-                'delivery_time' => $sale->delivery_time,
                 'delivery_address' => $sale->delivery_address,
                 'delivery_fee' => (float) ($sale->delivery_fee ?? 0),
                 'discount' => (float) ($sale->discount ?? 0),
-                'notes' => $sale->notes,
                 'subtotal' => (float) $sale->subtotal,
                 'total' => (float) $sale->total,
                 'items' => $items
@@ -362,149 +419,78 @@ class SaleController extends Controller
     }
 
     /**
-     * Display the specified sale.
-     */
-    public function show(Sale $sale)
-    {
-        $sale->load(['customer', 'table', 'motoboy', 'user', 'cashRegister', 'items.product.category']);
-        return view('sales.show', compact('sale'));
-    }
-
-    /**
-     * Update sale status (AJAX)
+     * Update sale status
      */
     public function updateStatus(Request $request, Sale $sale)
     {
         $validated = $request->validate([
-            'status' => 'required|in:pendente,em_preparo,pronto,saiu_entrega,entregue,problema,cancelado,finalizado',
-            'notes' => 'nullable|string',
+            'status' => 'required|in:pendente,em_preparo,pronto,saiu_entrega,entregue,cancelado,finalizado',
         ]);
 
-        $sale->update($validated);
+        $sale->update(['status' => $validated['status']]);
 
-        // Update table status when sale is finalized
-        if ($sale->status === 'finalizado' && $sale->table_id) {
+        // Liberar mesa se finalizado/cancelado/entregue
+        if (in_array($validated['status'], ['finalizado', 'entregue', 'cancelado']) && $sale->table_id) {
             $sale->table->update(['status' => 'disponivel']);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Status atualizado com sucesso!',
-            'sale' => $sale->load(['items.product', 'customer', 'table'])
+            'message' => 'Status atualizado!',
+            'sale' => $sale
         ]);
     }
 
     /**
-     * Cancel sale
+     * Print receipt for sale
      */
-    public function cancel(Sale $sale)
+    public function printReceipt(Request $request, Sale $sale)
     {
-        if ($sale->isCancelado() || $sale->isFinalizado()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Apenas vendas pendentes ou em preparo podem ser canceladas!'
-            ], 400);
-        }
-
-        $sale->update(['status' => 'cancelado']);
-
-        // Free up the table
-        if ($sale->table_id) {
-            $sale->table->update(['status' => 'disponivel']);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Venda cancelada com sucesso!'
-        ]);
-    }
-
-    /**
-     * Finalize sale (close table/complete payment)
-     */
-    public function finalize(Request $request, Sale $sale)
-    {
-        $validated = $request->validate([
-            'payment_method' => 'required|in:dinheiro,cartao_credito,cartao_debito,pix,transferencia',
-            'discount' => 'nullable|numeric|min:0',
-        ]);
-
-        if ($sale->isCancelado() || $sale->isFinalizado()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Esta venda já foi finalizada ou cancelada!'
-            ], 400);
-        }
-
-        DB::beginTransaction();
         try {
-            // Update sale
-            $total = $sale->subtotal - ($validated['discount'] ?? 0) + $sale->delivery_fee;
-            
-            $sale->update([
-                'status' => 'finalizado',
-                'payment_method' => $validated['payment_method'],
-                'discount' => $validated['discount'] ?? 0,
-                'total' => $total,
-            ]);
-
-            // Free up the table
-            if ($sale->table_id) {
-                $sale->table->update(['status' => 'disponivel']);
+            // Carregar relacionamento de itens se não estiver carregado
+            if (!$sale->relationLoaded('items')) {
+                $sale->load(['customer', 'table', 'motoboy', 'user', 'items.product']);
             }
 
-            DB::commit();
+            // Configurações da impressora (poderia vir do banco de dados ou settings)
+            $printerConfig = [
+                'host' => '192.168.0.100',
+                'port' => 9100,
+            ];
+
+            // Tentar imprimir
+            ThermalPrinterService::print($sale, $printerConfig);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Venda finalizada com sucesso!',
-                'sale' => $sale->load(['items.product', 'customer', 'table'])
+                'message' => 'Recibo impresso com sucesso!'
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
-            
             return response()->json([
                 'success' => false,
-                'message' => 'Erro ao finalizar venda: ' . $e->getMessage()
+                'message' => 'Erro ao imprimir recibo: ' . $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Get sales statistics
+     * Display sale details
      */
-    public function statistics(Request $request)
+    public function show(Request $request, Sale $sale)
     {
-        $period = $request->get('period', 'today');
+        // Se for AJAX, retorna JSON
+        if ($request->expectsJson() || $request->ajax()) {
+            $sale->load(['customer', 'table', 'motoboy', 'user', 'items.product.category']);
 
-        $query = Sale::where('status', '!=', 'cancelado');
-
-        switch ($period) {
-            case 'today':
-                $query->whereDate('created_at', today());
-                break;
-            case 'week':
-                $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
-                break;
-            case 'month':
-                $query->whereMonth('created_at', now()->month)
-                      ->whereYear('created_at', now()->year);
-                break;
+            return response()->json([
+                'success' => true,
+                'sale' => $sale
+            ]);
         }
 
-        $totalSales = $query->count();
-        $totalRevenue = $query->sum('total');
-        $totalDelivery = $query->where('type', 'delivery')->count();
-        $totalBalcao = $query->where('type', 'balcao')->count();
-        $totalEncomenda = $query->where('type', 'encomenda')->count();
-
-        return response()->json([
-            'total_sales' => $totalSales,
-            'total_revenue' => $totalRevenue,
-            'total_delivery' => $totalDelivery,
-            'total_balcao' => $totalBalcao,
-            'total_encomenda' => $totalEncomenda,
-        ]);
+        // Senão retorna view
+        $sale->load(['customer', 'table', 'motoboy', 'user', 'items.product.category']);
+        return view('sales.show', compact('sale'));
     }
 }

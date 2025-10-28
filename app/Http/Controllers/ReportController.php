@@ -131,7 +131,7 @@ class ReportController extends Controller
         ];
 
         // Receitas (Vendas)
-        $revenues = Sale::selectRaw('DATE(created_at) as date, COUNT(*) as transaction_count, SUM(total) as revenue, SUM(paid_amount) as paid_total')
+        $revenues = Sale::selectRaw('DATE(created_at) as date, COUNT(*) as transaction_count, SUM(total) as revenue, SUM(total) as paid_total')
             ->whereBetween('created_at', [$startDate, $endDate])
             ->where('status', '!=', 'cancelado')
             ->groupBy(DB::raw('DATE(created_at)'))
@@ -192,8 +192,8 @@ class ReportController extends Controller
             'end' => $endDate
         ];
 
-        $employees = User::with(['sales.customer', 'sales.saleItems'])
-            ->select('users.*')
+        $employees = User::with(['sales.customer', 'sales.items'])
+            ->select('users.id', 'users.name')
             ->selectRaw('
                 COUNT(sales.id) as total_sales,
                 COALESCE(SUM(sales.total), 0) as total_revenue,
@@ -207,7 +207,7 @@ class ReportController extends Controller
                 $join->on('users.id', '=', 'sales.user_id')
                     ->whereBetween('sales.created_at', [$startDate, $endDate]);
             })
-            ->groupBy('users.id')
+            ->groupBy('users.id', 'users.name')
             ->orderByDesc('total_revenue')
             ->paginate(20);
 
@@ -237,62 +237,60 @@ class ReportController extends Controller
         ];
 
         $customers = Customer::with('sales')
-            ->select('customers.*')
+            ->select('customers.id', 'customers.name', 'customers.email', 'customers.phone')
             ->selectRaw('
                 COUNT(sales.id) as total_orders,
                 COALESCE(SUM(sales.total), 0) as total_spent,
                 AVG(sales.total) as avg_ticket,
                 MAX(sales.created_at) as last_purchase,
                 MIN(sales.created_at) as first_purchase,
-                DATEDIFF(NOW(), MAX(sales.created_at)) as days_since_last_purchase
+                CONCAT(
+                    CASE
+                        WHEN DATEDIFF(NOW(), MAX(sales.created_at)) <= 30 THEN \'A\'
+                        WHEN DATEDIFF(NOW(), MAX(sales.created_at)) <= 90 THEN \'B\'
+                        ELSE \'C\'
+                    END,
+                    CASE
+                        WHEN COUNT(sales.id) >= 10 THEN \'A\'
+                        WHEN COUNT(sales.id) >= 5 THEN \'B\'
+                        ELSE \'C\'
+                    END,
+                    CASE
+                        WHEN COALESCE(SUM(sales.total), 0) >= 500 THEN \'A\'
+                        WHEN COALESCE(SUM(sales.total), 0) >= 200 THEN \'B\'
+                        ELSE \'C\'
+                    END
+                ) as rfm_segment,
+                DATEDIFF(NOW(), MAX(sales.created_at)) as recency
             ')
             ->join('sales', function($join) use ($startDate, $endDate) {
                 $join->on('customers.id', '=', 'sales.customer_id')
                     ->whereBetween('sales.created_at', [$startDate, $endDate])
                     ->where('sales.status', '!=', 'cancelado');
             })
-            ->groupBy('customers.id')
+            ->groupBy('customers.id', 'customers.name', 'customers.email', 'customers.phone')
             ->orderByDesc('total_spent')
             ->paginate(20);
 
-        // Calcular frequência e segmentos RFM
+        // Calculate RFM distribution counts
+        $rfmCounts = [
+            'vip' => 0,  // AAA
+            'gold' => 0, // A{A,C} - starts with A, not AAA
+            'silver' => 0, // starts with B
+            'bronze' => 0, // starts with C
+        ];
+
         foreach ($customers as $customer) {
-            // Recency (dias desde última compra)
-            $daysSinceLast = Carbon::parse($customer->last_purchase)->diffInDays(now());
-            $customer->recency = $daysSinceLast;
-
-            // Frequency (total de pedidos)
-            $customer->frequency = $customer->total_orders;
-
-            // Monetary (valor total)
-            $customer->monetary = $customer->total_spent;
-
-            // Classificar segmentos
-            if ($daysSinceLast <= 30) {
-                $recency_score = 'A'; // Muito recente
-            } elseif ($daysSinceLast <= 90) {
-                $recency_score = 'B'; // Recente
-            } else {
-                $recency_score = 'C'; // Antigo
+            $rfm = $customer->rfm_segment ?? 'CCC';
+            if ($rfm === 'AAA') {
+                $rfmCounts['vip']++;
+            } elseif (str_starts_with($rfm, 'A')) {
+                $rfmCounts['gold']++;
+            } elseif (str_starts_with($rfm, 'B')) {
+                $rfmCounts['silver']++;
+            } elseif (str_starts_with($rfm, 'C')) {
+                $rfmCounts['bronze']++;
             }
-
-            if ($customer->total_orders >= 10) {
-                $frequency_score = 'A'; // Muito frequente
-            } elseif ($customer->total_orders >= 5) {
-                $frequency_score = 'B'; // Frequente
-            } else {
-                $frequency_score = 'C'; // Pouco frequente
-            }
-
-            if ($customer->total_spent >= 500) {
-                $monetary_score = 'A'; // Alto valor
-            } elseif ($customer->total_spent >= 200) {
-                $monetary_score = 'B'; // Médio valor
-            } else {
-                $monetary_score = 'C'; // Baixo valor
-            }
-
-            $customer->rfm_segment = $recency_score . $frequency_score . $monetary_score;
         }
 
         $totals = [
@@ -301,6 +299,7 @@ class ReportController extends Controller
             'avg_ticket' => $customers->avg('avg_ticket'),
             'total_orders' => $customers->sum('total_orders'),
             'best_customer' => $customers->max('total_spent'),
+            'rfm_counts' => $rfmCounts,
         ];
 
         return view('admin.reports.customers', compact('customers', 'period', 'totals'));

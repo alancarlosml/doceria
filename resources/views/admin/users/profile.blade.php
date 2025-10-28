@@ -145,9 +145,6 @@
                                 <div class="mb-4">
                                     <label for="password" class="block text-sm font-medium text-gray-700 mb-1">
                                         Nova Senha
-                                        @if(Auth::user()->hasRole('admin'))
-                                            <span class="text-red-500">*</span>
-                                        @endif
                                     </label>
                                     <input
                                         type="password"
@@ -155,7 +152,6 @@
                                         name="password"
                                         class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 @error('password') border-red-300 @enderror"
                                         placeholder="Digite a nova senha"
-                                        {{ Auth::user()->hasRole('admin') ? 'required' : '' }}
                                         minlength="8"
                                     >
                                     <p class="mt-1 text-sm text-gray-500">Mínimo 8 caracteres</p>
@@ -168,9 +164,6 @@
                                 <div class="mb-4">
                                     <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-1">
                                         Confirmar Nova Senha
-                                        @if(Auth::user()->hasRole('admin'))
-                                            <span class="text-red-500">*</span>
-                                        @endif
                                     </label>
                                     <input
                                         type="password"
@@ -178,7 +171,6 @@
                                         name="password_confirmation"
                                         class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 @error('password_confirmation') border-red-300 @enderror"
                                         placeholder="Confirme a nova senha"
-                                        {{ Auth::user()->hasRole('admin') ? 'required' : '' }}
                                         minlength="8"
                                     >
                                     @error('password_confirmation')

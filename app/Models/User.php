@@ -157,17 +157,74 @@ class User extends Authenticatable
         $roleIds = [];
 
         foreach ($roles as $role) {
-            if (is_string($role)) {
+            if (is_numeric($role)) {
+                $roleIds[] = (int) $role;
+            } else {
                 $roleModel = Role::where('name', $role)->first();
                 if ($roleModel) {
                     $roleIds[] = $roleModel->id;
                 }
-            } elseif (is_numeric($role)) {
-                $roleIds[] = $role;
             }
         }
 
         $this->roles()->sync($roleIds);
+    }
+
+    /**
+     * Sync user's direct permissions.
+     */
+    public function syncPermissions($permissions, $throughRoles = false)
+    {
+        $permissionIds = [];
+
+        foreach ($permissions as $permission) {
+            if (is_numeric($permission)) {
+                $permissionIds[] = (int) $permission;
+            } else {
+                $permissionModel = Permission::where('name', $permission)->first();
+                if ($permissionModel) {
+                    $permissionIds[] = $permissionModel->id;
+                }
+            }
+        }
+
+        $this->permissions()->sync($permissionIds);
+    }
+
+    /**
+     * Assign a permission directly to user.
+     */
+    public function assignPermission($permission)
+    {
+        if (is_string($permission)) {
+            $permission = Permission::where('name', $permission)->first();
+        }
+
+        if ($permission) {
+            $this->permissions()->attach($permission);
+        }
+    }
+
+    /**
+     * Remove a permission from user.
+     */
+    public function revokePermission($permission)
+    {
+        if (is_string($permission)) {
+            $permission = Permission::where('name', $permission)->first();
+        }
+
+        if ($permission) {
+            $this->permissions()->detach($permission);
+        }
+    }
+
+    /**
+     * Revoke permission from user (alias for revokePermission).
+     */
+    public function revokePermissionTo($permission)
+    {
+        return $this->revokePermission($permission);
     }
 
     /**

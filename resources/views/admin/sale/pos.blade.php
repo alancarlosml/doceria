@@ -1,15 +1,14 @@
 @extends('layouts.admin')
 
-@section('title', 'PDV - Ponto de Venda - Doce Doce Brigaderia')
+@section('title', 'PDV - Ponto de Venda')
 
 @section('admin-content')
 <main class="flex-1 relative overflow-hidden bg-gray-50" x-data="posSystem()">
-    <!-- Container Principal com 3 Colunas -->
     <div class="h-screen flex">
         
-        <!-- COLUNA 1: Produtos e Categorias (40%) -->
-        <div class="w-2/5 bg-white border-r border-gray-200 flex flex-col">
-            <!-- Header com Busca -->
+        <!-- COLUNA 1: Produtos (40%) -->
+        <div class="w-[40%] bg-white border-r border-gray-200 flex flex-col">
+            <!-- Header -->
             <div class="p-4 border-b border-gray-200 bg-gradient-to-r from-pink-50 to-purple-50">
                 <div class="flex items-center gap-3 mb-3">
                     <div class="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center text-white text-xl">
@@ -21,115 +20,109 @@
                     </div>
                 </div>
                 
-                <!-- Busca de Produtos -->
                 <input 
                     type="text" 
-                    x-model="searchQuery"
-                    @input="filterProducts()"
+                    x-model.debounce.300ms="searchQuery"
                     placeholder="🔍 Buscar produtos..." 
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
                 >
             </div>
 
-            <!-- Abas de Categorias -->
+            <!-- Categorias -->
             <div class="flex overflow-x-auto border-b border-gray-200 bg-gray-50 px-2 py-2 gap-2">
                 <button
                     @click="selectedCategory = null"
-                    :class="selectedCategory === null ? 'bg-pink-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'"
-                    class="px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors"
+                    :class="selectedCategory === null ? 'bg-pink-500 text-white' : 'bg-white text-gray-700'"
+                    class="px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap"
                 >
                     🍽️ Todos
                 </button>
                 @foreach($categories as $category)
                 <button
                     @click="selectedCategory = {{ $category->id }}"
-                    :class="selectedCategory === {{ $category->id }} ? 'bg-pink-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'"
-                    class="px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors flex items-center gap-2"
+                    :class="selectedCategory === {{ $category->id }} ? 'bg-pink-500 text-white' : 'bg-white text-gray-700'"
+                    class="px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap"
                 >
-                    <span>{{ $category->emoji ?? '📦' }}</span>
-                    <span>{{ $category->name }}</span>
-                    <span class="text-xs opacity-75">({{ $category->products_count }})</span>
+                    {{ $category->emoji ?? '📦' }} {{ $category->name }}
                 </button>
                 @endforeach
             </div>
 
             <!-- Grid de Produtos -->
-            <div class="flex-1 overflow-y-auto p-4 max-h-[70vh]">
+            <div class="flex-1 overflow-y-auto p-4">
                 <div class="grid grid-cols-3 gap-3">
                     @foreach($products as $product)
                     <button
                         @click="addItem({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $product->price }}, '{{ $product->category->name ?? 'Sem categoria' }}')"
-                        x-show="(selectedCategory === null || selectedCategory === {{ $product->category_id }}) && productMatchesSearch({{ $product->id }}, '{{ addslashes($product->name) }}')"
-                        class="bg-white border-2 border-gray-200 rounded-xl p-4 hover:border-pink-500 hover:shadow-lg transition-all duration-200 text-left group"
-                        data-product-id="{{ $product->id }}"
-                        data-product-name="{{ $product->name }}"
+                        x-show="(selectedCategory === null || selectedCategory === {{ $product->category_id }}) && productMatchesSearch('{{ addslashes($product->name) }}')"
+                        class="bg-white border-2 border-gray-200 rounded-xl p-4 hover:border-pink-500 hover:shadow-lg transition-all text-left"
                     >
-                        <!-- Imagem/Emoji -->
-                        <div class="h-24 bg-gradient-to-br from-pink-50 to-purple-50 rounded-lg flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                        <div class="h-20 bg-gradient-to-br from-pink-50 to-purple-50 rounded-lg flex items-center justify-center mb-2">
                             @if($product->image)
                                 <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" class="h-full w-full object-cover rounded-lg">
                             @else
-                                <span class="text-4xl">{{ $product->category->emoji ?? '🍰' }}</span>
+                                <span class="text-3xl">{{ $product->category->emoji ?? '🍰' }}</span>
                             @endif
                         </div>
-                        
-                        <!-- Info do Produto -->
                         <h4 class="font-bold text-gray-800 text-xs mb-1 line-clamp-2">{{ $product->name }}</h4>
                         <p class="text-sm font-bold text-pink-600">R$ {{ number_format($product->price, 2, ',', '.') }}</p>
-                        
-                        <!-- Badge Categoria -->
-                        <div class="mt-2">
-                            <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                                {{ $product->category->name ?? 'Sem categoria' }}
-                            </span>
-                        </div>
                     </button>
                     @endforeach
                 </div>
             </div>
         </div>
 
-        <!-- COLUNA 2: Carrinho/Pedido Atual (35%) -->
-        <div class="w-2/5 bg-white flex flex-col h-screen">
+        <!-- COLUNA 2: Carrinho (40%) -->
+        <div class="w-[40%] bg-white flex flex-col border-r border-gray-200">
             <!-- Header do Carrinho -->
-            <div class="flex-shrink-0 p-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-blue-50">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
-                        <span class="text-2xl">🧾</span>
-                        <span x-text="currentSaleId ? 'Venda #' + currentSaleId : 'Novo Pedido'"></span>
-                    </h3>
-                    <button 
-                        @click="newSale()"
-                        x-show="cart.items.length > 0"
-                        class="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                    >
-                        ➕ Novo
-                    </button>
-                </div>
+            <div class="p-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-blue-50">
+                <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                    <span>🧾</span>
+                    <span>Pedido Atual</span>
+                </h3>
 
                 <!-- Tipo de Venda -->
-                <div class="flex gap-2">
+                <div class="flex gap-2 mb-3">
                     <button
                         @click="setType('balcao')"
-                        :class="cart.type === 'balcao' ? 'bg-green-500 text-white' : 'bg-white text-gray-700 border border-gray-300'"
-                        class="flex-1 py-2 rounded-lg font-medium text-sm transition-colors"
+                        :class="cart.type === 'balcao' ? 'bg-green-500 text-white' : 'bg-white text-gray-700 border'"
+                        class="flex-1 py-2 rounded-lg font-medium text-sm"
                     >
-                        🏪 Balcão
+                        🪑 Balcão
                     </button>
                     <button
                         @click="setType('delivery')"
-                        :class="cart.type === 'delivery' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 border border-gray-300'"
-                        class="flex-1 py-2 rounded-lg font-medium text-sm transition-colors"
+                        :class="cart.type === 'delivery' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 border'"
+                        class="flex-1 py-2 rounded-lg font-medium text-sm"
                     >
                         🏍️ Delivery
                     </button>
-                    <button
-                        @click="setType('encomenda')"
-                        :class="cart.type === 'encomenda' ? 'bg-purple-500 text-white' : 'bg-white text-gray-700 border border-gray-300'"
-                        class="flex-1 py-2 rounded-lg font-medium text-sm transition-colors"
+                </div>
+
+                <!-- Seleção de Mesa (Balcão) -->
+                <div x-show="cart.type === 'balcao'" class="mb-3">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Mesa (Opcional)</label>
+                    <select
+                        x-model.number="cart.table_id"
+                        @change="onTableChange"
+                        class="w-full flex items-center justify-between px-3 py-2 bg-white border-2 rounded-lg text-sm font-medium transition-all"
                     >
-                        📦 Encomenda
-                    </button>
+                        <option value="">Sem mesa (venda rápida)</option>
+                        @php
+                            // Mesclar todas as mesas ordenadas
+                            $allTables = $tables->merge($occupiedTables)->sortBy('number');
+                        @endphp
+                        @foreach($allTables as $table)
+                        <option value="{{ $table->id }}">
+                            Mesa {{ $table->number }} ({{ $table->capacity }} pessoas)
+                            @if($table->status === 'ocupada')
+                                - ⚠️ Ocupada
+                            @else
+                                - ✅ Disponível
+                            @endif
+                        </option>
+                        @endforeach
+                    </select>
                 </div>
 
                 <!-- Botão para Abrir Detalhes (Delivery/Encomenda) -->
@@ -140,7 +133,7 @@
                         :class="detailsOpen ? 'border-blue-500 text-blue-700' : 'border-gray-300 text-gray-700 hover:border-gray-400'"
                     >
                         <span x-show="cart.type === 'delivery'">📋 Detalhes da Entrega</span>
-                        <span x-show="cart.type === 'encomenda'">📋 Detalhes da Encomenda</span>
+                        {{-- <span x-show="cart.type === 'encomenda'">📋 Detalhes da Encomenda</span> --}}
                         <svg class="w-5 h-5 transition-transform" :class="detailsOpen && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                         </svg>
@@ -213,7 +206,7 @@
                         </template>
 
                         <!-- Encomenda -->
-                        <template x-if="cart.type === 'encomenda'">
+                        {{-- <template x-if="cart.type === 'encomenda'">
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -237,32 +230,71 @@
                                     >
                                 </div>
                             </div>
-                        </template>
+                        </template> --}}
                     </div>
                 </div>
+
+                <!-- Campos Delivery -->
+                {{-- <div x-show="cart.type === 'delivery'" class="space-y-2">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+                        <select x-model="cart.customer_id" class="w-full px-3 py-2 border rounded-lg text-sm">
+                            <option value="">Selecione...</option>
+                            @foreach($recentCustomers as $customer)
+                            <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Endereço *</label>
+                        <textarea
+                            x-model="cart.delivery_address"
+                            rows="2"
+                            class="w-full px-3 py-2 border rounded-lg text-sm"
+                            placeholder="Rua, número, bairro..."
+                        ></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Taxa</label>
+                            <input
+                                type="number"
+                                x-model.number="cart.delivery_fee"
+                                @input="calculateTotals()"
+                                step="0.50"
+                                class="w-full px-3 py-2 border rounded-lg text-sm"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Motoboy *</label>
+                            <select x-model="cart.motoboy_id" class="w-full px-3 py-2 border rounded-lg text-sm">
+                                <option value="">Selecione...</option>
+                                @foreach($motoboys as $motoboy)
+                                <option value="{{ $motoboy->id }}">{{ $motoboy->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div> --}}
             </div>
 
-            <!-- Lista de Itens - SCROLLÁVEL (com altura máxima limitada) -->
-            <div class="flex-1 p-4 overflow-y-auto max-h-[40vh]">
-                <div x-show="cart.items.length === 0" class="text-center py-6 text-gray-400">
+            <!-- Lista de Itens -->
+            <div class="flex-1 overflow-y-auto p-4 max-h-[40vh]">
+                <div x-show="cart.items.length === 0" class="text-center py-8 text-gray-400">
                     <div class="text-4xl mb-2">🛒</div>
-                    <p class="text-sm font-medium">Carrinho vazio</p>
-                    <p class="text-xs">Adicione produtos para iniciar</p>
+                    <p class="text-sm">Carrinho vazio</p>
                 </div>
 
                 <div class="space-y-2">
                     <template x-for="(item, index) in cart.items" :key="index">
-                        <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                            <div class="flex items-start justify-between mb-2">
+                        <div class="bg-gray-50 rounded-lg p-3 border">
+                            <div class="flex justify-between items-start mb-2">
                                 <div class="flex-1">
-                                    <h4 class="font-medium text-gray-800 text-sm" x-text="item.name"></h4>
-                                    <p class="text-xs text-gray-500" x-text="item.category"></p>
+                                    <h4 class="font-medium text-sm" x-text="item.name"></h4>
+                                    <p class="text-xs text-gray-500" x-text="'R$ ' + formatMoney(item.price) + ' cada'"></p>
                                 </div>
-                                <button 
-                                    @click="removeItem(index)"
-                                    class="text-red-500 hover:text-red-700 ml-2"
-                                >
-                                    ❌
+                                <button @click="removeItem(index)" class="text-red-500 hover:text-red-700">
+                                    ✕
                                 </button>
                             </div>
                             
@@ -270,439 +302,238 @@
                                 <div class="flex items-center gap-2">
                                     <button 
                                         @click="updateQuantity(index, -1)"
-                                        class="w-8 h-8 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center justify-center font-bold"
-                                    >
-                                        −
-                                    </button>
-                                    <span class="w-12 text-center font-bold" x-text="item.quantity"></span>
+                                        class="w-8 h-8 bg-gray-200 hover:bg-gray-300 rounded-lg font-bold"
+                                    >−</button>
+                                    <span class="w-8 text-center font-bold" x-text="item.quantity"></span>
                                     <button 
                                         @click="updateQuantity(index, 1)"
-                                        class="w-8 h-8 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center justify-center font-bold"
-                                    >
-                                        +
-                                    </button>
+                                        class="w-8 h-8 bg-gray-200 hover:bg-gray-300 rounded-lg font-bold"
+                                    >+</button>
                                 </div>
-                                <div class="text-right">
-                                    <p class="text-xs text-gray-500">R$ <span x-text="formatMoney(item.price)"></span> cada</p>
-                                    <p class="font-bold text-green-600">R$ <span x-text="formatMoney(item.subtotal)"></span></p>
-                                </div>
-                            </div>
-
-                            <div class="mt-2">
-                                <input 
-                                    type="text" 
-                                    x-model="item.notes"
-                                    placeholder="Observações..."
-                                    class="w-full px-2 py-1 text-xs border border-gray-300 rounded"
-                                >
+                                <p class="font-bold text-green-600">R$ <span x-text="formatMoney(item.subtotal)"></span></p>
                             </div>
                         </div>
                     </template>
                 </div>
             </div>
 
-            <!-- RODAPÉ FIXO - SEMPRE VISÍVEL -->
-            <div class="flex-shrink-0 border-t-2 border-gray-300 bg-white shadow-lg">
-                <div class="p-4 bg-gray-50">
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="text-sm font-medium text-gray-700">Desconto (R$)</label>
-                        <input 
-                            type="number" 
-                            x-model.number="cart.discount"
-                            @input="calculateTotals()"
-                            step="0.01"
-                            min="0"
-                            class="w-32 px-3 py-1 border border-gray-300 rounded-lg text-sm text-right"
-                        >
-                    </div>
+            <!-- Rodapé com Totais e Botões -->
+            <div class="border-t-2 border-gray-300 bg-white p-4">
+                <div class="mb-3">
+                    <label class="text-sm font-medium text-gray-700">Desconto (R$)</label>
+                    <input 
+                        type="number" 
+                        x-model.number="cart.discount"
+                        @input="calculateTotals()"
+                        step="0.01"
+                        class="w-full px-3 py-2 border rounded-lg text-sm"
+                    >
+                </div>
 
-                    <div class="flex items-center justify-between text-sm mb-1">
-                        <span class="text-gray-600">Subtotal:</span>
-                        <span class="font-medium">R$ <span x-text="formatMoney(cart.subtotal)"></span></span>
+                <div class="space-y-1 mb-3">
+                    <div class="flex justify-between text-sm">
+                        <span>Subtotal:</span>
+                        <span>R$ <span x-text="formatMoney(cart.subtotal)"></span></span>
                     </div>
-
-                    <div x-show="cart.type === 'delivery'" class="flex items-center justify-between text-sm mb-1">
-                        <span class="text-gray-600">Taxa de Entrega:</span>
-                        <span class="font-medium text-blue-600">R$ <span x-text="formatMoney(cart.delivery_fee)"></span></span>
+                    <div x-show="cart.type === 'delivery'" class="flex justify-between text-sm text-blue-600">
+                        <span>Taxa de Entrega:</span>
+                        <span>R$ <span x-text="formatMoney(cart.delivery_fee)"></span></span>
                     </div>
-
-                    <div x-show="cart.discount > 0" class="flex items-center justify-between text-sm mb-1">
-                        <span class="text-gray-600">Desconto:</span>
-                        <span class="font-medium text-red-600">- R$ <span x-text="formatMoney(cart.discount)"></span></span>
+                    <div x-show="cart.discount > 0" class="flex justify-between text-sm text-red-600">
+                        <span>Desconto:</span>
+                        <span>- R$ <span x-text="formatMoney(cart.discount)"></span></span>
                     </div>
-
-                    <div class="flex items-center justify-between pt-2 border-t border-gray-300 mb-3">
-                        <span class="text-lg font-bold text-gray-800">TOTAL:</span>
-                        <span class="text-2xl font-bold text-green-600">R$ <span x-text="formatMoney(cart.total)"></span></span>
-                    </div>
-
-                    <div class="mb-3">
-                        <textarea 
-                            x-model="cart.notes"
-                            rows="1"
-                            placeholder="Observações gerais do pedido..."
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none"
-                        ></textarea>
-                    </div>
-
-                    <!-- Botões de Ação -->
-                    <div class="grid grid-cols-2 gap-3">
-                        <button
-                            @click="saveOrder()"
-                            :disabled="cart.items.length === 0"
-                            :class="cart.items.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'"
-                            class="bg-blue-500 text-white py-3 rounded-lg font-bold transition-colors flex items-center justify-center"
-                        >
-                            <span class="mr-1">💾</span>
-                            <span>Salvar</span>
-                        </button>
-                        <button
-                            @click="finalizeSale()"
-                            :disabled="cart.items.length === 0"
-                            :class="cart.items.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'"
-                            class="bg-green-600 text-white py-3 rounded-lg font-bold transition-colors flex items-center justify-center"
-                        >
-                            <span class="mr-1">✅</span>
-                            <span>Finalizar</span>
-                        </button>
+                    <div class="flex justify-between pt-2 border-t font-bold text-lg">
+                        <span>TOTAL:</span>
+                        <span class="text-green-600">R$ <span x-text="formatMoney(cart.total)"></span></span>
                     </div>
                 </div>
+
+                <button
+                    @click="finalizeSale()"
+                    :disabled="cart.items.length === 0"
+                    class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    ✅ Finalizar Venda
+                </button>
             </div>
         </div>
 
-        <!-- COLUNA 3: Mesas e Pedidos Pendentes (25%) -->
-        <div class="w-1/5 bg-gray-50 border-l border-gray-200 flex flex-col">
+        <!-- COLUNA 3: Pedidos (20%) -->
+        <div class="w-[20%] bg-gray-50 flex flex-col">
             <!-- Tabs -->
-            <div class="flex border-b border-gray-200">
+            <div class="flex border-b">
                 <button
-                    @click="rightPanelTab = 'mesas'"
-                    :class="rightPanelTab === 'mesas' ? 'bg-white text-pink-600 border-b-2 border-pink-600' : 'bg-gray-100 text-gray-600'"
-                    class="flex-1 py-3 font-medium text-sm"
+                    @click="activeTab = 'pendentes'"
+                    :class="activeTab === 'pendentes' ? 'bg-white text-pink-600 border-b-2 border-pink-600' : 'bg-gray-100 text-gray-600'"
+                    class="flex-1 py-3 text-xs font-medium"
                 >
-                    🪑 Mesas
+                    Pendentes ({{ $pendingSales->count() }})
                 </button>
                 <button
-                    @click="rightPanelTab = 'pedidos'"
-                    :class="rightPanelTab === 'pedidos' ? 'bg-white text-pink-600 border-b-2 border-pink-600' : 'bg-gray-100 text-gray-600'"
-                    class="flex-1 py-3 font-medium text-sm"
+                    @click="activeTab = 'entrega'"
+                    :class="activeTab === 'entrega' ? 'bg-white text-pink-600 border-b-2 border-pink-600' : 'bg-gray-100 text-gray-600'"
+                    class="flex-1 py-3 text-xs font-medium"
                 >
-                    📋 Pedidos ({{ $pendingSales->count() }})
-                </button>
-                <button
-                    @click="rightPanelTab = 'entrega'"
-                    :class="rightPanelTab === 'entrega' ? 'bg-white text-pink-600 border-b-2 border-pink-600' : 'bg-gray-100 text-gray-600'"
-                    class="flex-1 py-3 font-medium text-sm"
-                >
-                    🏍️ Entrega ({{ $inDeliverySales->count() }})
+                    Entrega ({{ $inDeliverySales->count() }})
                 </button>
             </div>
 
-            <!-- Conteúdo das Mesas -->
-            <div x-show="rightPanelTab === 'mesas'" class="flex-1 overflow-y-auto p-4">
-                <!-- Mesas Disponíveis -->
-                <div class="mb-6">
-                    <h4 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-                        <span class="w-3 h-3 bg-green-500 rounded-full"></span>
-                        Disponíveis ({{ $tables->count() }})
-                    </h4>
-                    <div class="grid grid-cols-2 gap-2">
-                        @foreach($tables as $table)
-                        <button
-                            @click="selectTable({{ $table->id }}, '{{ $table->number }}')"
-                            :class="cart.table_id === {{ $table->id }} ? 'bg-green-500 text-white border-green-600' : 'bg-white text-gray-700 border-gray-300 hover:border-green-500'"
-                            class="border-2 rounded-lg p-3 transition-all"
-                        >
-                            <div class="text-2xl mb-1">🪑</div>
-                            <div class="font-bold text-sm">Mesa {{ $table->number }}</div>
-                            <div class="text-xs opacity-75">{{ $table->capacity }} pessoas</div>
-                        </button>
-                        @endforeach
-                    </div>
-                </div>
-
-                <!-- Mesas Ocupadas -->
-                @if($occupiedTables->count() > 0)
-                <div>
-                    <h4 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-                        <span class="w-3 h-3 bg-red-500 rounded-full"></span>
-                        Ocupadas ({{ $occupiedTables->count() }})
-                    </h4>
-                    <div class="space-y-2">
-                        @foreach($occupiedTables as $table)
-                        @php
-                            $sale = $table->sales->first();
-                        @endphp
-                        <button
-                            @click="loadSale({{ $sale->id }})"
-                            class="w-full bg-red-50 border-2 border-red-200 rounded-lg p-3 text-left hover:border-red-400 transition-all"
-                        >
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="font-bold text-sm">🪑 Mesa {{ $table->number }}</span>
-                                <span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
-                                    {{ ucfirst($sale->status) }}
-                                </span>
-                            </div>
-                            @if($sale->customer)
-                            <div class="text-xs text-gray-600 mb-1">
-                                👤 {{ $sale->customer->name }}
-                            </div>
-                            @endif
-                            <div class="text-xs text-gray-600">
-                                🧾 {{ $sale->items->count() }} itens - R$ {{ number_format($sale->total, 2, ',', '.') }}
-                            </div>
-                            <div class="text-xs text-gray-400 mt-1">
-                                ⏰ {{ $sale->created_at->diffForHumans() }}
-                            </div>
-                        </button>
-                        @endforeach
-                    </div>
-                </div>
-                @endif
-            </div>
-
-            <!-- Conteúdo dos Pedidos Pendentes -->
-            <div x-show="rightPanelTab === 'pedidos'" class="flex-1 overflow-y-auto p-4">
+            <!-- Pedidos Pendentes -->
+            <div x-show="activeTab === 'pendentes'" class="flex-1 overflow-y-auto p-3">
                 @if($pendingSales->count() > 0)
-                <div class="space-y-2">
                     @foreach($pendingSales as $sale)
-                    <button
-                        @click="loadSale({{ $sale->id }})"
-                        class="w-full bg-white border-2 border-gray-200 rounded-lg p-3 text-left hover:border-pink-400 transition-all"
-                    >
-                        <!-- Header do Pedido -->
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="font-bold text-sm">
-                                @if($sale->type === 'balcao')
-                                    🏪 Balcão #{{ $sale->id }}
-                                @elseif($sale->type === 'delivery')
-                                    🏍️ Delivery #{{ $sale->id }}
-                                @else
-                                    📦 Encomenda #{{ $sale->id }}
-                                @endif
+                    <div class="bg-white border rounded-lg p-3 mb-2 text-xs cursor-pointer hover:border-pink-400" @click="loadSale({{ $sale->id }})">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="font-bold">
+                                @if($sale->type === 'balcao')🪑 @else🏍️@endif
+                                #{{ $sale->id }}
                             </span>
-                            <span class="text-xs px-2 py-1 rounded-full
-                                {{ $sale->status === 'pendente' ? 'bg-yellow-100 text-yellow-800' : '' }}
-                                {{ $sale->status === 'em_preparo' ? 'bg-blue-100 text-blue-800' : '' }}
-                                {{ $sale->status === 'pronto' ? 'bg-green-100 text-green-800' : '' }}
-                                {{ $sale->status === 'saiu_entrega' ? 'bg-purple-100 text-purple-800' : '' }}
-                            ">
-                                {{ ucfirst(str_replace('_', ' ', $sale->status)) }}
+                            <span class="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
+                                {{ ucfirst($sale->status) }}
                             </span>
                         </div>
-
-                        <!-- Info do Cliente -->
-                        @if($sale->customer)
-                        <div class="text-xs text-gray-600 mb-1">
-                            👤 {{ $sale->customer->name }}
-                        </div>
-                        @endif
-
-                        <!-- Mesa (se aplicável) -->
                         @if($sale->table)
-                        <div class="text-xs text-gray-600 mb-1">
-                            🪑 Mesa {{ $sale->table->number }}
-                        </div>
+                        <p class="text-gray-600 mb-1">Mesa {{ $sale->table->number }}</p>
                         @endif
-
-                        <!-- Resumo -->
-                        <div class="text-xs text-gray-600 mb-2">
-                            🧾 {{ $sale->items->count() }} itens - <span class="font-bold text-green-600">R$ {{ number_format($sale->total, 2, ',', '.') }}</span>
-                        </div>
-
-                        <!-- Produtos -->
-                        <div class="text-xs text-gray-500 space-y-1">
-                            @foreach($sale->items->take(3) as $item)
-                            <div>• {{ $item->quantity }}x {{ $item->product->name }}</div>
-                            @endforeach
-                            @if($sale->items->count() > 3)
-                            <div class="text-gray-400">+ {{ $sale->items->count() - 3 }} itens...</div>
-                            @endif
-                        </div>
-
-                        <!-- Hora -->
-                        <div class="text-xs text-gray-400 mt-2">
-                            ⏰ {{ $sale->created_at->format('H:i') }}
-                        </div>
-                    </button>
+                        @if($sale->customer)
+                        <p class="text-gray-600 mb-1">{{ $sale->customer->name }}</p>
+                        @endif
+                        <p class="font-bold text-green-600">R$ {{ number_format($sale->total, 2, ',', '.') }}</p>
+                        <p class="text-gray-400 mt-1">{{ $sale->created_at->format('H:i') }}</p>
+                    </div>
                     @endforeach
-                </div>
                 @else
-                <div class="text-center py-12 text-gray-400">
-                    <div class="text-5xl mb-3">📋</div>
-                    <p class="text-sm">Nenhum pedido pendente</p>
-                </div>
+                    <div class="text-center py-12 text-gray-400">
+                        <div class="text-4xl mb-2">📋</div>
+                        <p class="text-xs">Sem pedidos</p>
+                    </div>
                 @endif
             </div>
 
-            <!-- Conteúdo dos Pedidos Em Entrega -->
-            <div x-show="rightPanelTab === 'entrega'" class="flex-1 overflow-y-auto p-4">
-                <h4 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-                    <span class="w-3 h-3 bg-purple-500 rounded-full"></span>
-                    Pedidos Em Entrega ({{ $inDeliverySales->count() }})
-                </h4>
-
+            <!-- Pedidos em Entrega -->
+            <div x-show="activeTab === 'entrega'" class="flex-1 overflow-y-auto p-3">
                 @if($inDeliverySales->count() > 0)
-                <div class="space-y-2">
                     @foreach($inDeliverySales as $sale)
-                    <div class="w-full bg-purple-50 border-2 border-purple-200 rounded-lg p-3 text-left transition-all">
-                        <!-- Header do Pedido -->
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="font-bold text-sm">
-                                @if($sale->type === 'balcao')
-                                    🏪 Balcão #{{ $sale->id }}
-                                @elseif($sale->type === 'delivery')
-                                    🏍️ Delivery #{{ $sale->id }}
-                                @else
-                                    📦 Encomenda #{{ $sale->id }}
-                                @endif
-                            </span>
-                            <span class="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-800">
+                    <div class="bg-purple-50 border-2 border-purple-200 rounded-lg p-3 mb-2 text-xs">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="font-bold">🏍️ #{{ $sale->id }}</span>
+                            <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">
                                 Em Entrega
                             </span>
                         </div>
-
-                        <!-- Info do Cliente -->
                         @if($sale->customer)
-                        <div class="text-xs text-gray-600 mb-1">
-                            👤 {{ $sale->customer->name }}
-                        </div>
+                        <p class="text-gray-600 mb-1">{{ $sale->customer->name }}</p>
                         @endif
-
-                        <!-- Motoboy (se aplicável) -->
                         @if($sale->motoboy)
-                        <div class="text-xs text-gray-600 mb-1">
-                            🏍️ {{ $sale->motoboy->name }}
-                        </div>
+                        <p class="text-gray-600 mb-1">Motoboy: {{ $sale->motoboy->name }}</p>
                         @endif
-
-                        <!-- Endereço (se aplicável) -->
                         @if($sale->delivery_address)
-                        <div class="text-xs text-gray-600 mb-2 max-w-full">
-                            📍 {{ Str::limit($sale->delivery_address, 40) }}
-                        </div>
+                        <p class="text-gray-600 mb-2 text-xs break-words">{{ Str::limit($sale->delivery_address, 40) }}</p>
                         @endif
-
-                        <!-- Resumo -->
-                        <div class="text-xs text-gray-600 mb-2">
-                            🧾 {{ $sale->items->count() }} itens - <span class="font-bold text-green-600">R$ {{ number_format($sale->total, 2, ',', '.') }}</span>
-                        </div>
-
-                        <!-- Horário de saída -->
-                        <div class="text-xs text-gray-400 mb-3">
-                            ⏰ Saiu às {{ $sale->updated_at->format('H:i') }}
-                        </div>
-
-                        <!-- Botões de Ação -->
-                        <div class="flex gap-1">
-                            <button
-                                @click="markAsDelivered({{ $sale->id }})"
-                                class="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs font-bold py-2 px-3 rounded-md transition-colors flex items-center justify-center gap-1"
-                            >
-                                ✅ Entregue
-                            </button>
-                            <button
-                                @click="markAsProblem({{ $sale->id }})"
-                                class="flex-1 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold py-2 px-3 rounded-md transition-colors flex items-center justify-center gap-1"
-                            >
-                                ⚠️ Problema
-                            </button>
-                        </div>
+                        <p class="font-bold text-green-600 mb-2">R$ {{ number_format($sale->total, 2, ',', '.') }}</p>
+                        <p class="text-gray-400 mb-3">Saiu: {{ $sale->updated_at->format('H:i') }}</p>
+                        <button
+                            @click="markAsDelivered({{ $sale->id }})"
+                            class="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded text-xs font-bold"
+                        >
+                            ✅ Entregue
+                        </button>
                     </div>
                     @endforeach
-                </div>
                 @else
-                <div class="text-center py-12 text-gray-400">
-                    <div class="text-5xl mb-3">🏍️</div>
-                    <p class="text-sm">Nenhum pedido em entrega</p>
-                    <p class="text-xs">Pedidos aparecerão aqui quando saírem para entrega</p>
-                </div>
+                    <div class="text-center py-12 text-gray-400">
+                        <div class="text-4xl mb-2">🏍️</div>
+                        <p class="text-xs">Sem entregas</p>
+                    </div>
                 @endif
             </div>
         </div>
     </div>
 
     <!-- Modal de Finalização -->
-    <div x-show="showFinalizationModal" 
+    <div x-show="showModal"
          x-cloak
-         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-         @click.self="showFinalizationModal = false"
-    >
-        <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
-            <h3 class="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span>💳</span>
-                <span>Finalizar Venda</span>
-            </h3>
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4 relative">
+            <!-- Botão X para fechar no canto superior direito -->
+            <button
+                @click="showModal = false"
+                class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-xl font-bold w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center"
+                title="Fechar"
+            >
+                ✕
+            </button>
+            <h3 class="text-2xl font-bold mb-4 pr-8">💳 Finalizar Venda</h3>
 
-            <!-- Resumo da Venda -->
+            <!-- Resumo -->
             <div class="bg-gray-50 rounded-lg p-4 mb-4">
                 <div class="flex justify-between mb-2">
-                    <span class="text-gray-600">Subtotal:</span>
+                    <span>Subtotal:</span>
                     <span class="font-bold">R$ <span x-text="formatMoney(cart.subtotal)"></span></span>
                 </div>
                 <div x-show="cart.type === 'delivery'" class="flex justify-between mb-2">
-                    <span class="text-gray-600">Taxa de Entrega:</span>
-                    <span class="font-medium text-blue-600">R$ <span x-text="formatMoney(cart.delivery_fee)"></span></span>
+                    <span>Taxa:</span>
+                    <span class="text-blue-600">R$ <span x-text="formatMoney(cart.delivery_fee)"></span></span>
                 </div>
                 <div x-show="cart.discount > 0" class="flex justify-between mb-2">
-                    <span class="text-gray-600">Desconto:</span>
-                    <span class="font-bold text-red-600">- R$ <span x-text="formatMoney(cart.discount)"></span></span>
+                    <span>Desconto:</span>
+                    <span class="text-red-600">- R$ <span x-text="formatMoney(cart.discount)"></span></span>
                 </div>
-                <div class="flex justify-between pt-2 border-t border-gray-300">
-                    <span class="text-lg font-bold">TOTAL:</span>
-                    <span class="text-2xl font-bold text-green-600">R$ <span x-text="formatMoney(cart.total)"></span></span>
+                <div class="flex justify-between pt-2 border-t text-xl">
+                    <span class="font-bold">TOTAL:</span>
+                    <span class="font-bold text-green-600">R$ <span x-text="formatMoney(cart.total)"></span></span>
                 </div>
             </div>
 
-            <!-- Método de Pagamento -->
-            <div class="mb-6">
-                <label class="block text-sm font-bold text-gray-700 mb-3">Método de Pagamento:</label>
-                <div class="grid grid-cols-2 gap-2">
-                    <button
-                        @click="cart.payment_method = 'dinheiro'"
-                        :class="cart.payment_method === 'dinheiro' ? 'bg-green-500 text-white border-green-600' : 'bg-white text-gray-700 border-gray-300'"
-                        class="border-2 rounded-lg p-3 font-medium transition-all"
-                    >
-                        💵 Dinheiro
-                    </button>
-                    <button
-                        @click="cart.payment_method = 'pix'"
-                        :class="cart.payment_method === 'pix' ? 'bg-green-500 text-white border-green-600' : 'bg-white text-gray-700 border-gray-300'"
-                        class="border-2 rounded-lg p-3 font-medium transition-all"
-                    >
-                        📱 PIX
-                    </button>
-                    <button
-                        @click="cart.payment_method = 'cartao_debito'"
-                        :class="cart.payment_method === 'cartao_debito' ? 'bg-green-500 text-white border-green-600' : 'bg-white text-gray-700 border-gray-300'"
-                        class="border-2 rounded-lg p-3 font-medium transition-all"
-                    >
-                        💳 Débito
-                    </button>
-                    <button
-                        @click="cart.payment_method = 'cartao_credito'"
-                        :class="cart.payment_method === 'cartao_credito' ? 'bg-green-500 text-white border-green-600' : 'bg-white text-gray-700 border-gray-300'"
-                        class="border-2 rounded-lg p-3 font-medium transition-all"
-                    >
-                        💳 Crédito
-                    </button>
-                </div>
+            <!-- Forma de Pagamento -->
+            <label class="block text-sm font-bold mb-3">Forma de Pagamento:</label>
+            <div class="grid grid-cols-2 gap-2 mb-6">
+                <button
+                    @click="cart.payment_method = 'dinheiro'"
+                    :class="cart.payment_method === 'dinheiro' ? 'bg-green-500 text-white' : 'bg-white border-2'"
+                    class="py-3 rounded-lg font-medium"
+                >
+                    💵 Dinheiro
+                </button>
+                <button
+                    @click="cart.payment_method = 'pix'"
+                    :class="cart.payment_method === 'pix' ? 'bg-green-500 text-white' : 'bg-white border-2'"
+                    class="py-3 rounded-lg font-medium"
+                >
+                    📱 PIX
+                </button>
+                <button
+                    @click="cart.payment_method = 'cartao_debito'"
+                    :class="cart.payment_method === 'cartao_debito' ? 'bg-green-500 text-white' : 'bg-white border-2'"
+                    class="py-3 rounded-lg font-medium"
+                >
+                    💳 Débito
+                </button>
+                <button
+                    @click="cart.payment_method = 'cartao_credito'"
+                    :class="cart.payment_method === 'cartao_credito' ? 'bg-green-500 text-white' : 'bg-white border-2'"
+                    class="py-3 rounded-lg font-medium"
+                >
+                    💳 Crédito
+                </button>
             </div>
 
             <!-- Botões -->
             <div class="grid grid-cols-2 gap-3">
                 <button
-                    @click="showFinalizationModal = false"
-                    class="bg-gray-200 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-300 transition-colors"
+                    @click="printSale()"
+                    :disabled="!cart.payment_method"
+                    class="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold disabled:opacity-50"
                 >
-                    Cancelar
+                    🖨️ Imprimir
                 </button>
                 <button
-                    @click="confirmFinalization()"
+                    @click="confirmSaleAndPrint()"
                     :disabled="!cart.payment_method"
-                    :class="!cart.payment_method ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'"
-                    class="bg-green-600 text-white py-3 rounded-lg font-bold transition-colors"
+                    class="bg-green-600 text-white py-3 rounded-lg font-bold disabled:opacity-50"
                 >
-                    ✅ Confirmar
+                    ✅ Confirmar & Imprimir
                 </button>
             </div>
         </div>
@@ -712,105 +543,97 @@
 <script>
 function posSystem() {
     return {
-        // Estado
         searchQuery: '',
         selectedCategory: null,
-        rightPanelTab: 'mesas',
-        showFinalizationModal: false,
-        currentSaleId: null, // ID da venda atual sendo editada
-        
-        // Carrinho
+        activeTab: 'pendentes',
+        showModal: false,
+
+        // Occupied tables with sale IDs
+        occupiedTables: @json($occupiedTablesWithSales),
+
         cart: {
-            id: null, // Para vendas existentes
+            sale_id: null,
             type: 'balcao',
-            customer_id: null,
             table_id: null,
+            customer_id: null,
             motoboy_id: null,
-            payment_method: null,
-            delivery_date: null,
-            delivery_time: null,
             delivery_address: '',
-            notes: '',
+            delivery_fee: 0.00,
+            payment_method: null,
             items: [],
             subtotal: 0,
             discount: 0,
-            delivery_fee: 0,
             total: 0
         },
 
         init() {
-            console.log('POS System iniciado');
-            this.calculateTotals();
+            console.log('PDV iniciado');
+            this.setType(this.cart.type); // Inicializar tipo corretamente
         },
 
-        // Formatar valor monetário
         formatMoney(value) {
-            const num = parseFloat(value) || 0;
-            return num.toFixed(2).replace('.', ',');
+            return parseFloat(value || 0).toFixed(2).replace('.', ',');
         },
 
-        // Setar tipo de venda
+        productMatchesSearch(name) {
+            if (!this.searchQuery) return true;
+            return name.toLowerCase().includes(this.searchQuery.toLowerCase());
+        },
+
         setType(type) {
             this.cart.type = type;
-            
-            // Resetar campos específicos
             if (type === 'balcao') {
                 this.cart.delivery_fee = 0;
-                this.cart.motoboy_id = '';
                 this.cart.delivery_address = '';
-                this.cart.delivery_date = '';
-                this.cart.delivery_time = '';
-            } else if (type === 'delivery') {
-                if (this.cart.delivery_fee === 0) {
-                    this.cart.delivery_fee = 5.00;
-                }
+                this.cart.motoboy_id = null;
+            } else {
                 this.cart.table_id = null;
-                this.cart.delivery_date = '';
-                this.cart.delivery_time = '';
-            } else if (type === 'encomenda') {
-                this.cart.delivery_fee = 0;
-                this.cart.motoboy_id = '';
-                this.cart.table_id = null;
+                this.cart.delivery_fee = 5.00;
             }
-            
             this.calculateTotals();
         },
 
-        // Adicionar item ao carrinho
-        addItem(productId, name, price, category) {
-            const existingItem = this.cart.items.find(item => item.product_id === productId);
-            
-            if (existingItem) {
-                existingItem.quantity++;
-                existingItem.subtotal = existingItem.quantity * existingItem.price;
+        onTableChange() {
+            // When table selection changes, check if it's occupied and load the sale
+            const tableId = this.cart.table_id;
+            if (tableId && this.occupiedTables[tableId]) {
+                // Table is occupied, load the existing sale
+                const saleId = this.occupiedTables[tableId];
+                this.loadSale(saleId);
+            } else if (!tableId) {
+                // No table selected, clear any loaded sale
+                this.cart.sale_id = null;
+            }
+            // If table is available (not occupied), just set table_id without loading sale
+        },
+
+        addItem(id, name, price, category) {
+            const existing = this.cart.items.find(item => item.product_id === id);
+            if (existing) {
+                existing.quantity++;
+                existing.subtotal = existing.quantity * existing.price;
             } else {
                 this.cart.items.push({
-                    product_id: productId,
+                    product_id: id,
                     name: name,
                     price: parseFloat(price),
                     category: category,
                     quantity: 1,
-                    subtotal: parseFloat(price),
-                    notes: ''
+                    subtotal: parseFloat(price)
                 });
             }
-            
             this.calculateTotals();
-            this.showToast(`${name} adicionado ao carrinho!`, 'success');
+            this.showToast(`${name} adicionado!`, 'success');
         },
 
-        // Remover item
         removeItem(index) {
             this.cart.items.splice(index, 1);
             this.calculateTotals();
-            this.showToast('Item removido!', 'info');
         },
 
-        // Atualizar quantidade
         updateQuantity(index, change) {
             const item = this.cart.items[index];
             item.quantity += change;
-            
             if (item.quantity <= 0) {
                 this.removeItem(index);
             } else {
@@ -819,390 +642,215 @@ function posSystem() {
             }
         },
 
-        // Calcular totais
         calculateTotals() {
-            this.cart.subtotal = this.cart.items.reduce((sum, item) => {
-                const subtotal = parseFloat(item.subtotal) || 0;
-                return sum + subtotal;
-            }, 0);
-            
-            const deliveryFee = parseFloat(this.cart.delivery_fee) || 0;
+            this.cart.subtotal = this.cart.items.reduce((sum, item) => sum + parseFloat(item.subtotal), 0);
+            const fee = parseFloat(this.cart.delivery_fee) || 0;
             const discount = parseFloat(this.cart.discount) || 0;
-            
-            this.cart.total = this.cart.subtotal + deliveryFee - discount;
+            this.cart.total = this.cart.subtotal + fee - discount;
         },
 
-        // Filtrar produtos
-        filterProducts() {
-            // A filtragem é feita via x-show no template
-        },
-
-        productMatchesSearch(productId, productName) {
-            if (!this.searchQuery) return true;
-            return productName.toLowerCase().includes(this.searchQuery.toLowerCase());
-        },
-
-        // Selecionar mesa
-        selectTable(tableId, tableNumber) {
-            this.cart.type = 'balcao';
-            this.cart.table_id = tableId;
-            this.cart.delivery_fee = 0;
-            this.cart.motoboy_id = '';
-            this.cart.delivery_address = '';
-            this.calculateTotals();
-            this.showToast(`Mesa ${tableNumber} selecionada!`, 'success');
-        },
-
-        // Novo pedido (limpar carrinho)
-        newSale() {
-            if (this.cart.items.length > 0) {
-                if (!confirm('Deseja iniciar um novo pedido? O pedido atual será perdido se não for salvo.')) {
-                    return;
-                }
-            }
-            
-            this.resetCart();
-            this.showToast('Novo pedido iniciado!', 'info');
-        },
-
-        // Reset completo do carrinho
-        resetCart() {
-            this.currentSaleId = null;
-            this.cart = {
-                type: 'balcao',
-                customer_id: '',
-                table_id: null,
-                motoboy_id: '',
-                payment_method: null,
-                delivery_date: '',
-                delivery_time: '',
-                delivery_address: '',
-                notes: '',
-                items: [],
-                subtotal: 0,
-                discount: 0,
-                delivery_fee: 0,
-                total: 0
-            };
-        },
-
-        // Validar campos obrigatórios
-        validateCart() {
+        finalizeSale() {
             if (this.cart.items.length === 0) {
                 this.showToast('Adicione produtos ao carrinho!', 'error');
-                return false;
+                return;
             }
 
             if (this.cart.type === 'delivery') {
                 if (!this.cart.delivery_address || this.cart.delivery_address.trim() === '') {
-                    this.showToast('Endereço de entrega é obrigatório para delivery!', 'error');
-                    return false;
+                    this.showToast('Endereço é obrigatório para delivery!', 'error');
+                    return;
                 }
-                if (!this.cart.motoboy_id || this.cart.motoboy_id === '') {
-                    this.showToast('Selecione um motoboy para delivery!', 'error');
-                    return false;
-                }
-            }
-
-            if (this.cart.type === 'encomenda') {
-                if (!this.cart.delivery_date || this.cart.delivery_date === '') {
-                    this.showToast('Data de entrega é obrigatória para encomendas!', 'error');
-                    return false;
-                }
-                if (!this.cart.delivery_time || this.cart.delivery_time === '') {
-                    this.showToast('Horário de entrega é obrigatório para encomendas!', 'error');
-                    return false;
+                if (!this.cart.motoboy_id) {
+                    this.showToast('Selecione um motoboy!', 'error');
+                    return;
                 }
             }
 
-            return true;
+            this.showModal = true;
         },
 
-        // Salvar pedido (sem finalizar)
-        async saveOrder() {
-            if (!this.validateCart()) {
+        async confirmSale() {
+            if (!this.cart.payment_method) {
+                this.showToast('Selecione a forma de pagamento!', 'error');
                 return;
             }
 
-            const saleData = {
-                ...this.cart,
-                customer_id: this.cart.customer_id || null,
-                motoboy_id: this.cart.motoboy_id || null,
-                discount: parseFloat(this.cart.discount) || 0,
-                delivery_fee: parseFloat(this.cart.delivery_fee) || 0
-            };
-
             try {
-                const response = await fetch('/sales', {
-                    method: 'POST',
+                let url, method;
+                if (this.cart.sale_id) {
+                    // Update existing sale
+                    url = `/sales/${this.cart.sale_id}`;
+                    method = 'PUT';
+                } else {
+                    // Create new sale
+                    url = '/sales';
+                    method = 'POST';
+                }
+
+                const response = await fetch(url, {
+                    method: method,
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Accept': 'application/json'
                     },
-                    body: JSON.stringify(saleData)
+                    body: JSON.stringify({
+                        ...this.cart,
+                        finalize: true
+                    })
                 });
 
                 const data = await response.json();
 
                 if (data.success) {
-                    this.showToast('Pedido salvo com sucesso!', 'success');
-                    this.currentSaleId = data.sale.id;
-                    
-                    // Recarregar página após 1 segundo
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
-                } else {
-                    throw new Error(data.message || 'Erro ao salvar pedido');
-                }
-            } catch (error) {
-                console.error('Erro:', error);
-                this.showToast('Erro ao salvar pedido: ' + error.message, 'error');
-            }
-        },
+                    // Store the sale ID (important for printing)
+                    const saleId = data.sale?.id || this.cart.sale_id;
+                    this.cart.sale_id = saleId;
 
-        // Finalizar venda (abrir modal de pagamento)
-        finalizeSale() {
-            if (!this.validateCart()) {
-                return;
-            }
-
-            this.showFinalizationModal = true;
-        },
-
-        // Confirmar finalização com pagamento
-        async confirmFinalization() {
-            if (!this.cart.payment_method) {
-                this.showToast('Selecione um método de pagamento!', 'error');
-                return;
-            }
-
-            const saleData = {
-                ...this.cart,
-                customer_id: this.cart.customer_id || null,
-                motoboy_id: this.cart.motoboy_id || null,
-                discount: parseFloat(this.cart.discount) || 0,
-                delivery_fee: parseFloat(this.cart.delivery_fee) || 0,
-                payment_method: this.cart.payment_method
-            };
-
-            try {
-                let response;
-                
-                if (this.currentSaleId) {
-                    // Atualizar venda existente e finalizar
-                    response = await fetch(`/sales/${this.currentSaleId}/finalize`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            payment_method: this.cart.payment_method,
-                            discount: parseFloat(this.cart.discount) || 0
-                        })
-                    });
-                } else {
-                    // Criar e finalizar nova venda
-                    response = await fetch('/sales', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(saleData)
-                    });
-                }
-
-                const data = await response.json();
-
-                if (data.success) {
                     this.showToast('Venda finalizada com sucesso!', 'success');
-                    this.showFinalizationModal = false;
-                    this.resetCart();
-                    
-                    // Recarregar página após 1 segundo
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
+                    return saleId;
                 } else {
                     throw new Error(data.message || 'Erro ao finalizar venda');
                 }
             } catch (error) {
                 console.error('Erro:', error);
-                this.showToast('Erro ao finalizar venda: ' + error.message, 'error');
+                this.showToast('Erro: ' + error.message, 'error');
+                throw error;
             }
         },
 
-        // Carregar venda existente
-        async loadSale(saleId) {
-            this.showToast('Carregando venda...', 'info');
+        async printSale() {
+            if (!this.cart.payment_method) {
+                this.showToast('Selecione a forma de pagamento!', 'error');
+                return;
+            }
 
             try {
-                const response = await fetch(`/sales/${saleId}/pos-data`, {
-                    method: 'GET',
+                // First finalize the sale
+                const saleId = await this.confirmSale();
+
+                // Then print
+                const response = await fetch(`/sales/${saleId}/print-receipt`, {
+                    method: 'POST',
                     headers: {
+                        'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Accept': 'application/json'
                     }
                 });
 
                 const data = await response.json();
+                if (data.success) {
+                    this.showToast('Recibo impresso com sucesso!', 'success');
+                    this.showModal = false;
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    this.showToast('Erro ao imprimir: ' + data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Erro na impressão:', error);
+                this.showToast('Erro na impressão: ' + error.message, 'error');
+            }
+        },
 
-                if (data.success && data.sale) {
-                    const saleData = data.sale;
+        async confirmSaleAndPrint() {
+            try {
+                const saleId = await this.confirmSale();
 
-                    // Resetar carrinho
-                    this.resetCart();
-
-                    // Carregar ID da venda
-                    this.currentSaleId = saleData.id;
-
-                    // Popular cart com dados da venda
-                    this.cart.type = saleData.type || 'balcao';
-                    this.cart.customer_id = saleData.customer_id || '';
-                    this.cart.table_id = saleData.table_id || null;
-                    this.cart.motoboy_id = saleData.motoboy_id || '';
-                    this.cart.payment_method = saleData.payment_method || null;
-                    this.cart.delivery_date = saleData.delivery_date || '';
-                    this.cart.delivery_time = saleData.delivery_time || '';
-                    this.cart.delivery_address = saleData.delivery_address || '';
-                    this.cart.notes = saleData.notes || '';
-                    this.cart.discount = parseFloat(saleData.discount) || 0;
-                    this.cart.delivery_fee = parseFloat(saleData.delivery_fee) || 0;
-
-                    // Carregar itens
-                    if (saleData.items && Array.isArray(saleData.items)) {
-                        this.cart.items = saleData.items.map(item => ({
-                            product_id: item.product_id,
-                            name: item.name,
-                            price: parseFloat(item.price) || 0,
-                            category: item.category || '',
-                            quantity: parseInt(item.quantity) || 1,
-                            subtotal: parseFloat(item.subtotal) || 0,
-                            notes: item.notes || ''
-                        }));
+                // Print after confirmation
+                const response = await fetch(`/sales/${saleId}/print-receipt`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
                     }
+                });
 
-                    // Recalcular totais
+                const data = await response.json();
+                if (data.success) {
+                    this.showToast('Venda confirmada e recibo impresso!', 'success');
+                    this.showModal = false;
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    this.showToast('Venda confirmada, mas erro na impressão: ' + data.message, 'info');
+                    this.showModal = false;
+                    setTimeout(() => window.location.reload(), 1000);
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                this.showToast('Erro: ' + error.message, 'error');
+            }
+        },
+
+        async loadSale(id) {
+            try {
+                const response = await fetch(`/sales/${id}/pos-data`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const sale = data.sale;
+                    this.cart = {
+                        sale_id: sale.id,
+                        type: sale.type,
+                        table_id: sale.table_id,
+                        customer_id: sale.customer_id,
+                        motoboy_id: sale.motoboy_id,
+                        delivery_address: sale.delivery_address || '',
+                        delivery_fee: parseFloat(sale.delivery_fee) || 0,
+                        payment_method: sale.payment_method,
+                        items: sale.items,
+                        subtotal: 0,
+                        discount: parseFloat(sale.discount) || 0,
+                        total: 0
+                    };
                     this.calculateTotals();
-
-                    console.log('Venda carregada:', this.cart);
-                    this.showToast('Venda carregada com sucesso!', 'success');
-                } else {
-                    throw new Error(data.message || 'Erro ao carregar venda');
+                    this.showToast('Venda carregada!', 'success');
                 }
             } catch (error) {
-                console.error('Erro ao carregar venda:', error);
-                this.showToast('Erro ao carregar venda: ' + error.message, 'error');
+                this.showToast('Erro ao carregar venda', 'error');
             }
         },
 
-        // Marcar pedido como entregue
-        async markAsDelivered(saleId) {
-            if (!confirm('Confirmar que o pedido foi entregue com sucesso?')) {
-                return;
-            }
-
-            this.showToast('Marcando como entregue...', 'info');
+        async markAsDelivered(id) {
+            if (!confirm('Confirmar entrega?')) return;
 
             try {
-                const response = await fetch(`/sales/${saleId}/status`, {
+                const response = await fetch(`/sales/${id}/update-status`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Accept': 'application/json'
                     },
-                    body: JSON.stringify({
-                        status: 'entregue'
-                    })
+                    body: JSON.stringify({ status: 'entregue' })
                 });
 
                 const data = await response.json();
-
                 if (data.success) {
-                    this.showToast('Pedido marcado como entregue! ✅', 'success');
-                    // Recarregar página após 1 segundo
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
-                } else {
-                    throw new Error(data.message || 'Erro ao atualizar pedido');
+                    this.showToast('Pedido entregue!', 'success');
+                    setTimeout(() => window.location.reload(), 1000);
                 }
             } catch (error) {
-                console.error('Erro:', error);
-                this.showToast('Erro ao marcar como entregue: ' + error.message, 'error');
+                this.showToast('Erro ao atualizar', 'error');
             }
         },
 
-        // Marcar pedido como problema
-        async markAsProblem(saleId) {
-            const reason = prompt('Digite o motivo do problema na entrega:');
-            if (!reason || reason.trim() === '') {
-                this.showToast('Motivo do problema é obrigatório!', 'error');
-                return;
-            }
-
-            this.showToast('Marcando como problema...', 'info');
-
-            try {
-                const response = await fetch(`/sales/${saleId}/status`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        status: 'problema',
-                        notes: reason.trim()
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    this.showToast('Pedido marcado como problema!', 'success');
-                    // Recarregar página após 1 segundo
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
-                } else {
-                    throw new Error(data.message || 'Erro ao atualizar pedido');
-                }
-            } catch (error) {
-                console.error('Erro:', error);
-                this.showToast('Erro ao marcar como problema: ' + error.message, 'error');
-            }
-        },
-
-        // Toast notification
         showToast(message, type) {
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                info: 'bg-blue-500'
+            };
+            
             const toast = document.createElement('div');
-            toast.className = `fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg transition-all duration-300 ${
-                type === 'success' ? 'bg-green-500' :
-                type === 'error' ? 'bg-red-500' :
-                type === 'info' ? 'bg-blue-500' : 'bg-gray-500'
-            } text-white max-w-sm`;
-            toast.innerHTML = `
-                <div class="flex items-center">
-                    <span class="text-lg mr-2">${
-                        type === 'success' ? '✅' :
-                        type === 'error' ? '❌' :
-                        type === 'info' ? 'ℹ️' : '💡'
-                    }</span>
-                    <span>${message}</span>
-                </div>
-            `;
-
+            toast.className = `fixed top-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50`;
+            toast.textContent = message;
             document.body.appendChild(toast);
-
+            
             setTimeout(() => {
-                toast.classList.add('opacity-0');
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s';
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }

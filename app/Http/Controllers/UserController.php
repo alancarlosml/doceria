@@ -226,9 +226,13 @@ class UserController extends Controller
 
         $user->update($updateData);
 
-        // Sync roles if admin
-        if ($user->hasRole('admin') && isset($validated['roles'])) {
-            $user->syncRoles($validated['roles']);
+        // Always process roles for admin users
+        if ($user->hasRole('admin')) {
+            // Sync roles regardless of whether roles were submitted (use existing roles if none submitted)
+            $rolesToAssign = isset($validated['roles']) ? $validated['roles'] : $user->roles()->pluck('id')->toArray();
+            $user->syncRoles($rolesToAssign);
+            // Refresh the authenticated user to update role cache
+            Auth::setUser($user->fresh()->load('roles'));
         }
 
         return redirect()->route('profile.edit')->with('success', 'Perfil atualizado com sucesso!');

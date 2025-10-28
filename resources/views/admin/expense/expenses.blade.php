@@ -37,33 +37,40 @@
                             <label for="type" class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
                             <select id="type" name="type" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
                                 <option value="">Todos</option>
-                                <option value="entrada">Receitas (Entradas)</option>
-                                <option value="saida">Despesas (Saídas)</option>
+                                <option value="entrada" {{ request()->input('type') === 'entrada' ? 'selected' : '' }}>Receitas (Entradas)</option>
+                                <option value="saida" {{ request()->input('type') === 'saida' ? 'selected' : '' }}>Despesas (Saídas)</option>
                             </select>
                         </div>
 
                         <!-- Search -->
                         <div>
                             <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Buscar</label>
-                            <input type="text" id="search" name="search" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" placeholder="Descrição...">
+                            <input type="text" id="search" name="search" value="{{ request()->input('search') }}" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" placeholder="Descrição...">
                         </div>
 
                         <!-- Date From -->
                         <div>
                             <label for="date_from" class="block text-sm font-medium text-gray-700 mb-1">Data Inicial</label>
-                            <input type="date" id="date_from" name="date_from" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
+                            <input type="date" id="date_from" name="date_from" value="{{ request()->input('date_from') }}" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
                         </div>
 
                         <!-- Date To -->
                         <div>
                             <label for="date_to" class="block text-sm font-medium text-gray-700 mb-1">Data Final</label>
-                            <input type="date" id="date_to" name="date_to" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
+                            <input type="date" id="date_to" name="date_to" value="{{ request()->input('date_to') }}" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
                         </div>
 
                         <!-- Actions -->
-                        <div class="flex items-end">
-                            <button type="button" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <div class="flex items-end gap-2">
+                            <button type="button"
+                                    id="filter-btn"
+                                    class="inline-flex items-center px-3 py-2 border border-blue-300 shadow-sm text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                 🔄 Filtrar
+                            </button>
+                            <button type="button"
+                                    id="clear-filters-btn"
+                                    class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                                🗑️ Limpar
                             </button>
                         </div>
                     </div>
@@ -76,7 +83,7 @@
                     <div class="flex items-center justify-between">
                         <h3 class="text-lg font-medium leading-6 text-gray-900">Registros Financeiros</h3>
                         <div class="text-sm text-gray-500">
-                            <span id="expenses-count">{{ \App\Models\Expense::count() }}</span> registros encontrados
+                            <span id="expenses-count">{{ $expenses->total() }}</span> registros encontrados
                         </div>
                     </div>
                 </div>
@@ -107,7 +114,7 @@
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                @foreach(\App\Models\Expense::with('user')->paginate(10) as $expense)
+                                @foreach($expenses as $expense)
                                 <tr class="hover:bg-gray-50">
                                     <!-- Description -->
                                     <td class="px-6 py-4 whitespace-nowrap">
@@ -217,11 +224,11 @@
                 <!-- Pagination -->
                 <div class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
                     <div class="flex items-center justify-between">
-                        <div class="hidden sm:block">
-                            <div class="text-sm text-gray-700">
-                                Mostrando <span class="font-medium">{{ \App\Models\Expense::paginate(10)->firstItem() }}</span> a <span class="font-medium">{{ \App\Models\Expense::paginate(10)->lastItem() }}</span> de <span class="font-medium">{{ \App\Models\Expense::count() }}</span> resultados
-                            </div>
+                    <div class="hidden sm:block">
+                        <div class="text-sm text-gray-700">
+                            Mostrando <span class="font-medium">{{ $expenses->firstItem() }}</span> a <span class="font-medium">{{ $expenses->lastItem() }}</span> de <span class="font-medium">{{ $expenses->total() }}</span> resultados
                         </div>
+                    </div>
                         <div class="flex space-x-1">
                             <!-- Pagination basic -->
                             <span class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 cursor-not-allowed">
@@ -240,4 +247,75 @@
         </div>
     </div>
 </main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterBtn = document.getElementById('filter-btn');
+    const clearFiltersBtn = document.getElementById('clear-filters-btn');
+
+    // Função para aplicar filtros
+    function applyFilters() {
+        const type = document.getElementById('type').value;
+        const search = document.getElementById('search').value;
+        const dateFrom = document.getElementById('date_from').value;
+        const dateTo = document.getElementById('date_to').value;
+
+        // Construir URL com parâmetros
+        let url = '{{ route("expenses.index") }}?';
+        const params = [];
+
+        if (type) params.push('type=' + encodeURIComponent(type));
+        if (search) params.push('search=' + encodeURIComponent(search));
+        if (dateFrom) params.push('date_from=' + encodeURIComponent(dateFrom));
+        if (dateTo) params.push('date_to=' + encodeURIComponent(dateTo));
+
+        url += params.join('&');
+
+        // Redirecionar para aplicar filtros
+        window.location.href = url;
+    }
+
+    // Função para limpar filtros
+    function clearFilters() {
+        document.getElementById('type').value = '';
+        document.getElementById('search').value = '';
+        document.getElementById('date_from').value = '';
+        document.getElementById('date_to').value = '';
+
+        // Voltar para URL sem filtros
+        window.location.href = '{{ route("expenses.index") }}';
+    }
+
+    // Event listeners
+    if (filterBtn) {
+        filterBtn.addEventListener('click', applyFilters);
+    }
+
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', clearFilters);
+    }
+
+    // Permitir filtrar pressionando Enter nos campos
+    const inputs = ['search', 'date_from', 'date_to'];
+    inputs.forEach(inputId => {
+        const element = document.getElementById(inputId);
+        if (element) {
+            element.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    applyFilters();
+                }
+            });
+        }
+    });
+
+    // Permitir filtrar quando mudar o select de tipo
+    const typeSelect = document.getElementById('type');
+    if (typeSelect) {
+        typeSelect.addEventListener('change', function() {
+            // Aplicar filtro automaticamente ao mudar o tipo
+            setTimeout(applyFilters, 100);
+        });
+    }
+});
+</script>
 @endsection

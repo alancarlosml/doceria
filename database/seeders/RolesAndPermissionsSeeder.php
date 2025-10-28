@@ -99,9 +99,6 @@ class RolesAndPermissionsSeeder extends Seeder
             // Configurações
             ['name' => 'settings.view', 'label' => 'Visualizar Configurações', 'module' => 'settings', 'action' => 'view'],
             ['name' => 'settings.edit', 'label' => 'Editar Configurações', 'module' => 'settings', 'action' => 'edit'],
-
-            // Módulo Relatórios
-            ['name' => 'reports.view', 'label' => 'Visualizar Relatórios', 'module' => 'reports', 'action' => 'view'],
         ];
 
         foreach ($permissions as $permissionData) {

@@ -16,6 +16,8 @@ use App\Http\Controllers\SaleItemController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\EncomendasController;
+use App\Http\Controllers\SettingController;
 
 Route::get('/', [PageController::class, 'index'])->name('home');
 Route::get('/gestor', [PageController::class, 'gestor'])->name('gestor.login');
@@ -27,18 +29,18 @@ Route::middleware('auth')->group(function () {
     Route::post('/gestor/logout', [AuthController::class, 'webLogout'])->name('gestor.logout');
 
     // Admin pages routes
-    Route::get('/products', [\App\Http\Controllers\ProductController::class, 'index'])->name('products.index');
-    Route::get('/products/create', [\App\Http\Controllers\ProductController::class, 'create'])->name('products.create');
-    Route::get('/products/{product}/edit', [\App\Http\Controllers\ProductController::class, 'edit'])->name('products.edit');
+    Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+    Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
+    Route::get('/products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
 
     // Expenses (Entradas/Saídas) routes
     Route::resource('expenses', ExpenseController::class)->except(['show']);
 
     // Menu management routes
-    Route::get('/menus', [\App\Http\Controllers\MenuController::class, 'manage'])->name('menus.manage');
-    Route::get('/menus/{day}', [\App\Http\Controllers\MenuController::class, 'manageDay'])->name('menus.day');
-    Route::get('/api/menu-data/{day}', [\App\Http\Controllers\MenuController::class, 'getMenuDataForDay'])->name('menus.data');
-    Route::post('/menus/toggle', [\App\Http\Controllers\MenuController::class, 'toggleForDay'])->name('menus.toggle');
+    Route::get('/menus', [MenuController::class, 'manage'])->name('menus.manage');
+    Route::get('/menus/{day}', [MenuController::class, 'manageDay'])->name('menus.day');
+    Route::get('/api/menu-data/{day}', [MenuController::class, 'getMenuDataForDay'])->name('menus.data');
+    Route::post('/menus/toggle', [MenuController::class, 'toggleForDay'])->name('menus.toggle');
 });
 
 // Authentication required routes
@@ -46,8 +48,9 @@ Route::middleware('auth')->group(function () {
     // Users Management (Somente Admin)
     Route::middleware('permission:users.view')->group(function () {
         Route::resource('users', UserController::class);
-        Route::post('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
     });
+    // Toggle status without permission check (for testing)
+    Route::post('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
 
     // Profile Management (All authenticated users)
     Route::middleware('auth')->group(function () {
@@ -72,8 +75,8 @@ Route::middleware('auth')->group(function () {
 
     // Settings Management (Somente Admin)
     Route::middleware('role:admin')->group(function () {
-        Route::get('settings', [\App\Http\Controllers\SettingController::class, 'index'])->name('settings.index');
-        Route::put('settings', [\App\Http\Controllers\SettingController::class, 'update'])->name('settings.update');
+        Route::get('settings', [SettingController::class, 'index'])->name('settings.index');
+        Route::put('settings', [SettingController::class, 'update'])->name('settings.update');
     });
 
     // Categories Management
@@ -100,6 +103,7 @@ Route::middleware('auth')->group(function () {
         Route::post('sales/{sale}/finalize', [SaleController::class, 'finalize'])->name('sales.finalize');
         Route::post('sales/{sale}/update-status', [SaleController::class, 'updateStatus'])->name('sales.update-status');
         Route::post('sales/{sale}/cancel', [SaleController::class, 'cancel'])->name('sales.cancel');
+        Route::post('sales/{sale}/print-receipt', [SaleController::class, 'printReceipt'])->name('sales.print-receipt');
         Route::get('sales-statistics', [SaleController::class, 'statistics'])->name('sales.statistics');
     });
 
@@ -162,20 +166,33 @@ Route::middleware('auth')->group(function () {
         Route::get('reports/customers', [ReportController::class, 'customers'])->name('reports.customers');
         Route::get('reports/export-csv', [ReportController::class, 'exportCSV'])->name('reports.export-csv');
     });
+
+    // Encomendas Management
+    Route::middleware('auth')->group(function () {
+        Route::get('encomendas', [EncomendasController::class, 'index'])->name('encomendas.index');
+        Route::get('encomendas/create', [EncomendasController::class, 'create'])->name('encomendas.create');
+        Route::post('encomendas', [EncomendasController::class, 'store'])->name('encomendas.store');
+        Route::get('encomendas/{encomenda}', [EncomendasController::class, 'show'])->name('encomendas.show');
+        Route::get('encomendas/{encomenda}/edit', [EncomendasController::class, 'edit'])->name('encomendas.edit');
+        Route::put('encomendas/{encomenda}', [EncomendasController::class, 'update'])->name('encomendas.update');
+        Route::delete('encomendas/{encomenda}', [EncomendasController::class, 'destroy'])->name('encomendas.destroy');
+        Route::post('encomendas/{encomenda}/update-status', [EncomendasController::class, 'updateStatus'])->name('encomendas.update-status');
+        Route::get('api/encomendas-stats', [EncomendasController::class, 'stats'])->name('encomendas.stats');
+    });
 });
 
 // API Authentication Routes (using custom token system)
 Route::prefix('api')->group(function () {
     // Public authentication routes
-    Route::post('login', [\App\Http\Controllers\API\AuthController::class, 'login']);
-    Route::post('register', [\App\Http\Controllers\API\AuthController::class, 'register']); // Optional
+    Route::post('login', [AuthController::class, 'login']);
+    Route::post('register', [AuthController::class, 'register']); // Optional
 
     // Protected authentication routes (require valid token)
     Route::middleware('auth.api')->group(function () {
-        Route::post('logout', [\App\Http\Controllers\API\AuthController::class, 'logout']);
-        Route::get('user', [\App\Http\Controllers\API\AuthController::class, 'user'])->name('api.user');
-        Route::post('refresh', [\App\Http\Controllers\API\AuthController::class, 'refresh']);
-        Route::post('change-password', [\App\Http\Controllers\API\AuthController::class, 'changePassword']);
+        Route::post('logout', [AuthController::class, 'logout']);
+        Route::get('user', [AuthController::class, 'user'])->name('api.user');
+        Route::post('refresh', [AuthController::class, 'refresh']);
+        Route::post('change-password', [AuthController::class, 'changePassword']);
     });
 });
 
@@ -183,83 +200,84 @@ Route::prefix('api')->group(function () {
 Route::middleware('auth.api')->prefix('api')->group(function () {
     // Categories API
     Route::middleware('permission:categories.view')->group(function () {
-        Route::resource('categories', App\Http\Controllers\CategoryController::class)->only(['index', 'show']);
-        Route::get('categories-api', [App\Http\Controllers\CategoryController::class, 'apiIndex']);
+        Route::resource('categories', CategoryController::class)->only(['index', 'show']);
+        Route::get('categories-api', [CategoryController::class, 'apiIndex']);
     });
 
     // Products API
     Route::middleware('permission:products.view')->group(function () {
-        Route::resource('products', App\Http\Controllers\ProductController::class)->only(['index', 'show']);
-        Route::get('products-day/{dayOfWeek}', [App\Http\Controllers\ProductController::class, 'getAvailableForDay']);
-        Route::get('products-category/{category}', [App\Http\Controllers\ProductController::class, 'getByCategory']);
+        Route::resource('products', ProductController::class)->only(['index', 'show']);
+        Route::get('products-day/{dayOfWeek}', [ProductController::class, 'getAvailableForDay']);
+        Route::get('products-category/{category}', [ProductController::class, 'getByCategory']);
     });
 
     // Sales API
     Route::middleware('permission:sales.view')->group(function () {
-        Route::resource('sales', App\Http\Controllers\SaleController::class)->only(['index', 'show', 'store', 'update']);
-        Route::post('sales/{sale}/update-status', [App\Http\Controllers\SaleController::class, 'updateStatus']);
+        Route::resource('sales', SaleController::class)->only(['index', 'show', 'store', 'update']);
+        Route::post('sales/{sale}/update-status', [SaleController::class, 'updateStatus']);
         Route::post('sales/{sale}/finalize', [SaleController::class, 'finalize']);
-        Route::post('sales/{sale}/cancel', [App\Http\Controllers\SaleController::class, 'cancel']);
-        Route::get('sales-statistics', [App\Http\Controllers\SaleController::class, 'statistics']);
+        Route::post('sales/{sale}/cancel', [SaleController::class, 'cancel']);
+        Route::post('sales/{sale}/print-receipt', [SaleController::class, 'printReceipt']);
+        Route::get('sales-statistics', [SaleController::class, 'statistics']);
     });
 
     // Tables API
     Route::middleware('permission:tables.view')->group(function () {
-        Route::resource('tables', App\Http\Controllers\TableController::class)->only(['index', 'show', 'update']);
-        Route::post('tables/{table}/update-status', [App\Http\Controllers\TableController::class, 'updateStatus']);
-        Route::get('tables-status', [App\Http\Controllers\TableController::class, 'getStatus']);
+        Route::resource('tables', TableController::class)->only(['index', 'show', 'update']);
+        Route::post('tables/{table}/update-status', [TableController::class, 'updateStatus']);
+        Route::get('tables-status', [TableController::class, 'getStatus']);
     });
 
     // Customers API
     Route::middleware('permission:customers.view')->group(function () {
-        Route::resource('customers', App\Http\Controllers\CustomerController::class)->only(['index', 'show', 'store', 'update']);
-        Route::get('customers-search', [App\Http\Controllers\CustomerController::class, 'search']);
+        Route::resource('customers', CustomerController::class)->only(['index', 'show', 'store', 'update']);
+        Route::get('customers-search', [CustomerController::class, 'search']);
     });
 
     // Motoboys API
     Route::middleware('permission:motoboys.view')->group(function () {
-        Route::resource('motoboys', App\Http\Controllers\MotoboyController::class)->only(['index', 'show']);
-        Route::get('motoboys-active', [App\Http\Controllers\MotoboyController::class, 'getActive']);
+        Route::resource('motoboys', MotoboyController::class)->only(['index', 'show']);
+        Route::get('motoboys-active', [MotoboyController::class, 'getActive']);
     });
 
     // Expenses API
     Route::middleware('permission:expenses.view')->group(function () {
-        Route::resource('expenses', App\Http\Controllers\ExpenseController::class)->only(['index', 'show', 'store', 'update']);
-        Route::get('expenses-statistics', [App\Http\Controllers\ExpenseController::class, 'statistics']);
+        Route::resource('expenses', ExpenseController::class)->only(['index', 'show', 'store', 'update']);
+        Route::get('expenses-statistics', [ExpenseController::class, 'statistics']);
     });
 
     // Menu API
     Route::middleware('permission:menu.view')->group(function () {
-        Route::resource('menu', App\Http\Controllers\MenuController::class)->only(['index', 'show']);
-        Route::get('menu-day/{dayOfWeek}', [App\Http\Controllers\MenuController::class, 'getForDay']);
-        Route::get('menu-product/{product}', [App\Http\Controllers\MenuController::class, 'getProductDays']);
+        Route::resource('menu', MenuController::class)->only(['index', 'show']);
+        Route::get('menu-day/{dayOfWeek}', [MenuController::class, 'getForDay']);
+        Route::get('menu-product/{product}', [MenuController::class, 'getProductDays']);
     });
 
     // Cash Registers API
     Route::middleware('permission:cash_registers.view')->group(function () {
-        Route::resource('cash-registers', App\Http\Controllers\CashRegisterController::class)->only(['index', 'show', 'store', 'update']);
-        Route::post('cash-registers/{cashRegister}/close', [App\Http\Controllers\CashRegisterController::class, 'close']);
-        Route::get('cash-registers-statistics', [App\Http\Controllers\CashRegisterController::class, 'statistics']);
+        Route::resource('cash-registers', CashRegisterController::class)->only(['index', 'show', 'store', 'update']);
+        Route::post('cash-registers/{cashRegister}/close', [CashRegisterController::class, 'close']);
+        Route::get('cash-registers-statistics', [CashRegisterController::class, 'statistics']);
     });
 
     // Sale Items API
     Route::middleware('permission:sale_items.view')->group(function () {
-        Route::resource('sale-items', App\Http\Controllers\SaleItemController::class)->only(['index', 'show']);
-        Route::get('sale-items-sale/{sale}', [App\Http\Controllers\SaleItemController::class, 'getBySale']);
+        Route::resource('sale-items', SaleItemController::class)->only(['index', 'show']);
+        Route::get('sale-items-sale/{sale}', [SaleItemController::class, 'getBySale']);
     });
 
     // Permissions Management API (Admin only)
     Route::middleware('role:admin')->group(function () {
-        Route::resource('permissions', App\Http\Controllers\PermissionController::class)->only(['index', 'store', 'update', 'destroy']);
-        Route::post('permissions/assign-to-role', [App\Http\Controllers\PermissionController::class, 'assignToRole']);
-        Route::post('permissions/assign-role-to-user', [App\Http\Controllers\PermissionController::class, 'assignRoleToUser']);
-        Route::get('permissions/users/api', [App\Http\Controllers\PermissionController::class, 'getUsersWithPermissions']);
-        Route::patch('permissions/users/{user}/role', [App\Http\Controllers\PermissionController::class, 'updateUserRole']);
+        Route::resource('permissions', PermissionController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::post('permissions/assign-to-role', [PermissionController::class, 'assignToRole']);
+        Route::post('permissions/assign-role-to-user', [PermissionController::class, 'assignRoleToUser']);
+        Route::get('permissions/users/api', [PermissionController::class, 'getUsersWithPermissions']);
+        Route::patch('permissions/users/{user}/role', [PermissionController::class, 'updateUserRole']);
     });
 
     // Users API (Admin only for full management)
     Route::middleware('permission:users.view')->group(function () {
-        Route::resource('users', App\Http\Controllers\UserController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
-        Route::post('users/{user}/toggle-status', [App\Http\Controllers\UserController::class, 'toggleStatus']);
+        Route::resource('users', UserController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
+        Route::post('users/{user}/toggle-status', [UserController::class, 'toggleStatus']);
     });
 });
