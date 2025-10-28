@@ -25,7 +25,7 @@
                 <span class="sidebar-text">Dashboard</span>
             </a>
 
-            <a href="{{route('cash-registers.index')}}" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('cash-registers.*') ? 'bg-blue-50 text-blue-600' : '' }}" title="Caixas">
+            <a href="{{ route('cash-registers.index') }}" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('cash-registers.*') ? 'bg-blue-50 text-blue-600' : '' }}" title="Caixas">
                 <span class="mr-3">💰</span>
                 <span class="sidebar-text">Caixas</span>
             </a>
@@ -40,7 +40,7 @@
                 <span class="sidebar-text">Encomendas</span>
             </a>
 
-            <a href="{{ route('menus.manage') }}" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('menus.*') ? 'bg-blue-50 text-blue-600' : '' }}" title="Cardápio Semanal">
+            <a href="{{ route('menu.index') }}" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('menu.*') ? 'bg-blue-50 text-blue-600' : '' }}" title="Cardápio Semanal">
                 <span class="mr-3">🍽️</span>
                 <span class="sidebar-text">Cardápio Semanal</span>
             </a>
@@ -65,7 +65,7 @@
                 <span class="sidebar-text">Produtos</span>
             </a>
 
-            <a href="{{route('customers.index')}}" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('customers.*') ? 'bg-blue-50 text-blue-600' : '' }}" title="Clientes">
+            <a href="{{ route('customers.index') }}" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('customers.*') ? 'bg-blue-50 text-blue-600' : '' }}" title="Clientes">
                 <span class="mr-3">👥</span>
                 <span class="sidebar-text">Clientes</span>
             </a>

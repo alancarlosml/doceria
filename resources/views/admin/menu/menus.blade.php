@@ -227,17 +227,17 @@ function menuManager(initialDay) {
             console.log('Mudando para dia:', day);
             this.currentDay = day;
             this.loadMenuForDay(day);
-            
+
             // Atualizar URL sem recarregar a página
-            window.history.pushState({}, '', `/menus/${day}`);
+            window.history.pushState({}, '', `/gestor/menus/${day}`);
         },
 
         async loadMenuForDay(day) {
             this.loading = true;
             console.log('Carregando menu para:', day);
-            
+
             try {
-                const response = await fetch(`/api/menu-data/${day}`, {
+                const response = await fetch(`/gestor/menu-data/${day}`, {
                     headers: {
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
@@ -281,7 +281,7 @@ function menuManager(initialDay) {
             const newState = !isCurrentlySelected;
 
             try {
-                const response = await fetch('/menus/toggle', {
+                const response = await fetch('/gestor/menus/toggle', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

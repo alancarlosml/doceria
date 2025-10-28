@@ -4,8 +4,8 @@
 
 @section('content')
 <!-- Announcement Banner -->
-@if(App\Models\Setting::getBannerMessage())
-<div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6 shadow-sm">
+@if(App\Models\Setting::get('banner_active', false) === true && App\Models\Setting::getBannerMessage())
+<div class="bg-blue-50 border-l-4 border-blue-400 p-4 shadow-sm">
     <div class="flex">
         <div class="flex-shrink-0">
             <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">

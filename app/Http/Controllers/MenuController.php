@@ -169,21 +169,30 @@ class MenuController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Menu::with('product.category');
+        // Get all products that can be in menu
+        $products = Product::with('category')
+            ->where('active', true)
+            ->orderBy('category_id')
+            ->orderBy('name')
+            ->get();
 
-        // Filter by day of week
-        if ($request->filled('day_of_week')) {
-            $query->where('day_of_week', $request->day_of_week);
-        }
+        // Get current day (for initial load)
+        $currentDay = now()->dayOfWeek;
 
-        // Filter by availability
-        if ($request->filled('available')) {
-            $query->where('available', $request->boolean('available'));
-        }
+        // Map numeric day to Brazilian day names
+        $dayNames = [
+            0 => 'domingo',
+            1 => 'segunda',
+            2 => 'terca',
+            3 => 'quarta',
+            4 => 'quinta',
+            5 => 'sexta',
+            6 => 'sabado'
+        ];
 
-        $menuItems = $query->orderBy('day_of_week')->orderBy('product_id')->paginate(20);
+        $currentDayName = $dayNames[$currentDay];
 
-        return view('menu.index', compact('menuItems'));
+        return view('admin.menu.menus', compact('products', 'currentDayName'));
     }
 
     /**
