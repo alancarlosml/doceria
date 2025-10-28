@@ -45,7 +45,7 @@ class Role extends Model
             return $this->permissions()->where('name', $permission)->exists();
         }
 
-        return $this->permissions()->where('id', $permission)->exists();
+        return $this->permissions()->where('permissions.id', $permission)->exists();
     }
 
     /**

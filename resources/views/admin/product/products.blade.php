@@ -444,7 +444,7 @@ function productsManager() {
 
         async toggleProduct(productId) {
             try {
-                const response = await fetch(`/products/${productId}/toggle-status`, {
+                const response = await fetch(`/gestor/produtos/${productId}/toggle-status`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -470,7 +470,7 @@ function productsManager() {
 
         async toggleCategory(categoryId) {
             try {
-                const response = await fetch(`/categories/${categoryId}/toggle-status`, {
+                const response = await fetch(`/gestor/categorias/${categoryId}/toggle-status`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

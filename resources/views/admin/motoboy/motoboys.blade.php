@@ -209,7 +209,7 @@ function motoboysManager() {
             this.loading = true;
 
             try {
-                const response = await fetch(`/motoboys/${motoboyId}/toggle-status`, {
+                const response = await fetch(`/gestor/motoboys/${motoboyId}/toggle-status`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

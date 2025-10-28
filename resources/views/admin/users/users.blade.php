@@ -145,7 +145,7 @@
                 userStatuses: {},
                 async toggleUserStatus(userId) {
                     try {
-                        const response = await fetch(`/users/${userId}/toggle-status`, {
+                        const response = await fetch(`/gestor/usuarios/${userId}/toggle-status`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -447,7 +447,7 @@
 <script>
 // Toggle user status
 function toggleStatus(userId) {
-    fetch(`/users/${userId}/toggle-status`, {
+    fetch(`/gestor/usuarios/${userId}/toggle-status`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

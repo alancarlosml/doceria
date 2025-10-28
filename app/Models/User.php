@@ -241,28 +241,51 @@ class User extends Authenticatable
 
     /**
      * Check if user has a specific permission (direct or through roles).
+     *
+     * Logic: User has permission if:
+     * 1. Permission exists through roles OR
+     * 2. Permission exists as direct permission
+     * 3. AND permission was NOT explicitly removed from user
+     *
+     * Direct permissions OVERRIDE role permissions (can add or remove)
      */
     public function hasPermission($permission)
     {
-        // Check direct permissions
+        // Get permission ID regardless of input type
+        $permissionId = null;
         if (is_string($permission)) {
-            if ($this->permissions()->where('name', $permission)->exists()) {
-                return true;
-            }
+            $permissionModel = Permission::where('name', $permission)->first();
+            $permissionId = $permissionModel ? $permissionModel->id : null;
         } elseif (is_numeric($permission)) {
-            if ($this->permissions()->where('id', $permission)->exists()) {
-                return true;
+            $permissionId = $permission;
+        }
+
+        if (!$permissionId) {
+            return false; // Permission doesn't exist
+        }
+
+        // Get user's permission relation with pivot data
+        $userPermissionPivot = $this->permissions()
+            ->where('permission_id', $permissionId)
+            ->first();
+
+        // If user has direct permission assigned, check if it's granted or revoked
+        if ($userPermissionPivot) {
+            $action = $userPermissionPivot->pivot->action ?? 'grant';
+            if ($action === 'revoke') {
+                return false; // Explicitly revoked - DENIED
             }
+            return true; // Explicitly granted - ALLOWED
         }
 
         // Check permissions through roles
         foreach ($this->roles as $role) {
-            if ($role->hasPermission($permission)) {
-                return true;
+            if ($role->hasPermission($permissionId)) {
+                return true; // Granted through role - ALLOWED
             }
         }
 
-        return false;
+        return false; // No permission found - DENIED
     }
 
     /**

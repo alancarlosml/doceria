@@ -3,6 +3,13 @@
 @section('title', $isEditing ? 'Editar Produto - Doce Doce Brigaderia' : 'Novo Produto - Doce Doce Brigaderia')
 
 @section('admin-content')
+@php
+    // Determine form action and method
+    $formAction = $isEditing && $product ? route('products.update', $product) : route('products.store');
+    $formMethod = ($isEditing && $product) ? 'POST' : 'POST'; // Always POST, but add @method('PUT') when needed
+    $usePutMethod = $isEditing && $product;
+@endphp
+
 <!-- Main content -->
 <main class="flex-1 relative overflow-y-auto focus:outline-none">
     <div class="py-6">
@@ -30,9 +37,9 @@
 
             <!-- Form -->
             <div class="bg-white shadow rounded-lg">
-                <form method="POST" action="{{ $isEditing ? route('products.update', $product) : route('products.store') }}" enctype="multipart/form-data">
+                <form method="POST" action="{{ $formAction }}" enctype="multipart/form-data">
                     @csrf
-                    @if($isEditing)
+                    @if($usePutMethod)
                         @method('PUT')
                     @endif
 

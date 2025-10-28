@@ -223,12 +223,25 @@ class PermissionController extends Controller
                 'permission_ids.*' => 'exists:permissions,id',
             ]);
 
-            // Sync direct permissions (not from roles)
             $permissionIds = $request->permission_ids ?? [];
-            $user->syncPermissions($permissionIds, false); // false = direct permissions only
+
+            // Clear all direct permissions first
+            $user->permissions()->detach();
+
+            // Assign new permissions with grant action
+            if (!empty($permissionIds)) {
+                $permissionPivotData = [];
+                foreach ($permissionIds as $permissionId) {
+                    $permissionPivotData[$permissionId] = ['action' => 'grant'];
+                }
+                $user->permissions()->attach($permissionPivotData);
+            }
 
             // Verify the changes
-            $actualPermissions = $user->permissions()->pluck('name')->toArray();
+            $actualPermissions = $user->permissions()
+                ->wherePivot('action', 'grant')
+                ->pluck('name')
+                ->toArray();
 
             return response()->json([
                 'success' => true,
@@ -255,7 +268,11 @@ class PermissionController extends Controller
         ]);
 
         $permission = Permission::find($request->permission_id);
-        $user->revokePermissionTo($permission);
+
+        // Update or insert the pivot with revoke action (overwrites any existing grant)
+        $user->permissions()->syncWithoutDetaching([
+            $permission->id => ['action' => 'revoke']
+        ]);
 
         return response()->json([
             'success' => true,

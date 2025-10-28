@@ -144,7 +144,7 @@
 
                             <!-- Mesa Preview -->
                             <div class="p-4">
-                                <div class="aspect-square bg-gray-50 rounded-lg flex items-center justify-center mb-4">
+                                <div class="bg-gray-50 rounded-lg flex items-center justify-center mb-4 py-5">
                                     <div class="text-center">
                                         <div class="text-4xl mb-2">🪑</div>
                                         <div class="text-sm font-medium text-gray-700">{{ $table->number }}</div>

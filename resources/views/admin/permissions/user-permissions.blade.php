@@ -288,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const formData = new FormData();
             formData.append('permission_id', permissionId);
 
-            fetch(`/permissions/users/${{{ $user->id }}}/permissions/remove`, {
+            fetch(`/permissions/users/${{ $user->id }}/permissions/remove`, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')

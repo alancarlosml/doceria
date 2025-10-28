@@ -522,18 +522,18 @@
             <!-- Botões -->
             <div class="grid grid-cols-2 gap-3">
                 <button
-                    @click="printSale()"
+                    @click="onlyConfirmSale()"
                     :disabled="!cart.payment_method"
-                    class="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold disabled:opacity-50"
+                    class="bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold disabled:opacity-50 text-sm"
                 >
-                    🖨️ Imprimir
+                    ✅ Confirmar
                 </button>
                 <button
-                    @click="confirmSaleAndPrint()"
+                    @click="confirmAndPrint()"
                     :disabled="!cart.payment_method"
-                    class="bg-green-600 text-white py-3 rounded-lg font-bold disabled:opacity-50"
+                    class="bg-blue-600 text-white py-3 rounded-lg font-bold disabled:opacity-50 text-sm"
                 >
-                    ✅ Confirmar & Imprimir
+                    🖨️ Confirmar & Imprimir
                 </button>
             </div>
         </div>
@@ -679,11 +679,11 @@ function posSystem() {
                 let url, method;
                 if (this.cart.sale_id) {
                     // Update existing sale
-                    url = `/sales/${this.cart.sale_id}`;
+                    url = `/gestor/vendas/${this.cart.sale_id}`;
                     method = 'PUT';
                 } else {
                     // Create new sale
-                    url = '/sales';
+                    url = '/gestor/vendas';
                     method = 'POST';
                 }
 
@@ -730,7 +730,7 @@ function posSystem() {
                 const saleId = await this.confirmSale();
 
                 // Then print
-                const response = await fetch(`/sales/${saleId}/print-receipt`, {
+                const response = await fetch(`/gestor/vendas/${saleId}/print-receipt`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -753,12 +753,24 @@ function posSystem() {
             }
         },
 
-        async confirmSaleAndPrint() {
+        async onlyConfirmSale() {
+            try {
+                await this.confirmSale();
+                this.showToast('Venda confirmada!', 'success');
+                this.showModal = false;
+                setTimeout(() => window.location.reload(), 1000);
+            } catch (error) {
+                console.error('Erro ao confirmar venda:', error);
+                this.showToast('Erro ao confirmar venda: ' + error.message, 'error');
+            }
+        },
+
+        async confirmAndPrint() {
             try {
                 const saleId = await this.confirmSale();
 
-                // Print after confirmation
-                const response = await fetch(`/sales/${saleId}/print-receipt`, {
+                // Try to print after confirmation (but don't fail if printing fails)
+                const response = await fetch(`/gestor/vendas/${saleId}/print-receipt`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -770,22 +782,25 @@ function posSystem() {
                 const data = await response.json();
                 if (data.success) {
                     this.showToast('Venda confirmada e recibo impresso!', 'success');
-                    this.showModal = false;
-                    setTimeout(() => window.location.reload(), 1000);
                 } else {
-                    this.showToast('Venda confirmada, mas erro na impressão: ' + data.message, 'info');
-                    this.showModal = false;
-                    setTimeout(() => window.location.reload(), 1000);
+                    // Print failed, but sale is still confirmed
+                    this.showToast('Venda confirmada! (Impressora indisponível)', 'info');
                 }
+
+                this.showModal = false;
+                setTimeout(() => window.location.reload(), 1000);
             } catch (error) {
                 console.error('Erro:', error);
-                this.showToast('Erro: ' + error.message, 'error');
+                // Even if printing fails, the sale should already be confirmed at this point
+                this.showToast('Venda confirmada! (Erro na impressão)', 'info');
+                this.showModal = false;
+                setTimeout(() => window.location.reload(), 1000);
             }
         },
 
         async loadSale(id) {
             try {
-                const response = await fetch(`/sales/${id}/pos-data`);
+                const response = await fetch(`/gestor/vendas/${id}/pos-data`);
                 const data = await response.json();
 
                 if (data.success) {
@@ -816,7 +831,7 @@ function posSystem() {
             if (!confirm('Confirmar entrega?')) return;
 
             try {
-                const response = await fetch(`/sales/${id}/update-status`, {
+                const response = await fetch(`/gestor/vendas/${id}/update-status`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

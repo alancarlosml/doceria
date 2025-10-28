@@ -31,6 +31,13 @@ Route::get('/gestor', [PageController::class, 'gestor'])->name('gestor.login');
 Route::post('/gestor/login', [AuthController::class, 'webLogin'])->name('gestor.login.submit');
 
 // ========================================
+// ROTAS ESPECIAIS (Auth + Admin necessário)
+// ========================================
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::delete('permissions/users/{user}/permissions/remove', [PermissionController::class, 'removePermissionFromUser'])->name('permissions.remove');
+});
+
+// ========================================
 // GESTOR - Área Administrativa (URLs em português)
 // ========================================
 Route::prefix('gestor')->middleware('auth')->group(function () {
@@ -43,7 +50,9 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
     // ========================================
     Route::middleware('role:admin')->group(function () {
         // Usuários
-        Route::resource('/usuarios', UserController::class)->names([
+        Route::resource('/usuarios', UserController::class)->parameters([
+            'usuarios' => 'user'  // Map Portuguese plural to English singular parameter
+        ])->names([
             'index' => 'users.index',
             'create' => 'users.create',
             'store' => 'users.store',
@@ -75,6 +84,41 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
         Route::post('/usuarios/{user}/permissoes/assign', [PermissionController::class, 'assignPermissionsToUser'])->name('users.permissions.assign');
         Route::delete('/usuarios/{user}/permissoes/remover', [PermissionController::class, 'removePermissionFromUser'])->name('users.permissions.remove');
 
+        // ========================================
+        // RELATÓRIOS
+        // ========================================
+        Route::middleware('permission:reports.view')->group(function () {
+            Route::get('/relatorios/dashboard', [ReportController::class, 'dashboard'])->name('reports.dashboard');
+            Route::get('/relatorios/produtos', [ReportController::class, 'products'])->name('reports.products');
+            Route::get('/relatorios/fluxo-caixa', [ReportController::class, 'cashFlow'])->name('reports.cash-flow');
+            Route::get('/relatorios/funcionarios', [ReportController::class, 'employees'])->name('reports.employees');
+            Route::get('/relatorios/clientes', [ReportController::class, 'customers'])->name('reports.customers');
+            Route::get('/relatorios/exportar-csv', [ReportController::class, 'exportCSV'])->name('reports.export-csv');
+        });
+
+        // ========================================
+        // ENTRADAS/SAÍDAS
+        // ========================================
+        Route::middleware('permission:expenses.view')->group(function () {
+        Route::resource('/entradas-saidas', ExpenseController::class)->parameters([
+            'entradas-saidas' => 'expense'
+        ])->names([
+            'index' => 'expenses.index',
+            'create' => 'expenses.create',
+            'store' => 'expenses.store',
+            'show' => 'expenses.show',
+            'edit' => 'expenses.edit',
+            'update' => 'expenses.update',
+            'destroy' => 'expenses.destroy'
+        ])->except(['show']);
+            Route::get('/entradas-saidas-estatisticas', [ExpenseController::class, 'statistics'])->name('expenses.statistics');
+        });
+    });
+
+    // ========================================
+    // Configurações (Somente Admin)
+    // ========================================
+    Route::middleware('auth')->group(function () {
         // Configurações
         Route::get('/configuracoes', [SettingController::class, 'index'])->name('settings.index');
         Route::put('/configuracoes', [SettingController::class, 'update'])->name('settings.update');
@@ -92,7 +136,9 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
     // PRODUTOS (Com permissão)
     // ========================================
     Route::middleware('permission:products.view')->group(function () {
-        Route::resource('/produtos', ProductController::class)->names([
+        Route::resource('/produtos', ProductController::class)->parameters([
+            'produtos' => 'product'  // Map Portuguese plural to English singular parameter
+        ])->names([
             'index' => 'products.index',
             'create' => 'products.create',
             'store' => 'products.store',
@@ -111,7 +157,9 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
     // CATEGORIAS (Com permissão)
     // ========================================
     Route::middleware('permission:categories.view')->group(function () {
-        Route::resource('/categorias', CategoryController::class)->names([
+        Route::resource('/categorias', CategoryController::class)->parameters([
+            'categorias' => 'category'  // Map Portuguese plural to English singular parameter
+        ])->names([
             'index' => 'categories.index',
             'create' => 'categories.create',
             'store' => 'categories.store',
@@ -128,7 +176,9 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
     // VENDAS E PDV (Com permissão)
     // ========================================
     Route::middleware('permission:sales.view')->group(function () {
-        Route::resource('/vendas', SaleController::class)->names([
+        Route::resource('/vendas', SaleController::class)->parameters([
+            'vendas' => 'sale'  // Map Portuguese plural to English singular parameter
+        ])->names([
             'index' => 'sales.index',
             'create' => 'sales.create',
             'store' => 'sales.store',
@@ -150,7 +200,9 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
     // MESAS (Com permissão)
     // ========================================
     Route::middleware('permission:tables.view')->group(function () {
-        Route::resource('/mesas', TableController::class)->names([
+        Route::resource('/mesas', TableController::class)->parameters([
+            'mesas' => 'table'  // Map Portuguese plural to English singular parameter
+        ])->names([
             'index' => 'tables.index',
             'create' => 'tables.create',
             'store' => 'tables.store',
@@ -168,7 +220,9 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
     // CLIENTES (Com permissão)
     // ========================================
     Route::middleware('permission:customers.view')->group(function () {
-        Route::resource('/clientes', CustomerController::class)->names([
+        Route::resource('/clientes', CustomerController::class)->parameters([
+            'clientes' => 'customer'  // Map Portuguese plural to English singular parameter
+        ])->names([
             'index' => 'customers.index',
             'create' => 'customers.create',
             'store' => 'customers.store',
@@ -193,7 +247,9 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
     // CAIXA (Com permissão)
     // ========================================
     Route::middleware('permission:cash_registers.view')->group(function () {
-        Route::resource('/caixa', CashRegisterController::class)->names([
+        Route::resource('/caixa', CashRegisterController::class)->parameters([
+            'caixa' => 'cash-register'  // Map Portuguese plural to English singular parameter
+        ])->names([
             'index' => 'cash-registers.index',
             'create' => 'cash-registers.create',
             'store' => 'cash-registers.store',
@@ -208,27 +264,14 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
         Route::get('/caixa-estatisticas', [CashRegisterController::class, 'statistics'])->name('cash-registers.statistics');
     });
 
-    // ========================================
-    // ENTRADAS/SAÍDAS (Com permissão)
-    // ========================================
-    Route::middleware('permission:expenses.view')->group(function () {
-        Route::resource('/entradas-saidas', ExpenseController::class)->names([
-            'index' => 'expenses.index',
-            'create' => 'expenses.create',
-            'store' => 'expenses.store',
-            'show' => 'expenses.show',
-            'edit' => 'expenses.edit',
-            'update' => 'expenses.update',
-            'destroy' => 'expenses.destroy'
-        ])->except(['show']);
-        Route::get('/entradas-saidas-estatisticas', [ExpenseController::class, 'statistics'])->name('expenses.statistics');
-    });
 
     // ========================================
     // CARDÁPIO (Menu) (Com permissão)
     // ========================================
     Route::middleware('permission:menu.view')->group(function () {
-        Route::resource('/cardapio', MenuController::class)->names([
+        Route::resource('/cardapio', MenuController::class)->parameters([
+            'cardapio' => 'menu'  // Map Portuguese plural to English singular parameter
+        ])->names([
             'index' => 'menu.index',
             'create' => 'menu.create',
             'store' => 'menu.store',
@@ -246,18 +289,6 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
         Route::get('/menus/{day}', [MenuController::class, 'manageDay'])->name('menus.day');
         Route::get('/api/menu-data/{day}', [MenuController::class, 'getMenuDataForDay'])->name('menus.data');
         Route::post('/menus/toggle', [MenuController::class, 'toggleForDay'])->name('menus.toggle');
-    });
-
-    // ========================================
-    // RELATÓRIOS (Com permissão)
-    // ========================================
-    Route::middleware('permission:reports.view')->group(function () {
-        Route::get('/relatorios/dashboard', [ReportController::class, 'dashboard'])->name('reports.dashboard');
-        Route::get('/relatorios/produtos', [ReportController::class, 'products'])->name('reports.products');
-        Route::get('/relatorios/fluxo-caixa', [ReportController::class, 'cashFlow'])->name('reports.cash-flow');
-        Route::get('/relatorios/funcionarios', [ReportController::class, 'employees'])->name('reports.employees');
-        Route::get('/relatorios/clientes', [ReportController::class, 'customers'])->name('reports.customers');
-        Route::get('/relatorios/exportar-csv', [ReportController::class, 'exportCSV'])->name('reports.export-csv');
     });
 
     // ========================================
