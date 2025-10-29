@@ -190,7 +190,7 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
         Route::get('/pos', [SaleController::class, 'pos'])->name('sales.pos');
         Route::get('/vendas/{sale}/pos-data', [SaleController::class, 'getPosData'])->name('sales.pos-data');
         Route::post('/vendas/{sale}/finalizar', [SaleController::class, 'finalize'])->name('sales.finalize');
-        Route::post('/vendas/{sale}/atualizar-status', [SaleController::class, 'updateStatus'])->name('sales.update-status');
+        Route::post('/vendas/{sale}/update-status', [SaleController::class, 'updateStatus'])->name('sales.update-status');
         Route::post('/vendas/{sale}/cancelar', [SaleController::class, 'cancel'])->name('sales.cancel');
         Route::post('/vendas/{sale}/imprimir-recibo', [SaleController::class, 'printReceipt'])->name('sales.print-receipt');
         Route::get('/vendas-estatisticas', [SaleController::class, 'statistics'])->name('sales.statistics');
@@ -258,7 +258,7 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
             'update' => 'cash-registers.update',
             'destroy' => 'cash-registers.destroy'
         ]);
-        Route::get('/caixa/fechar', [CashRegisterController::class, 'closeForm'])->name('cash-registers.close-form');
+        Route::get('/caixas/fechar', [CashRegisterController::class, 'closeForm'])->name('cash-registers.close-form');
         Route::get('/caixa/{cashRegister}/vendas', [CashRegisterController::class, 'sales'])->name('cash-registers.sales');
         Route::post('/caixa/{cashRegister}/fechar', [CashRegisterController::class, 'close'])->name('cash-registers.close');
         Route::get('/caixa-estatisticas', [CashRegisterController::class, 'statistics'])->name('cash-registers.statistics');
