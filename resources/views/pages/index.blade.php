@@ -58,9 +58,9 @@
 
             @foreach($menuByCategory as $categoryName => $items)
                 <div class="mb-12">
-                    <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center flex items-center justify-center gap-3">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-8 text-center flex items-center justify-center gap-3">
                         <span class="inline-block w-12 h-1 bg-pink-400 rounded-full"></span>
-                        🍽️ {{ $categoryName }}
+                            {{ $categoryName }}
                         <span class="inline-block w-12 h-1 bg-pink-400 rounded-full"></span>
                     </h2>
 
