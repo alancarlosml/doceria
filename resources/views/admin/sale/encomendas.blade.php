@@ -491,13 +491,116 @@ function encomendasManager() {
         },
 
         async updateStatus(encomendaId, newStatus) {
-            // TODO: Implementar atualização real
-            console.log('Atualizando encomenda', encomendaId, 'para status', newStatus);
-            this.loadEncomendas();
+            try {
+                // Mostrar loading
+                const button = event.target;
+                const originalText = button.textContent;
+                button.disabled = true;
+                button.textContent = '🔄 Atualizando...';
+
+                // Fazer chamada AJAX
+                const response = await fetch(`/gestor/encomendas/${encomendaId}/atualizar-status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Mostrar mensagem de sucesso
+                    this.showToast('Status atualizado com sucesso!', 'success');
+                    // Recarregar encomendas
+                    this.loadEncomendas();
+                } else {
+                    // Mostrar erro
+                    this.showToast(data.message || 'Erro ao atualizar status', 'error');
+                }
+
+            } catch (error) {
+                console.error('Erro:', error);
+                this.showToast('Erro ao atualizar status', 'error');
+            } finally {
+                // Restaurar botão
+                const button = event.target;
+                button.disabled = false;
+                button.textContent = originalText;
+            }
         },
 
-        printEncomenda() {
-            window.print();
+        async printEncomenda() {
+            try {
+                const encomendaId = this.selectedEncomenda?.id;
+                if (!encomendaId) {
+                    this.showToast('Erro: Encomenda não encontrada', 'error');
+                    return;
+                }
+
+                // Mostrar loading
+                const button = event.target;
+                const originalText = button.textContent;
+                button.disabled = true;
+                button.textContent = '🖨️ Imprimindo...';
+
+                // Fazer chamada AJAX para imprimir
+                const response = await fetch(`/gestor/encomendas/${encomendaId}/imprimir`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Mostrar mensagem de sucesso
+                    this.showToast(data.message, 'success');
+                } else {
+                    // Mostrar erro
+                    this.showToast(data.message || 'Erro ao imprimir encomenda', 'error');
+                }
+
+                // Fechar modal
+                this.showModal = false;
+
+            } catch (error) {
+                console.error('Erro:', error);
+                this.showToast('Erro ao imprimir encomenda', 'error');
+                // Fechar modal mesmo em caso de erro
+                this.showModal = false;
+            } finally {
+                // Restaurar botão
+                const button = event.target;
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        },
+
+        showToast(message, type = 'info') {
+            // Criar notificação temporária
+            const toast = document.createElement('div');
+            toast.className = `fixed top-4 right-4 px-4 py-2 rounded-lg text-white font-medium z-50 ${
+                type === 'success' ? 'bg-green-500' :
+                type === 'error' ? 'bg-red-500' :
+                type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
+            }`;
+            toast.textContent = message;
+
+            document.body.appendChild(toast);
+
+            // Remover após 3 segundos
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+
+            // Animação de entrada
+            requestAnimationFrame(() => {
+                toast.style.transform = 'translateY(0)';
+                toast.style.opacity = '1';
+            });
         }
     }
 }

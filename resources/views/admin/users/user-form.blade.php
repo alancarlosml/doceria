@@ -6,7 +6,7 @@
 <!-- Main content -->
 <main class="flex-1 relative overflow-y-auto focus:outline-none">
     <div class="py-6">
-        <div class="max-w-3xl mx-auto px-4 sm:px-6 md:px-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
             <!-- Page Header -->
             <div class="md:flex md:items-center md:justify-between mb-8">
                 <div class="flex-1 min-w-0">
@@ -203,21 +203,7 @@
 
                                 <!-- Active Status -->
                                 <div class="flex items-center">
-                                    {{-- <input
-                                        type="checkbox"
-                                        id="active"
-                                        name="active"
-                                        value="1"
-                                        class="sr-only peer"
-                                        {{ old('active', $user->active ?? true) ? 'checked' : '' }}
-                                    > --}}
                                     <label for="active" class="relative inline-flex items-center cursor-pointer">
-                                        {{-- <div class="w-11 h-6 bg-gray-200 border-2 border-gray-300 rounded-full peer-checked:bg-green-600 peer-checked:border-green-600 transition-colors duration-200">
-                                            <div class="w-5 h-5 bg-white rounded-full shadow-md transform translate-x-0 peer-checked:translate-x-5 transition-transform duration-200"></div>
-                                        </div>
-                                        <span class="ml-3 text-sm font-medium text-gray-700">
-                                            Conta Ativa
-                                        </span> --}}
                                         <div class="flex items-center">
                                         <label for="toggle" class="flex items-center cursor-pointer">
                                             <input type="checkbox" id="active" name="active" class="sr-only peer" value="1" {{ old('active', $user->active ?? true) ? 'checked' : '' }}/>

@@ -1,26 +1,28 @@
 @extends('layouts.admin')
 
-@section('title', $table ? 'Editar Mesa ' . $table->number : 'Nova Mesa' . ' - Doce Doce Brigaderia')
+@section('title', isset($table) ? 'Editar Mesa ' . $table->number : 'Nova Mesa' . ' - Doce Doce Brigaderia')
 
 @section('admin-content')
 <main class="flex-1 relative overflow-y-auto focus:outline-none">
     <div class="py-6">
-        <div class="max-w-3xl mx-auto px-4 sm:px-6 md:px-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
             <!-- Header -->
             <div class="md:flex md:items-center md:justify-between mb-8">
                 <div class="md:flex-1 min-w-0">
                     <h1 class="text-2xl font-semibold text-gray-900 flex items-center">
-                        <span class="mr-3">{{ $table ? '✏️' : '➕' }}</span>
-                        {{ $table ? 'Editar Mesa ' . $table->number : 'Nova Mesa' }}
+                        <span class="mr-3">{{ isset($table) ? '✏️' : '➕' }}</span>
+                        {{ isset($table) ? 'Editar Mesa ' . $table->number : 'Nova Mesa' }}
                     </h1>
                     <p class="mt-2 text-sm text-gray-500">
-                        {{ $table ? 'Atualize as informações da mesa' : 'Configure uma nova mesa para o estabelecimento' }}
+                        {{ isset($table) ? 'Atualize as informações da mesa' : 'Configure uma nova mesa para o estabelecimento' }}
                     </p>
                 </div>
                 <div class="mt-4 flex md:mt-0 md:ml-4">
                     <a href="{{ route('tables.index') }}"
                        class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                        <span class="mr-2">⬅️</span>
+                        <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
                         Voltar
                     </a>
                 </div>
@@ -29,10 +31,10 @@
             <!-- Form -->
             <div class="bg-white shadow rounded-lg">
                 <form method="POST"
-                      action="{{ $table ? route('tables.update', $table) : route('tables.store') }}"
+                      action="{{ isset($table) ? route('tables.update', $table) : route('tables.store') }}"
                       enctype="multipart/form-data">
                     @csrf
-                    @if($table)
+                    @if(isset($table))
                         @method('PUT')
                     @endif
 
@@ -48,9 +50,9 @@
                                 <div class="ml-6">
                                     <div class="flex items-center">
                                         <h3 class="text-lg font-medium text-gray-900 mr-4">
-                                            Mesa {{ old('number', $table->number ?? '') ?: 'a ser definida' }}
+                                            Mesa {{ old('number', isset($table) ? $table->number : '') ?: 'a ser definida' }}
                                         </h3>
-                                        @if($table)
+                                        @if(isset($table))
                                             <span class="px-3 py-1 rounded-full text-sm font-medium
                                                 @if($table->status === 'disponivel') bg-green-100 text-green-800
                                                 @elseif($table->status === 'ocupada') bg-red-100 text-red-800
@@ -62,7 +64,7 @@
                                         @endif
                                     </div>
                                     <p class="text-sm text-blue-600 mt-1">
-                                        Capacidade: {{ old('capacity', $table->capacity ?? 0) ?: 'a ser definida' }} pessoas
+                                        Capacidade: {{ old('capacity', isset($table) ? $table->capacity : 0) ?: 'a ser definida' }} pessoas
                                     </p>
                                 </div>
                             </div>
@@ -79,7 +81,7 @@
                                     type="text"
                                     name="number"
                                     id="number"
-                                    value="{{ old('number', $table->number ?? '') }}"
+                                    value="{{ old('number', isset($table) ? $table->number : '') }}"
                                     placeholder="Ex: 01, 02, VIP-01..."
                                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                                     required
@@ -106,7 +108,7 @@
                                     <option value="">Selecione...</option>
                                     @for($i = 1; $i <= 20; $i++)
                                         <option value="{{ $i }}"
-                                                {{ old('capacity', $table->capacity ?? null) == $i ? 'selected' : '' }}>
+                                                {{ old('capacity', isset($table) ? $table->capacity : null) == $i ? 'selected' : '' }}>
                                             {{ $i }} {{ $i === 1 ? 'pessoa' : 'pessoas' }}
                                         </option>
                                     @endfor
@@ -131,7 +133,7 @@
                                         type="radio"
                                         name="status"
                                         value="disponivel"
-                                        {{ old('status', $table->status ?? 'disponivel') === 'disponivel' ? 'checked' : '' }}
+                                        {{ old('status', isset($table) ? $table->status : 'disponivel') === 'disponivel' ? 'checked' : '' }}
                                         class="sr-only peer"
                                     >
                                     <div class="w-full p-4 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 peer-checked:border-green-500 peer-checked:bg-green-50 transition-colors">
@@ -152,13 +154,13 @@
                                         type="radio"
                                         name="status"
                                         value="ocupada"
-                                        {{ old('status', $table->status ?? null) === 'ocupada' ? 'checked' : '' }}
+                                        {{ old('status', isset($table) ? $table->status : null) === 'ocupada' ? 'checked' : '' }}
                                         class="sr-only peer"
                                     >
                                     <div class="w-full p-4 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 peer-checked:border-red-500 peer-checked:bg-red-50 transition-colors">
                                         <div class="flex items-center">
                                             <div class="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center mr-3">
-                                                <span class="text-white">🟠</span>
+                                                <span class="text-white">🔴</span>
                                             </div>
                                             <div>
                                                 <div class="font-semibold text-gray-900">Ocupada</div>
@@ -173,7 +175,7 @@
                                         type="radio"
                                         name="status"
                                         value="reservada"
-                                        {{ old('status', $table->status ?? null) === 'reservada' ? 'checked' : '' }}
+                                        {{ old('status', isset($table) ? $table->status : null) === 'reservada' ? 'checked' : '' }}
                                         class="sr-only peer"
                                     >
                                     <div class="w-full p-4 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 peer-checked:border-yellow-500 peer-checked:bg-yellow-50 transition-colors">
@@ -204,7 +206,7 @@
                                     id="active"
                                     name="active"
                                     type="checkbox"
-                                    {{ old('active', $table->active ?? true) ? 'checked' : '' }}
+                                    {{ old('active', isset($table) ? $table->active : true) ? 'checked' : '' }}
                                     class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                 >
                                 <label for="active" class="ml-2 block text-sm text-gray-900">
@@ -225,8 +227,8 @@
                         </a>
                         <button type="submit"
                                 class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                            <span class="mr-2">{{ $table ? '💾' : '➕' }}</span>
-                            {{ $table ? 'Atualizar Mesa' : 'Criar Mesa' }}
+                            <span class="mr-2">{{ isset($table) ? '💾' : '➕' }}</span>
+                            {{ isset($table) ? 'Atualizar Mesa' : 'Criar Mesa' }}
                         </button>
                     </div>
                 </form>

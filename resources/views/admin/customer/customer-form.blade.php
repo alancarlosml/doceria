@@ -6,7 +6,7 @@
 <!-- Main content -->
 <main class="flex-1 relative overflow-y-auto focus:outline-none">
     <div class="py-6">
-        <div class="max-w-3xl mx-auto px-4 sm:px-6 md:px-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
             <!-- Page Header -->
             <div class="md:flex md:items-center md:justify-between mb-8">
                 <div class="flex-1 min-w-0">

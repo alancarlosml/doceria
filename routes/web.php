@@ -50,8 +50,8 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
     // ========================================
     Route::middleware('role:admin')->group(function () {
         // Usuários
-        Route::resource('/usuarios', UserController::class)->parameters([
-            'usuarios' => 'user'  // Map Portuguese plural to English singular parameter
+        Route::resource('usuarios', UserController::class)->parameters([
+            'usuarios' => 'user'
         ])->names([
             'index' => 'users.index',
             'create' => 'users.create',
@@ -61,10 +61,12 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
             'update' => 'users.update',
             'destroy' => 'users.destroy'
         ]);
-        Route::post('/usuarios/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
+        Route::post('usuarios/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
 
         // Permissões
-        Route::resource('/permissoes', PermissionController::class)->names([
+        Route::resource('permissoes', PermissionController::class)->parameters([
+            'permissoes' => 'permission'
+        ])->names([
             'index' => 'permissions.index',
             'create' => 'permissions.create',
             'store' => 'permissions.store',
@@ -73,71 +75,70 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
             'update' => 'permissions.update',
             'destroy' => 'permissions.destroy'
         ]);
-        Route::post('/permissoes/assign-to-role', [PermissionController::class, 'assignToRole'])->name('permissions.assign-to-role');
-        Route::post('/permissoes/assign-role-to-user', [PermissionController::class, 'assignRoleToUser'])->name('permissions.assign-role-to-user');
-        Route::get('/permissoes/usuarios/api', [PermissionController::class, 'getUsersWithPermissions'])->name('permissions.users.api');
-        Route::patch('/permissoes/usuarios/{user}/role', [PermissionController::class, 'updateUserRole'])->name('permissions.users.update-role');
-        Route::get('/permissoes/usuarios-completos', [PermissionController::class, 'getUsersPermissions'])->name('permissions.users.complete');
+        Route::post('permissoes/assign-to-role', [PermissionController::class, 'assignToRole'])->name('permissions.assign-to-role');
+        Route::post('permissoes/assign-role-to-user', [PermissionController::class, 'assignRoleToUser'])->name('permissions.assign-role-to-user');
+        Route::get('permissoes/usuarios/api', [PermissionController::class, 'getUsersWithPermissions'])->name('permissions.users.api');
+        Route::patch('permissoes/usuarios/{user}/role', [PermissionController::class, 'updateUserRole'])->name('permissions.users.update-role');
+        Route::get('permissoes/usuarios-completos', [PermissionController::class, 'getUsersPermissions'])->name('permissions.users.complete');
 
         // Permissões granulares por usuário
-        Route::get('/usuarios/{user}/permissoes', [PermissionController::class, 'manageUserPermissions'])->name('users.permissions.manage');
-        Route::post('/usuarios/{user}/permissoes/assign', [PermissionController::class, 'assignPermissionsToUser'])->name('users.permissions.assign');
-        Route::delete('/usuarios/{user}/permissoes/remover', [PermissionController::class, 'removePermissionFromUser'])->name('users.permissions.remove');
+        Route::get('usuarios/{user}/permissoes', [PermissionController::class, 'manageUserPermissions'])->name('users.permissions.manage');
+        Route::post('usuarios/{user}/permissoes/assign', [PermissionController::class, 'assignPermissionsToUser'])->name('users.permissions.assign');
+        Route::delete('usuarios/{user}/permissoes/remover', [PermissionController::class, 'removePermissionFromUser'])->name('users.permissions.remove');
 
         // ========================================
         // RELATÓRIOS
         // ========================================
         Route::middleware('permission:reports.view')->group(function () {
-            Route::get('/relatorios/dashboard', [ReportController::class, 'dashboard'])->name('reports.dashboard');
-            Route::get('/relatorios/produtos', [ReportController::class, 'products'])->name('reports.products');
-            Route::get('/relatorios/fluxo-caixa', [ReportController::class, 'cashFlow'])->name('reports.cash-flow');
-            Route::get('/relatorios/funcionarios', [ReportController::class, 'employees'])->name('reports.employees');
-            Route::get('/relatorios/clientes', [ReportController::class, 'customers'])->name('reports.customers');
-            Route::get('/relatorios/exportar-csv', [ReportController::class, 'exportCSV'])->name('reports.export-csv');
+            Route::get('relatorios/dashboard', [ReportController::class, 'dashboard'])->name('reports.dashboard');
+            Route::get('relatorios/produtos', [ReportController::class, 'products'])->name('reports.products');
+            Route::get('relatorios/fluxo-caixa', [ReportController::class, 'cashFlow'])->name('reports.cash-flow');
+            Route::get('relatorios/funcionarios', [ReportController::class, 'employees'])->name('reports.employees');
+            Route::get('relatorios/clientes', [ReportController::class, 'customers'])->name('reports.customers');
+            Route::get('relatorios/exportar-csv', [ReportController::class, 'exportCSV'])->name('reports.export-csv');
         });
 
         // ========================================
         // ENTRADAS/SAÍDAS
         // ========================================
         Route::middleware('permission:expenses.view')->group(function () {
-        Route::resource('/entradas-saidas', ExpenseController::class)->parameters([
-            'entradas-saidas' => 'expense'
-        ])->names([
-            'index' => 'expenses.index',
-            'create' => 'expenses.create',
-            'store' => 'expenses.store',
-            'show' => 'expenses.show',
-            'edit' => 'expenses.edit',
-            'update' => 'expenses.update',
-            'destroy' => 'expenses.destroy'
-        ])->except(['show']);
-            Route::get('/entradas-saidas-estatisticas', [ExpenseController::class, 'statistics'])->name('expenses.statistics');
+            Route::resource('entradas-saidas', ExpenseController::class)->parameters([
+                'entradas-saidas' => 'expense'
+            ])->names([
+                'index' => 'expenses.index',
+                'create' => 'expenses.create',
+                'store' => 'expenses.store',
+                'show' => 'expenses.show',
+                'edit' => 'expenses.edit',
+                'update' => 'expenses.update',
+                'destroy' => 'expenses.destroy'
+            ])->except(['show']);
+            Route::get('entradas-saidas-estatisticas', [ExpenseController::class, 'statistics'])->name('expenses.statistics');
         });
     });
 
     // ========================================
-    // Configurações (Somente Admin)
+    // CONFIGURAÇÕES (Somente Admin)
     // ========================================
     Route::middleware('auth')->group(function () {
-        // Configurações
-        Route::get('/configuracoes', [SettingController::class, 'index'])->name('settings.index');
-        Route::put('/configuracoes', [SettingController::class, 'update'])->name('settings.update');
+        Route::get('configuracoes', [SettingController::class, 'index'])->name('settings.index');
+        Route::put('configuracoes', [SettingController::class, 'update'])->name('settings.update');
     });
 
     // ========================================
     // PERFIL (Todos os usuários autenticados)
     // ========================================
     Route::middleware('auth')->group(function () {
-        Route::get('/perfil/editar', [UserController::class, 'editProfile'])->name('profile.edit');
-        Route::put('/perfil/atualizar', [UserController::class, 'updateProfile'])->name('profile.update');
+        Route::get('perfil/editar', [UserController::class, 'editProfile'])->name('profile.edit');
+        Route::put('perfil/atualizar', [UserController::class, 'updateProfile'])->name('profile.update');
     });
 
     // ========================================
     // PRODUTOS (Com permissão)
     // ========================================
     Route::middleware('permission:products.view')->group(function () {
-        Route::resource('/produtos', ProductController::class)->parameters([
-            'produtos' => 'product'  // Map Portuguese plural to English singular parameter
+        Route::resource('produtos', ProductController::class)->parameters([
+            'produtos' => 'product'
         ])->names([
             'index' => 'products.index',
             'create' => 'products.create',
@@ -147,18 +148,18 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
             'update' => 'products.update',
             'destroy' => 'products.destroy'
         ]);
-        Route::post('/produtos/{product}/toggle-status', [ProductController::class, 'toggleStatus'])->name('products.toggle-status');
-        Route::post('/produtos/{product}/update-availability', [ProductController::class, 'updateAvailability'])->name('products.update-availability');
-        Route::get('/produtos-dia/{dayOfWeek}', [ProductController::class, 'getAvailableForDay'])->name('products.day');
-        Route::get('/produtos-categoria/{category}', [ProductController::class, 'getByCategory'])->name('products.category');
+        Route::post('produtos/{product}/toggle-status', [ProductController::class, 'toggleStatus'])->name('products.toggle-status');
+        Route::post('produtos/{product}/update-availability', [ProductController::class, 'updateAvailability'])->name('products.update-availability');
+        Route::get('produtos-dia/{dayOfWeek}', [ProductController::class, 'getAvailableForDay'])->name('products.day');
+        Route::get('produtos-categoria/{category}', [ProductController::class, 'getByCategory'])->name('products.category');
     });
 
     // ========================================
     // CATEGORIAS (Com permissão)
     // ========================================
     Route::middleware('permission:categories.view')->group(function () {
-        Route::resource('/categorias', CategoryController::class)->parameters([
-            'categorias' => 'category'  // Map Portuguese plural to English singular parameter
+        Route::resource('categorias', CategoryController::class)->parameters([
+            'categorias' => 'category'
         ])->names([
             'index' => 'categories.index',
             'create' => 'categories.create',
@@ -168,16 +169,16 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
             'update' => 'categories.update',
             'destroy' => 'categories.destroy'
         ]);
-        Route::post('/categorias/{category}/toggle-status', [CategoryController::class, 'toggleStatus'])->name('categories.toggle-status');
-        Route::get('/categorias-api', [CategoryController::class, 'apiIndex'])->name('categories.api');
+        Route::post('categorias/{category}/toggle-status', [CategoryController::class, 'toggleStatus'])->name('categories.toggle-status');
+        Route::get('categorias-api', [CategoryController::class, 'apiIndex'])->name('categories.api');
     });
 
     // ========================================
     // VENDAS E PDV (Com permissão)
     // ========================================
     Route::middleware('permission:sales.view')->group(function () {
-        Route::resource('/vendas', SaleController::class)->parameters([
-            'vendas' => 'sale'  // Map Portuguese plural to English singular parameter
+        Route::resource('vendas', SaleController::class)->parameters([
+            'vendas' => 'sale'
         ])->names([
             'index' => 'sales.index',
             'create' => 'sales.create',
@@ -187,21 +188,21 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
             'update' => 'sales.update',
             'destroy' => 'sales.destroy'
         ]);
-        Route::get('/pos', [SaleController::class, 'pos'])->name('sales.pos');
-        Route::get('/vendas/{sale}/pos-data', [SaleController::class, 'getPosData'])->name('sales.pos-data');
-        Route::post('/vendas/{sale}/finalizar', [SaleController::class, 'finalize'])->name('sales.finalize');
-        Route::post('/vendas/{sale}/update-status', [SaleController::class, 'updateStatus'])->name('sales.update-status');
-        Route::post('/vendas/{sale}/cancelar', [SaleController::class, 'cancel'])->name('sales.cancel');
-        Route::post('/vendas/{sale}/imprimir-recibo', [SaleController::class, 'printReceipt'])->name('sales.print-receipt');
-        Route::get('/vendas-estatisticas', [SaleController::class, 'statistics'])->name('sales.statistics');
+        Route::get('pos', [SaleController::class, 'pos'])->name('sales.pos');
+        Route::get('vendas/{sale}/pos-data', [SaleController::class, 'getPosData'])->name('sales.pos-data');
+        Route::post('vendas/{sale}/finalizar', [SaleController::class, 'finalize'])->name('sales.finalize');
+        Route::post('vendas/{sale}/update-status', [SaleController::class, 'updateStatus'])->name('sales.update-status');
+        Route::post('vendas/{sale}/cancelar', [SaleController::class, 'cancel'])->name('sales.cancel');
+        Route::post('vendas/{sale}/imprimir-recibo', [SaleController::class, 'printReceipt'])->name('sales.print-receipt');
+        Route::get('vendas-estatisticas', [SaleController::class, 'statistics'])->name('sales.statistics');
     });
 
     // ========================================
     // MESAS (Com permissão)
     // ========================================
     Route::middleware('permission:tables.view')->group(function () {
-        Route::resource('/mesas', TableController::class)->parameters([
-            'mesas' => 'table'  // Map Portuguese plural to English singular parameter
+        Route::resource('mesas', TableController::class)->parameters([
+            'mesas' => 'table'
         ])->names([
             'index' => 'tables.index',
             'create' => 'tables.create',
@@ -211,17 +212,17 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
             'update' => 'tables.update',
             'destroy' => 'tables.destroy'
         ]);
-        Route::post('/mesas/{table}/toggle-status', [TableController::class, 'toggleStatus'])->name('tables.toggle-status');
-        Route::post('/mesas/{table}/atualizar-status', [TableController::class, 'updateStatus'])->name('tables.update-status');
-        Route::get('/mesas-status', [TableController::class, 'getStatus'])->name('tables.status');
+        Route::post('mesas/{table}/toggle-status', [TableController::class, 'toggleStatus'])->name('tables.toggle-status');
+        Route::post('mesas/{table}/atualizar-status', [TableController::class, 'updateStatus'])->name('tables.update-status');
+        Route::get('mesas-status', [TableController::class, 'getStatus'])->name('tables.status');
     });
 
     // ========================================
     // CLIENTES (Com permissão)
     // ========================================
     Route::middleware('permission:customers.view')->group(function () {
-        Route::resource('/clientes', CustomerController::class)->parameters([
-            'clientes' => 'customer'  // Map Portuguese plural to English singular parameter
+        Route::resource('clientes', CustomerController::class)->parameters([
+            'clientes' => 'customer'
         ])->names([
             'index' => 'customers.index',
             'create' => 'customers.create',
@@ -231,24 +232,39 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
             'update' => 'customers.update',
             'destroy' => 'customers.destroy'
         ]);
-        Route::get('/clientes-pesquisa', [CustomerController::class, 'search'])->name('customers.search');
+        Route::get('clientes-pesquisa', [CustomerController::class, 'search'])->name('customers.search');
     });
 
     // ========================================
     // MOTOBOYS (Com permissão)
     // ========================================
     Route::middleware('permission:motoboys.view')->group(function () {
-        Route::resource('/motoboys', MotoboyController::class);
-        Route::post('/motoboys/{motoboy}/toggle-status', [MotoboyController::class, 'toggleStatus'])->name('motoboys.toggle-status');
-        Route::get('/motoboys-ativos', [MotoboyController::class, 'getActive'])->name('motoboys.active');
+        Route::resource('motoboys', MotoboyController::class)->parameters([
+            'motoboys' => 'motoboy'
+        ])->names([
+            'index' => 'motoboys.index',
+            'create' => 'motoboys.create',
+            'store' => 'motoboys.store',
+            'show' => 'motoboys.show',
+            'edit' => 'motoboys.edit',
+            'update' => 'motoboys.update',
+            'destroy' => 'motoboys.destroy'
+        ]);
+        Route::post('motoboys/{motoboy}/toggle-status', [MotoboyController::class, 'toggleStatus'])->name('motoboys.toggle-status');
+        Route::get('motoboys-ativos', [MotoboyController::class, 'getActive'])->name('motoboys.active');
     });
 
     // ========================================
     // CAIXA (Com permissão)
     // ========================================
     Route::middleware('permission:cash_registers.view')->group(function () {
-        Route::resource('/caixa', CashRegisterController::class)->parameters([
-            'caixa' => 'cash-register'  // Map Portuguese plural to English singular parameter
+        // ⚠️ IMPORTANTE: Rotas específicas ANTES do resource para evitar conflitos
+        Route::get('caixa/fechar', [CashRegisterController::class, 'closeForm'])->name('cash-registers.close-form');
+        Route::get('caixa-estatisticas', [CashRegisterController::class, 'statistics'])->name('cash-registers.statistics');
+        
+        // Resource routes
+        Route::resource('caixa', CashRegisterController::class)->parameters([
+            'caixa' => 'cashRegister'  // ✅ camelCase (não usar hífen)
         ])->names([
             'index' => 'cash-registers.index',
             'create' => 'cash-registers.create',
@@ -258,19 +274,22 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
             'update' => 'cash-registers.update',
             'destroy' => 'cash-registers.destroy'
         ]);
-        Route::get('/caixas/fechar', [CashRegisterController::class, 'closeForm'])->name('cash-registers.close-form');
-        Route::get('/caixa/{cashRegister}/vendas', [CashRegisterController::class, 'sales'])->name('cash-registers.sales');
-        Route::post('/caixa/{cashRegister}/fechar', [CashRegisterController::class, 'close'])->name('cash-registers.close');
-        Route::get('/caixa-estatisticas', [CashRegisterController::class, 'statistics'])->name('cash-registers.statistics');
+        
+        // Rotas específicas com parâmetro
+        Route::get('caixa/{cashRegister}/vendas', [CashRegisterController::class, 'sales'])->name('cash-registers.sales');
+        Route::post('caixa/{cashRegister}/fechar', [CashRegisterController::class, 'close'])->name('cash-registers.close');
     });
-
 
     // ========================================
     // CARDÁPIO (Menu) (Com permissão)
     // ========================================
     Route::middleware('permission:menu.view')->group(function () {
-        Route::resource('/cardapio', MenuController::class)->parameters([
-            'cardapio' => 'menu'  // Map Portuguese plural to English singular parameter
+        // Rotas específicas ANTES do resource
+        Route::get('cardapio-dia/{dayOfWeek}', [MenuController::class, 'getForDay'])->name('menu.day');
+        Route::get('cardapio-produto/{product}', [MenuController::class, 'getProductDays'])->name('menu.product');
+        
+        Route::resource('cardapio', MenuController::class)->parameters([
+            'cardapio' => 'menu'
         ])->names([
             'index' => 'menu.index',
             'create' => 'menu.create',
@@ -280,43 +299,47 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
             'update' => 'menu.update',
             'destroy' => 'menu.destroy'
         ]);
-        Route::post('/cardapio/{menu}/toggle-availability', [MenuController::class, 'toggleAvailability'])->name('menu.toggle-availability');
-        Route::get('/cardapio-dia/{dayOfWeek}', [MenuController::class, 'getForDay'])->name('menu.day');
-        Route::get('/cardapio-produto/{product}', [MenuController::class, 'getProductDays'])->name('menu.product');
+        
+        Route::post('cardapio/{menu}/toggle-availability', [MenuController::class, 'toggleAvailability'])->name('menu.toggle-availability');
 
         // Rotas legacy do menu
-        Route::get('/menus', [MenuController::class, 'manage'])->name('menus.manage');
-        Route::get('/menus/{day}', [MenuController::class, 'manageDay'])->name('menus.day');
-        Route::get('/api/menu-data/{day}', [MenuController::class, 'getMenuDataForDay'])->name('menus.data');
-        Route::post('/menus/toggle', [MenuController::class, 'toggleForDay'])->name('menus.toggle');
+        Route::get('menus', [MenuController::class, 'manage'])->name('menus.manage');
+        Route::get('menus/{day}', [MenuController::class, 'manageDay'])->name('menus.day');
+        Route::get('api/menu-data/{day}', [MenuController::class, 'getMenuDataForDay'])->name('menus.data');
+        Route::post('menus/toggle', [MenuController::class, 'toggleForDay'])->name('menus.toggle');
     });
 
     // ========================================
     // ENCOMENDAS (Todos autenticados)
     // ========================================
     Route::middleware('auth')->group(function () {
-        Route::get('/encomendas', [EncomendasController::class, 'index'])->name('encomendas.index');
-        Route::get('/encomendas/criar', [EncomendasController::class, 'create'])->name('encomendas.create');
-        Route::post('/encomendas', [EncomendasController::class, 'store'])->name('encomendas.store');
-        Route::get('/encomendas/{encomenda}', [EncomendasController::class, 'show'])->name('encomendas.show');
-        Route::get('/encomendas/{encomenda}/editar', [EncomendasController::class, 'edit'])->name('encomendas.edit');
-        Route::put('/encomendas/{encomenda}', [EncomendasController::class, 'update'])->name('encomendas.update');
-        Route::delete('/encomendas/{encomenda}', [EncomendasController::class, 'destroy'])->name('encomendas.destroy');
-        Route::post('/encomendas/{encomenda}/atualizar-status', [EncomendasController::class, 'updateStatus'])->name('encomendas.update-status');
-        Route::get('/api/encomendas-stats', [EncomendasController::class, 'stats'])->name('encomendas.stats');
+        // Rotas específicas ANTES do resource
+        Route::get('encomendas/criar', [EncomendasController::class, 'create'])->name('encomendas.create');
+        Route::get('api/encomendas-stats', [EncomendasController::class, 'stats'])->name('encomendas.stats');
+        
+        Route::get('encomendas', [EncomendasController::class, 'index'])->name('encomendas.index');
+        Route::post('encomendas', [EncomendasController::class, 'store'])->name('encomendas.store');
+        Route::get('encomendas/{encomenda}', [EncomendasController::class, 'show'])->name('encomendas.show');
+        Route::get('encomendas/{encomenda}/editar', [EncomendasController::class, 'edit'])->name('encomendas.edit');
+        Route::put('encomendas/{encomenda}', [EncomendasController::class, 'update'])->name('encomendas.update');
+        Route::delete('encomendas/{encomenda}', [EncomendasController::class, 'destroy'])->name('encomendas.destroy');
+        Route::post('encomendas/{encomenda}/atualizar-status', [EncomendasController::class, 'updateStatus'])->name('encomendas.update-status');
+        Route::post('encomendas/{encomenda}/imprimir', [EncomendasController::class, 'printEncomenda'])->name('encomendas.print');
     });
 
     // Menu data para interface web
     Route::get('menu-data/{day}', [MenuController::class, 'getMenuDataForDay'])->name('api.menu-data');
 });
 
-// API Authentication Routes (using custom token system)
+// ========================================
+// API Routes
+// ========================================
 Route::prefix('api')->group(function () {
     // Public authentication routes
     Route::post('login', [AuthController::class, 'login']);
-    Route::post('register', [AuthController::class, 'register']); // Optional
+    Route::post('register', [AuthController::class, 'register']);
 
-    // Protected authentication routes (require valid token)
+    // Protected authentication routes
     Route::middleware('auth.api')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('user', [AuthController::class, 'user'])->name('api.user');
@@ -325,7 +348,7 @@ Route::prefix('api')->group(function () {
     });
 });
 
-// API Resource Routes (all require authentication and permissions)
+// API Resource Routes
 Route::middleware('auth.api')->prefix('api')->group(function () {
     // Categories API
     Route::middleware('permission:categories.view')->group(function () {
@@ -405,7 +428,7 @@ Route::middleware('auth.api')->prefix('api')->group(function () {
         Route::patch('permissions/users/{user}/role', [PermissionController::class, 'updateUserRole']);
     });
 
-    // Users API (Admin only for full management)
+    // Users API (Admin only)
     Route::middleware('permission:users.view')->group(function () {
         Route::resource('users', UserController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
         Route::post('users/{user}/toggle-status', [UserController::class, 'toggleStatus']);
