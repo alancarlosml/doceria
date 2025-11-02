@@ -3,7 +3,7 @@
 @section('title', 'Mesa ' . $table->number . ' - Doce Doce Brigaderia')
 
 @section('admin-content')
-<main class="flex-1 relative overflow-y-auto focus:outline-none">
+<main class="flex-1 relative overflow-y-auto focus:outline-none" x-data="tableActions()">
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
             <!-- Header -->
@@ -95,9 +95,8 @@
                             <!-- Current Sale Info -->
                             @if($currentSale)
                             <div class="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                                <h5 class="font-medium text-red-800 mb-2">📋 Pedido Atual</h5>
+                                <h5 class="font-medium text-red-800 mb-2">📋 Pedido Atual #{{ $currentSale->id }}</h5>
                                 <div class="space-y-1 text-sm text-red-700">
-                                    <p>#{{ $currentSale->id }}</p>
                                     @if($currentSale->customer)
                                     <p>👤 {{ $currentSale->customer->name }}</p>
                                     @endif
@@ -238,6 +237,14 @@
                                 <div class="text-sm font-medium">Novo Pedido</div>
                             </a>
 
+                            @if($currentSale && $table->status === 'ocupada' && (Auth::user()->hasRole('admin') || Auth::user()->hasPermission('tables.change')))
+                            <button @click="showChangeTableModal = true"
+                                    class="text-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                <div class="text-2xl mb-1">🔄</div>
+                                <div class="text-sm font-medium">Mudar Mesa</div>
+                            </button>
+                            @endif
+
                             @if($table->status !== 'reservada')
                             <form action="{{ route('tables.update-status', $table) }}" method="POST" class="inline">
                                 @csrf
@@ -280,5 +287,130 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal de Mudança de Mesa -->
+    @if($currentSale && $table->status === 'ocupada' && (Auth::user()->hasRole('admin') || Auth::user()->hasPermission('tables.change')))
+    <div x-show="showChangeTableModal"
+         x-cloak
+         @click.away="showChangeTableModal = false"
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4 relative">
+            <!-- Botão X para fechar -->
+            <button
+                @click="showChangeTableModal = false"
+                class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-xl font-bold w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center"
+                title="Fechar"
+            >
+                ✕
+            </button>
+
+            <h3 class="text-2xl font-bold mb-4 pr-8">🔄 Mudar Mesa</h3>
+            <p class="text-gray-600 mb-4">Mova o cliente da <strong>Mesa {{ $table->number }}</strong> para outra mesa disponível.</p>
+
+            <form @submit.prevent="changeTable">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Selecione a Mesa de Destino <span class="text-red-500">*</span>
+                    </label>
+                    <select
+                        x-model="newTableId"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        required
+                    >
+                        <option value="">Selecione uma mesa...</option>
+                        @php
+                            $availableTables = \App\Models\Table::where('active', true)
+                                ->where('status', 'disponivel')
+                                ->where('id', '!=', $table->id)
+                                ->orderBy('number')
+                                ->get();
+                        @endphp
+                        @foreach($availableTables as $availableTable)
+                        <option value="{{ $availableTable->id }}">
+                            Mesa {{ $availableTable->number }} ({{ $availableTable->capacity }} pessoas)
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="flex gap-3">
+                    <button
+                        type="button"
+                        @click="showChangeTableModal = false"
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        :disabled="!newTableId || isChanging"
+                        class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <span x-show="!isChanging">Confirmar Mudança</span>
+                        <span x-show="isChanging">Mudando...</span>
+                    </button>
+                </div>
+
+                <div x-show="errorMessage" class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm" x-text="errorMessage"></div>
+                <div x-show="successMessage" class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm" x-text="successMessage"></div>
+            </form>
+        </div>
+    </div>
+    @endif
 </main>
+
+<script>
+function tableActions() {
+    return {
+        showChangeTableModal: false,
+        newTableId: '',
+        isChanging: false,
+        errorMessage: '',
+        successMessage: '',
+
+        async changeTable() {
+            if (!this.newTableId) {
+                this.errorMessage = 'Selecione uma mesa de destino!';
+                return;
+            }
+
+            this.isChanging = true;
+            this.errorMessage = '';
+            this.successMessage = '';
+
+            try {
+                const response = await fetch('{{ route("tables.change-table", $table) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        new_table_id: this.newTableId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    this.successMessage = data.message || 'Mesa alterada com sucesso!';
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    this.errorMessage = data.message || 'Erro ao mudar mesa!';
+                }
+            } catch (error) {
+                this.errorMessage = 'Erro ao comunicar com o servidor: ' + error.message;
+            } finally {
+                this.isChanging = false;
+            }
+        }
+    }
+}
+</script>
+<style>
+[x-cloak] { display: none !important; }
+</style>
 @endsection

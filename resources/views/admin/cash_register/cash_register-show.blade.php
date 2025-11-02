@@ -319,7 +319,7 @@
 
                     <!-- Informações Financeiras Adicionais -->
                     @if($cashRegister->isOpen() || ($totalExpenses > 0 || $totalRevenues > 0))
-                    <div class="mt-6 mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="mt-6 mb-6 *:grid grid-cols-1 md:grid-cols-3 gap-4">
                         @if($totalExpenses > 0)
                         <div class="bg-red-50 border border-red-200 rounded-lg p-3">
                             <div class="flex items-center">

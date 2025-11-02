@@ -49,6 +49,7 @@ class RolesAndPermissionsSeeder extends Seeder
             ['name' => 'tables.create', 'label' => 'Criar Mesas', 'module' => 'tables', 'action' => 'create'],
             ['name' => 'tables.edit', 'label' => 'Editar Mesas', 'module' => 'tables', 'action' => 'edit'],
             ['name' => 'tables.delete', 'label' => 'Excluir Mesas', 'module' => 'tables', 'action' => 'delete'],
+            ['name' => 'tables.change', 'label' => 'Mudar Mesa', 'module' => 'tables', 'action' => 'change'],
 
             // Módulo Motoboys
             ['name' => 'motoboys.view', 'label' => 'Visualizar Motoboys', 'module' => 'motoboys', 'action' => 'view'],
@@ -135,7 +136,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 'description' => 'Acesso básico para operações do dia a dia',
                 'permissions' => [
                     'sales.create', 'sales.view', 'sales.edit', 'sales.cancel', 'sales.update_status',
-                    'tables.view', 'tables.edit', 'customers.view', 'customers.create', 'customers.edit',
+                    'tables.view', 'tables.edit', 'tables.change', 'customers.view', 'customers.create', 'customers.edit',
                     'motoboys.view', 'menu.view', 'sale_items.create', 'sale_items.edit', 'sale_items.delete',
                     'expenses.create', 'expenses.view', 'reports.view',
                 ],

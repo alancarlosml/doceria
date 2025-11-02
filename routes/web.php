@@ -214,6 +214,10 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
         ]);
         Route::post('mesas/{table}/toggle-status', [TableController::class, 'toggleStatus'])->name('tables.toggle-status');
         Route::post('mesas/{table}/atualizar-status', [TableController::class, 'updateStatus'])->name('tables.update-status');
+        Route::post('mesas/limpar-orfas', [TableController::class, 'cleanOrphans'])->name('tables.clean-orphans');
+        Route::middleware('permission:tables.change')->group(function () {
+            Route::post('mesas/{table}/mudar-mesa', [TableController::class, 'changeTable'])->name('tables.change-table');
+        });
         Route::get('mesas-status', [TableController::class, 'getStatus'])->name('tables.status');
     });
 

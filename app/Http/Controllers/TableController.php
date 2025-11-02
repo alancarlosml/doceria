@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Table;
+use App\Models\Sale;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class TableController extends Controller
 {
@@ -140,5 +143,174 @@ class TableController extends Controller
             ->get(['id', 'number', 'capacity', 'status']);
 
         return response()->json($tables);
+    }
+
+    /**
+     * Change table for active sale.
+     * Move customer from current table to new table.
+     */
+    public function changeTable(Request $request, Table $table)
+    {
+        $user = Auth::user();
+
+        // Validar permissão para mudar mesa
+        if (!$user->hasRole('admin') && !$user->hasPermission('tables.change')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Você não tem permissão para mudar mesas!'
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'new_table_id' => 'required|exists:tables,id',
+        ]);
+
+        $newTableId = $validated['new_table_id'];
+        $newTable = Table::findOrFail($newTableId);
+
+        try {
+            DB::beginTransaction();
+
+            // Validar que mesa origem tem venda ativa
+            $currentSale = $table->sales()
+                ->where('status', '!=', 'finalizado')
+                ->where('status', '!=', 'cancelado')
+                ->first();
+
+            if (!$currentSale) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'A mesa origem não possui uma venda ativa!'
+                ], 422);
+            }
+
+            // Validar que mesa destino está disponível
+            if ($newTable->status !== 'disponivel') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'A mesa destino não está disponível! Status atual: ' . ucfirst($newTable->status)
+                ], 422);
+            }
+
+            // Verificar se mesa destino não tem venda ativa
+            $destinationActiveSale = $newTable->sales()
+                ->where('status', '!=', 'finalizado')
+                ->where('status', '!=', 'cancelado')
+                ->first();
+
+            if ($destinationActiveSale) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'A mesa destino já possui uma venda ativa!'
+                ], 422);
+            }
+
+            // Atualizar venda para nova mesa
+            $currentSale->update(['table_id' => $newTableId]);
+
+            // Liberar mesa origem
+            $table->update(['status' => 'disponivel']);
+
+            // Ocupar mesa destino
+            $newTable->update(['status' => 'ocupada']);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Cliente movido da mesa {$table->number} para mesa {$newTable->number} com sucesso!",
+                'sale' => $currentSale->fresh(['table', 'customer']),
+                'old_table' => $table,
+                'new_table' => $newTable
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao mudar mesa: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Limpa mesas órfãs (mesas ocupadas/reservadas sem vendas ativas)
+     */
+    public function cleanOrphans(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+
+            $orphanTables = collect();
+
+            // Mesas ocupadas sem vendas ativas
+            $occupiedOrphans = Table::where('status', 'ocupada')
+                ->where('active', true)
+                ->get()
+                ->filter(function ($table) {
+                    $activeSale = $table->sales()
+                        ->where('status', '!=', 'finalizado')
+                        ->where('status', '!=', 'cancelado')
+                        ->first();
+                    
+                    return !$activeSale;
+                });
+
+            // Mesas reservadas sem vendas pendentes
+            $reservedOrphans = Table::where('status', 'reservada')
+                ->where('active', true)
+                ->get()
+                ->filter(function ($table) {
+                    $pendingSale = $table->sales()
+                        ->where('status', 'pendente')
+                        ->first();
+                    
+                    return !$pendingSale;
+                });
+
+            $orphanTables = $orphanTables
+                ->merge($occupiedOrphans)
+                ->merge($reservedOrphans)
+                ->unique('id');
+
+            if ($orphanTables->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Nenhuma mesa órfã encontrada!',
+                    'corrected' => 0,
+                    'tables' => []
+                ]);
+            }
+
+            $correctedTables = [];
+            foreach ($orphanTables as $table) {
+                $oldStatus = $table->status;
+                $table->update(['status' => 'disponivel']);
+                $correctedTables[] = [
+                    'id' => $table->id,
+                    'number' => $table->number,
+                    'old_status' => $oldStatus,
+                    'new_status' => 'disponivel'
+                ];
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$orphanTables->count()} mesa(s) órfã(s) corrigida(s) com sucesso!",
+                'corrected' => $orphanTables->count(),
+                'tables' => $correctedTables
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao limpar mesas órfãs: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

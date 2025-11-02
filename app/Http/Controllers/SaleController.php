@@ -145,6 +145,7 @@ class SaleController extends Controller
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'finalize' => 'nullable|boolean',
         ]);
 
         // Validações específicas
@@ -178,6 +179,44 @@ class SaleController extends Controller
             ], 403);
         }
 
+        // Validar mesa se table_id foi alterado ou fornecido
+        $oldTableId = $sale->table_id;
+        $newTableId = $validated['table_id'] ?? null;
+        
+        if ($newTableId && $newTableId != $oldTableId) {
+            // Mesa foi alterada, validar nova mesa
+            $newTable = Table::find($newTableId);
+            
+            if (!$newTable) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Mesa não encontrada!'
+                ], 404);
+            }
+
+            // Verificar se nova mesa está disponível
+            if ($newTable->status !== 'disponivel') {
+                return response()->json([
+                    'success' => false,
+                    'message' => "A mesa {$newTable->number} não está disponível! Status atual: " . ucfirst($newTable->status)
+                ], 422);
+            }
+
+            // Verificar se nova mesa não tem venda ativa (exceto a atual)
+            $activeSale = $newTable->sales()
+                ->where('status', '!=', 'finalizado')
+                ->where('status', '!=', 'cancelado')
+                ->where('id', '!=', $sale->id)
+                ->first();
+
+            if ($activeSale) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "A mesa {$newTable->number} já possui uma venda ativa (Pedido #{$activeSale->id})!"
+                ], 422);
+            }
+        }
+
         try {
             DB::beginTransaction();
 
@@ -193,6 +232,38 @@ class SaleController extends Controller
             $discount = $validated['discount'] ?? 0;
             $total = $subtotal + $deliveryFee - $discount;
 
+            // Determinar status da venda
+            $finalize = $validated['finalize'] ?? false;
+            $currentStatus = $sale->status;
+            
+            if ($finalize) {
+                // Se está finalizando, determinar status apropriado (mesma lógica do store)
+                if ($validated['type'] === 'delivery') {
+                    $status = 'saiu_entrega'; // Delivery vai direto para entrega
+                } else {
+                    // Balcão
+                    if (empty($validated['table_id'])) {
+                        $status = 'finalizado'; // Venda rápida sem mesa
+                    } else {
+                        // Com mesa: quando finaliza uma venda existente com mesa, deve ir para finalizado
+                        // pois o pagamento foi realizado e a mesa será liberada
+                        $status = 'finalizado'; // Finalizando venda com mesa
+                    }
+                }
+            } else {
+                // Não está finalizando, manter status atual se a venda ainda não foi finalizada/cancelada
+                // Caso contrário, permitir apenas atualizações em vendas pendentes
+                if (in_array($currentStatus, ['finalizado', 'cancelado', 'entregue'])) {
+                    // Não permitir alterar venda já finalizada/cancelada/entregue
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Não é possível editar uma venda que já foi finalizada, cancelada ou entregue!'
+                    ], 422);
+                }
+                // Manter o status atual
+                $status = $currentStatus;
+            }
+
             // Limpar itens antigos e recriar
             $sale->items()->delete();
 
@@ -202,7 +273,7 @@ class SaleController extends Controller
                 'table_id' => $validated['table_id'] ?? null,
                 'motoboy_id' => $validated['motoboy_id'] ?? null,
                 'type' => $validated['type'],
-                'status' => 'finalizado', // Assume que atualizando é finalizando
+                'status' => $status,
                 'subtotal' => $subtotal,
                 'discount' => $discount,
                 'delivery_fee' => $deliveryFee,
@@ -225,9 +296,48 @@ class SaleController extends Controller
                 ]);
             }
 
-            // Atualizar mesa se necessário
-            if ($sale->table_id) {
-                $sale->table->update(['status' => 'disponivel']);
+            // Gerenciar status das mesas
+            // Se a venda está sendo finalizada
+            if ($sale->status === 'finalizado') {
+                // Liberar mesa atual se houver
+                if ($sale->table_id) {
+                    $sale->table->update(['status' => 'disponivel']);
+                }
+            } else {
+                // Venda ainda está ativa, gerenciar mudança de mesa
+                if ($oldTableId != $newTableId) {
+                    // Mesa foi alterada
+                    if ($oldTableId) {
+                        // Liberar mesa antiga
+                        $oldTable = Table::find($oldTableId);
+                        if ($oldTable) {
+                            // Verificar se não há outras vendas ativas na mesa antiga
+                            $otherActiveSales = Sale::where('table_id', $oldTableId)
+                                ->where('status', '!=', 'finalizado')
+                                ->where('status', '!=', 'cancelado')
+                                ->where('id', '!=', $sale->id)
+                                ->count();
+                            
+                            if ($otherActiveSales == 0) {
+                                $oldTable->update(['status' => 'disponivel']);
+                            }
+                        }
+                    }
+                    
+                    // Ocupar nova mesa
+                    if ($newTableId) {
+                        $newTable = Table::find($newTableId);
+                        if ($newTable) {
+                            $newTable->update(['status' => 'ocupada']);
+                        }
+                    }
+                } else if ($newTableId && !$oldTableId) {
+                    // Nova mesa foi atribuída (sem ter mesa antes)
+                    $newTable = Table::find($newTableId);
+                    if ($newTable) {
+                        $newTable->update(['status' => 'ocupada']);
+                    }
+                }
             }
 
             DB::commit();
@@ -290,6 +400,39 @@ class SaleController extends Controller
                 'success' => false,
                 'message' => 'Caixa não está aberto!'
             ], 400);
+        }
+
+        // Validar mesa ocupada se table_id foi fornecido
+        if (!empty($validated['table_id'])) {
+            $table = Table::find($validated['table_id']);
+            
+            if (!$table) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Mesa não encontrada!'
+                ], 404);
+            }
+
+            // Verificar se mesa está disponível
+            if ($table->status !== 'disponivel') {
+                return response()->json([
+                    'success' => false,
+                    'message' => "A mesa {$table->number} não está disponível! Status atual: " . ucfirst($table->status)
+                ], 422);
+            }
+
+            // Verificar se mesa não tem venda ativa
+            $activeSale = $table->sales()
+                ->where('status', '!=', 'finalizado')
+                ->where('status', '!=', 'cancelado')
+                ->first();
+
+            if ($activeSale) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "A mesa {$table->number} já possui uma venda ativa (Pedido #{$activeSale->id})!"
+                ], 422);
+            }
         }
 
         try {
