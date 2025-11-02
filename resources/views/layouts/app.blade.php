@@ -5,6 +5,17 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="icon" href="{{ asset('favicon/favicon.ico') }}">
+    <link rel="apple-touch-icon" href="{{ asset('favicon/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('favicon/favicon-32x32.png') }}" sizes="32x32">
+    <link rel="icon" type="image/png" href="{{ asset('favicon/favicon-16x16.png') }}" sizes="16x16">
+    <link rel="manifest" href="{{ asset('favicon/site.webmanifest') }}">
+    <meta name="theme-color" content="#fce7f3">
+    <meta name="msapplication-TileColor" content="#fce7f3">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Doce Doce Brigaderia">
+    <meta name="application-name" content="Doce Doce Brigaderia">
 
     <title>{{ config('app.name', 'Doceria') }} - @yield('title', 'Bem-vindo')</title>
 
