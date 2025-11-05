@@ -1,5 +1,7 @@
 # Como Capturar Logs de Impressão
 
+> **⚠️ ATENÇÃO:** O driver `daily` cria arquivos com data no nome. Veja `COMO_CAPTURAR_LOGS_PRODUCAO.md` para instruções específicas de produção.
+
 Este documento explica como visualizar e analisar os logs da impressora para diagnosticar problemas.
 
 ## 📍 Localização dos Logs
@@ -9,11 +11,13 @@ Os logs da impressora são salvos em:
 storage/logs/printer.log
 ```
 
-O Laravel cria um arquivo diário automaticamente, então você também pode encontrar:
+**IMPORTANTE:** O Laravel usa driver `daily` que cria arquivos com data:
 ```
-storage/logs/printer-2025-01-15.log
-storage/logs/printer-2025-01-16.log
+storage/logs/printer-2025-01-15.log  ← Arquivo de hoje
+storage/logs/printer-2025-01-16.log  ← Arquivo de amanhã
 ```
+
+O arquivo `printer.log` pode não existir - procure por `printer-AAAA-MM-DD.log`!
 
 ## 🔍 Como Visualizar os Logs
 

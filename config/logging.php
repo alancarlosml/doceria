@@ -135,6 +135,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Fallback: também escrever no log principal caso o canal printer falhe
+        'printer_fallback' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/laravel.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

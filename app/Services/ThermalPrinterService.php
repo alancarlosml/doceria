@@ -29,6 +29,24 @@ class ThermalPrinterService
     ];
 
     /**
+     * Log helper com fallback
+     */
+    protected function log($level, $message, $context = [])
+    {
+        try {
+            Log::channel('printer')->{$level}($message, $context);
+        } catch (\Exception $e) {
+            // Fallback: escrever no log principal se o canal printer falhar
+            try {
+                Log::channel('printer_fallback')->{$level}('[PRINTER] ' . $message, $context);
+            } catch (\Exception $e2) {
+                // Último recurso: usar log padrão
+                Log::{$level}('[PRINTER] ' . $message, $context);
+            }
+        }
+    }
+
+    /**
      * Listar impressoras disponíveis no Windows
      * Útil para diagnóstico
      */
