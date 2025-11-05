@@ -199,6 +199,153 @@
                     </div>
                 </div>
 
+                <!-- Printer Configuration Section -->
+                <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+                    <div class="px-6 py-4 bg-purple-50 border-b border-purple-200">
+                        <h3 class="text-lg font-medium text-gray-900 flex items-center">
+                            <span class="mr-3">🖨️</span>Configuração da Impressora Térmica
+                        </h3>
+                        <p class="mt-1 text-sm text-gray-600">Configure a conexão com a impressora de recibos</p>
+                    </div>
+                    <div class="px-6 py-6 space-y-6">
+                        <!-- Printer Type Selection -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-3">
+                                Tipo de Conexão
+                            </label>
+                            <div class="space-y-3">
+                                <label class="flex items-center">
+                                    <input type="radio"
+                                           name="printer_type"
+                                           value="network"
+                                           {{ App\Models\Setting::get('printer_type', 'network') === 'network' ? 'checked' : '' }}
+                                           class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
+                                           onchange="togglePrinterConfig()">
+                                    <span class="ml-3 text-sm text-gray-700">
+                                        <span class="font-medium">Rede (Network/IP)</span>
+                                        <span class="text-gray-500 block text-xs">Impressora conectada à rede via cabo ou Wi-Fi</span>
+                                    </span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="radio"
+                                           name="printer_type"
+                                           value="windows"
+                                           {{ App\Models\Setting::get('printer_type') === 'windows' ? 'checked' : '' }}
+                                           class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
+                                           onchange="togglePrinterConfig()">
+                                    <span class="ml-3 text-sm text-gray-700">
+                                        <span class="font-medium">USB/Windows</span>
+                                        <span class="text-gray-500 block text-xs">Impressora conectada diretamente ao computador via USB</span>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Network Configuration -->
+                        <div id="network-config" class="space-y-4 {{ App\Models\Setting::get('printer_type', 'network') === 'network' ? '' : 'hidden' }}">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="printer_host" class="block text-sm font-medium text-gray-700 mb-2">
+                                        IP da Impressora
+                                    </label>
+                                    <input type="text"
+                                           id="printer_host"
+                                           name="printer_host"
+                                           value="{{ old('printer_host', App\Models\Setting::get('printer_host', '')) }}"
+                                           placeholder="192.168.1.100"
+                                           class="shadow-sm focus:ring-purple-500 focus:border-purple-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        Exemplo: 192.168.1.100
+                                    </p>
+                                    @error('printer_host')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                                <div>
+                                    <label for="printer_port" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Porta
+                                    </label>
+                                    <input type="number"
+                                           id="printer_port"
+                                           name="printer_port"
+                                           value="{{ old('printer_port', App\Models\Setting::get('printer_port', 9100)) }}"
+                                           placeholder="9100"
+                                           class="shadow-sm focus:ring-purple-500 focus:border-purple-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        Padrão: 9100 (RAW)
+                                    </p>
+                                    @error('printer_port')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
+                                <div class="flex">
+                                    <div class="ml-3">
+                                        <p class="text-sm text-blue-700">
+                                            <strong>💡 Como descobrir o IP:</strong><br>
+                                            • Painel de Controle → Dispositivos e Impressoras → Propriedades → Aba Porta<br>
+                                            • Ou execute: <code class="bg-blue-100 px-1 rounded">Get-Printer | Select-Object Name, PortName</code> no PowerShell
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Windows Configuration -->
+                        <div id="windows-config" class="space-y-4 {{ App\Models\Setting::get('printer_type') === 'windows' ? '' : 'hidden' }}">
+                            <div>
+                                <label for="printer_windows_name" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Nome da Impressora no Windows
+                                </label>
+                                <input type="text"
+                                       id="printer_windows_name"
+                                       name="printer_windows_name"
+                                       value="{{ old('printer_windows_name', App\Models\Setting::get('printer_windows_name', '')) }}"
+                                       placeholder="XP-80C"
+                                       class="shadow-sm focus:ring-purple-500 focus:border-purple-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                                <p class="mt-1 text-xs text-gray-500">
+                                    Use o nome exato como aparece em: Painel de Controle → Dispositivos e Impressoras
+                                </p>
+                                @error('printer_windows_name')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
+                                <div class="flex">
+                                    <div class="ml-3">
+                                        <p class="text-sm text-blue-700">
+                                            <strong>💡 Como descobrir o nome:</strong><br>
+                                            • Painel de Controle → Dispositivos e Impressoras → Veja o nome da impressora<br>
+                                            • Ou execute: <code class="bg-blue-100 px-1 rounded">Get-Printer | Select-Object Name</code> no PowerShell
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Current Configuration Display -->
+                        @if(App\Models\Setting::get('printer_host') || App\Models\Setting::get('printer_windows_name'))
+                            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                <h4 class="text-sm font-medium text-gray-900 mb-2">📋 Configuração Atual:</h4>
+                                <div class="text-sm text-gray-600 space-y-1">
+                                    @if(App\Models\Setting::get('printer_type') === 'windows')
+                                        <p><strong>Tipo:</strong> USB/Windows</p>
+                                        <p><strong>Nome:</strong> {{ App\Models\Setting::get('printer_windows_name', 'Não configurado') }}</p>
+                                    @else
+                                        <p><strong>Tipo:</strong> Rede (Network/IP)</p>
+                                        <p><strong>IP:</strong> {{ App\Models\Setting::get('printer_host', 'Não configurado') }}</p>
+                                        <p><strong>Porta:</strong> {{ App\Models\Setting::get('printer_port', 9100) }}</p>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
                 <!-- Form Actions -->
                 <div class="flex justify-end space-x-4">
                     <a href="{{ route('gestor.dashboard') }}" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
@@ -255,6 +402,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize
     updatePreview();
+
+    // Toggle printer configuration fields
+    function togglePrinterConfig() {
+        const printerType = document.querySelector('input[name="printer_type"]:checked').value;
+        const networkConfig = document.getElementById('network-config');
+        const windowsConfig = document.getElementById('windows-config');
+        
+        if (printerType === 'network') {
+            networkConfig.classList.remove('hidden');
+            windowsConfig.classList.add('hidden');
+        } else {
+            networkConfig.classList.add('hidden');
+            windowsConfig.classList.remove('hidden');
+        }
+    }
+    
+    // Make function available globally
+    window.togglePrinterConfig = togglePrinterConfig;
 });
 </script>
 @endsection

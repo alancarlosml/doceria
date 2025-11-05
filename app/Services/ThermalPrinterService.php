@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Setting;
 use Mike42\Escpos\Printer;
 use Mike42\Escpos\PrintConnectors\NetworkPrintConnector;
 use Mike42\Escpos\PrintConnectors\FilePrintConnector;
@@ -18,12 +19,56 @@ class ThermalPrinterService
      * Configurações padrão da impressora
      */
     protected $defaultConfig = [
-        'host' => '192.168.0.100',
-        'port' => 9100,
-        'charset' => 'windows-1252', // Para caracteres especiais em português
-        'timeout' => 10,
-        'vendor_code' => 'EscposDriver'
+        'windows_printer_name' => 'EPSON TM-T20X Receipt6' //Nome da impressora no Windows
     ];
+
+    /**
+     * Obter configurações do banco de dados ou usar padrões
+     *
+     * @return array
+     */
+    public static function getConfigFromSettings(): array
+    {
+        $printerType = Setting::get('printer_type');
+        
+        // Se não há tipo configurado, verificar se há configuração padrão de Windows
+        if (!$printerType) {
+            $default = new self();
+            // Se tem windows_printer_name configurado por padrão, usar Windows
+            if (isset($default->defaultConfig['windows_printer_name'])) {
+                return ['windows_printer_name' => $default->defaultConfig['windows_printer_name']];
+            }
+            // Caso contrário, usar rede como padrão
+            return [];
+        }
+        
+        if ($printerType === 'windows') {
+            $windowsName = Setting::get('printer_windows_name');
+            if ($windowsName) {
+                return ['windows_printer_name' => $windowsName];
+            }
+            // Se está configurado como Windows mas não tem nome salvo, usar padrão
+            $default = new self();
+            if (isset($default->defaultConfig['windows_printer_name'])) {
+                return ['windows_printer_name' => $default->defaultConfig['windows_printer_name']];
+            }
+        }
+        
+        // Configuração de rede
+        $host = Setting::get('printer_host');
+        $port = Setting::get('printer_port', 9100);
+        
+        if ($host) {
+            return [
+                'host' => $host,
+                'port' => $port,
+            ];
+        }
+        
+        // Retornar configuração padrão se nada estiver salvo
+        $default = new self();
+        return $default->defaultConfig;
+    }
 
     /**
      * Conectar à impressora

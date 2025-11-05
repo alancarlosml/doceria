@@ -595,11 +595,8 @@ class SaleController extends Controller
                 $sale->load(['customer', 'table', 'motoboy', 'user', 'items.product']);
             }
 
-            // Configurações da impressora (poderia vir do banco de dados ou settings)
-            $printerConfig = [
-                'host' => '192.168.0.100',
-                'port' => 9100,
-            ];
+            // Obter configurações da impressora do banco de dados ou usar padrões
+            $printerConfig = ThermalPrinterService::getConfigFromSettings();
 
             // Tentar imprimir
             ThermalPrinterService::print($sale, $printerConfig);
