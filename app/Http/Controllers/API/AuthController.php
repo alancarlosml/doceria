@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -223,8 +224,26 @@ class AuthController extends Controller
                     ->withInput();
             }
 
-            // Redirect to dashboard
-            return redirect()->route('gestor.dashboard')
+            // Redirecionar para URL salva ou dashboard
+            // Verificar primeiro na sessão, depois no cookie (caso a sessão tenha expirado completamente)
+            $intendedUrl = null;
+            
+            // Tentar obter da sessão primeiro (método nativo do Laravel)
+            if (session()->has('url.intended')) {
+                $intendedUrl = session()->pull('url.intended');
+            } 
+            // Se não encontrar na sessão, tentar no cookie
+            elseif ($request->cookie('url.intended')) {
+                $intendedUrl = $request->cookie('url.intended');
+                Cookie::queue(Cookie::forget('url.intended'));
+            }
+            
+            // Se não encontrou em nenhum lugar, usar dashboard como padrão
+            if (!$intendedUrl) {
+                $intendedUrl = route('gestor.dashboard');
+            }
+            
+            return redirect()->to($intendedUrl)
                 ->with('success', 'Login realizado com sucesso!');
 
         } catch (\Exception $e) {
