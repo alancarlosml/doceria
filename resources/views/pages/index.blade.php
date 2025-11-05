@@ -64,7 +64,7 @@
                         <span class="inline-block w-12 h-1 bg-pink-400 rounded-full"></span>
                     </h2>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         @foreach($items as $menuItem)
                             @php
                                 $product = $menuItem->product;
@@ -88,11 +88,11 @@
                                     </div>
                                     
                                     @if($product->description)
-                                        <p class="text-gray-600 mb-4">{{ $product->description }}</p>
+                                        <p class="text-gray-600 mb-4 text-sm">{{ $product->description }}</p>
                                     @endif
 
                                     <div class="flex items-center justify-between">
-                                        <div class="text-2xl font-bold text-green-600">
+                                        <div class="text-xl font-bold text-green-600">
                                             R$ {{ number_format($product->price, 2, ',', '.') }}
                                         </div>
                                         @if(App\Models\Setting::isStoreOpen())
@@ -140,7 +140,7 @@
                 @if($featuredProducts->isNotEmpty())
                     <h3 class="text-2xl font-bold text-gray-800 mb-8">🌟 Destaques da Casa</h3>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         @foreach($featuredProducts as $product)
                             <div class="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover-scale overflow-hidden">
                                 <div class="h-48 bg-gradient-to-br from-pink-100 to-green-100 flex items-center justify-center">
@@ -155,10 +155,10 @@
 
                                 <div class="p-6">
                                     <h3 class="text-xl font-bold text-gray-800 mb-2">{{ $product->name }}</h3>
-                                    <p class="text-gray-600 mb-4">{{ $product->description }}</p>
+                                    <p class="text-gray-600 mb-4 text-sm">{{ $product->description }}</p>
 
                                     <div class="flex items-center justify-between">
-                                        <div class="text-2xl font-bold text-green-600">
+                                        <div class="text-xl font-bold text-green-600">
                                             R$ {{ number_format($product->price, 2, ',', '.') }}
                                         </div>
 
