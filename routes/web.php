@@ -320,6 +320,7 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
         // Rotas específicas ANTES do resource
         Route::get('encomendas/criar', [EncomendasController::class, 'create'])->name('encomendas.create');
         Route::get('api/encomendas-stats', [EncomendasController::class, 'stats'])->name('encomendas.stats');
+        Route::get('api/encomendas', [EncomendasController::class, 'apiIndex'])->name('encomendas.api');
         
         Route::get('encomendas', [EncomendasController::class, 'index'])->name('encomendas.index');
         Route::post('encomendas', [EncomendasController::class, 'store'])->name('encomendas.store');

@@ -31,7 +31,7 @@ class Encomenda extends Model
 
     protected $casts = [
         'delivery_date' => 'date',
-        'delivery_time' => 'datetime:H:i',
+        'delivery_time' => 'string',
         'delivery_fee' => 'decimal:2',
         'subtotal' => 'decimal:2',
         'custom_costs' => 'decimal:2',
@@ -55,6 +55,11 @@ class Encomenda extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function items()
+    {
+        return $this->hasMany(EncomendaItem::class);
     }
 
     // Scopes

@@ -16,6 +16,11 @@ class ThermalPrinterService
     protected $isConnected = false;
 
     /**
+     * Largura máxima da linha para impressora 80mm (48 caracteres padrão)
+     */
+    const LINE_WIDTH = 48;
+
+    /**
      * Configurações padrão da impressora
      */
     protected $defaultConfig = [
@@ -131,7 +136,7 @@ class ThermalPrinterService
         }
 
         $this->printer->setJustification(Printer::JUSTIFY_LEFT);
-        $this->printer->text(str_repeat('-', 48) . "\n");
+        $this->printer->text(str_repeat('-', self::LINE_WIDTH) . "\n");
     }
 
     /**
@@ -153,11 +158,12 @@ class ThermalPrinterService
         }
 
         $this->printer->setJustification(Printer::JUSTIFY_LEFT);
-        $this->printer->text(str_repeat('-', 48) . "\n");
+        $this->printer->text(str_repeat('-', self::LINE_WIDTH) . "\n");
 
         // Cliente (se aplicável)
         if (isset($orderData['customer_name'])) {
-            $this->printer->text("Cliente: " . $orderData['customer_name'] . "\n");
+            $customerName = $this->truncateText($orderData['customer_name'], self::LINE_WIDTH - 9);
+            $this->printer->text("Cliente: " . $customerName . "\n");
         }
 
         if (isset($orderData['customer_phone'])) {
@@ -165,25 +171,41 @@ class ThermalPrinterService
         }
 
         if (isset($orderData['delivery_address'])) {
-            $this->printer->text("Entrega: " . $orderData['delivery_address'] . "\n");
+            $this->printer->text("Entrega:\n");
+            $this->printWrappedText($orderData['delivery_address'], self::LINE_WIDTH);
         }
 
-        $this->printer->text(str_repeat('-', 48) . "\n");
+        $this->printer->text(str_repeat('-', self::LINE_WIDTH) . "\n");
 
         // Itens do pedido
         foreach ($orderData['items'] as $item) {
-            $name = mb_substr($item['name'], 0, 20, 'UTF-8'); // Limitar tamanho
             $quantity = $item['quantity'];
-            $price = number_format($item['price'], 2, ',', '.');
+            $name = $this->truncateText($item['name'], self::LINE_WIDTH - 15); // Reservar espaço para quantidade e preço
             $subtotal = number_format($item['subtotal'], 2, ',', '.');
-
-            $this->printer->text("$quantity x $name\n");
-            $this->printer->setJustification(Printer::JUSTIFY_RIGHT);
-            $this->printer->text("R$ $subtotal\n");
-            $this->printer->setJustification(Printer::JUSTIFY_LEFT);
+            
+            // Linha 1: Quantidade x Nome
+            $line1 = sprintf("%dx %s", $quantity, $name);
+            $this->printer->text($this->padText($line1, self::LINE_WIDTH) . "\n");
+            
+            // Linha 2: Preço unitário (se necessário) e subtotal alinhado à direita
+            $unitPrice = number_format($item['price'], 2, ',', '.');
+            $unitPriceText = "R$ {$unitPrice}/un";
+            $subtotalText = "R$ {$subtotal}";
+            
+            // Se couber na mesma linha, mostrar ambos
+            if (mb_strlen($unitPriceText) + mb_strlen($subtotalText) + 5 <= self::LINE_WIDTH) {
+                $this->printer->setJustification(Printer::JUSTIFY_RIGHT);
+                $this->printer->text("{$unitPriceText} = {$subtotalText}\n");
+                $this->printer->setJustification(Printer::JUSTIFY_LEFT);
+            } else {
+                // Se não couber, mostrar apenas subtotal
+                $this->printer->setJustification(Printer::JUSTIFY_RIGHT);
+                $this->printer->text("{$subtotalText}\n");
+                $this->printer->setJustification(Printer::JUSTIFY_LEFT);
+            }
         }
 
-        $this->printer->text(str_repeat('-', 48) . "\n");
+        $this->printer->text(str_repeat('-', self::LINE_WIDTH) . "\n");
 
         // Totais
         if (isset($orderData['subtotal'])) {
@@ -217,7 +239,7 @@ class ThermalPrinterService
             $this->printer->text("Tipo: $typeName\n");
         }
 
-        $this->printer->text(str_repeat('-', 48) . "\n");
+        $this->printer->text(str_repeat('-', self::LINE_WIDTH) . "\n");
     }
 
     /**
@@ -294,6 +316,60 @@ class ThermalPrinterService
         ];
 
         return $methods[$method] ?? $method;
+    }
+
+    /**
+     * Truncar texto para caber na largura da linha
+     */
+    protected function truncateText($text, $maxLength)
+    {
+        $text = trim($text);
+        if (mb_strlen($text) <= $maxLength) {
+            return $text;
+        }
+        return mb_substr($text, 0, $maxLength - 3, 'UTF-8') . '...';
+    }
+
+    /**
+     * Quebrar texto longo em múltiplas linhas
+     */
+    protected function printWrappedText($text, $maxWidth)
+    {
+        $text = trim($text);
+        $words = explode(' ', $text);
+        $currentLine = '';
+
+        foreach ($words as $word) {
+            $testLine = $currentLine ? $currentLine . ' ' . $word : $word;
+            
+            if (mb_strlen($testLine) <= $maxWidth) {
+                $currentLine = $testLine;
+            } else {
+                if ($currentLine) {
+                    $this->printer->text($currentLine . "\n");
+                }
+                // Se a palavra sozinha é maior que a largura, truncar
+                if (mb_strlen($word) > $maxWidth) {
+                    $this->printer->text($this->truncateText($word, $maxWidth) . "\n");
+                    $currentLine = '';
+                } else {
+                    $currentLine = $word;
+                }
+            }
+        }
+
+        if ($currentLine) {
+            $this->printer->text($currentLine . "\n");
+        }
+    }
+
+    /**
+     * Preencher texto até a largura especificada
+     */
+    protected function padText($text, $width)
+    {
+        $text = mb_substr($text, 0, $width, 'UTF-8');
+        return str_pad($text, $width, ' ', STR_PAD_RIGHT);
     }
 
     /**

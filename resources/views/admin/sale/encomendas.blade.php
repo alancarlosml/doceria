@@ -426,48 +426,58 @@ function encomendasManager() {
         },
 
         async loadEncomendas() {
-            // TODO: Implementar busca real
-            // Dados de exemplo
-            this.groupedEncomendas = [
-                {
-                    date: '2024-01-15',
-                    date_formatted: 'Segunda-feira, 15 de Janeiro de 2024',
-                    encomendas: [
-                        {
-                            id: 1,
-                            code: 'ENC-001',
-                            status: 'pendente',
-                            customer_name: 'Maria Silva',
-                            customer_phone: '(98) 98765-4321',
-                            delivery_time: '14:00',
-                            delivery_address: 'Rua das Flores, 123',
-                            items_summary: '2x Bolo de Chocolate, 1x Brigadeiro Gourmet (50un)',
-                            total: 150.00,
-                            total_formatted: '150,00',
-                            notes: 'Cliente prefere chocolate meio amargo',
-                            items: [
-                                { id: 1, product_name: 'Bolo de Chocolate', quantity: 2, unit_price: 50, unit_price_formatted: '50,00', subtotal: 100, subtotal_formatted: '100,00', notes: '' },
-                                { id: 2, product_name: 'Brigadeiro Gourmet (50un)', quantity: 1, unit_price: 50, unit_price_formatted: '50,00', subtotal: 50, subtotal_formatted: '50,00', notes: '' }
-                            ],
-                            subtotal: 150,
-                            subtotal_formatted: '150,00',
-                            discount: 0,
-                            discount_formatted: '0,00',
-                            delivery_date_formatted: '15/01/2024'
-                        }
-                    ]
+            try {
+                const params = new URLSearchParams();
+                if (this.filters.status) params.append('status', this.filters.status);
+                if (this.filters.delivery_date) params.append('delivery_date', this.filters.delivery_date);
+                if (this.filters.period) params.append('period', this.filters.period);
+                if (this.filters.search) params.append('search', this.filters.search);
+
+                const response = await fetch(`/gestor/api/encomendas?${params.toString()}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    this.groupedEncomendas = data.data;
+                } else {
+                    this.showToast('Erro ao carregar encomendas', 'error');
+                    this.groupedEncomendas = [];
                 }
-            ];
+            } catch (error) {
+                console.error('Erro ao carregar encomendas:', error);
+                this.showToast('Erro ao carregar encomendas', 'error');
+                this.groupedEncomendas = [];
+            }
         },
 
         async loadStats() {
-            // TODO: Implementar busca real de estatísticas
-            this.stats = {
-                pendentes: 5,
-                em_producao: 2,
-                hoje: 3,
-                valor_total: '1.250,00'
-            };
+            try {
+                const response = await fetch('/gestor/api/encomendas-stats');
+                const data = await response.json();
+
+                if (data.success) {
+                    this.stats = {
+                        pendentes: data.pendentes,
+                        em_producao: data.em_producao,
+                        hoje: data.hoje,
+                        valor_total: data.valor_total
+                    };
+                } else {
+                    this.stats = {
+                        pendentes: 0,
+                        em_producao: 0,
+                        hoje: 0,
+                        valor_total: '0,00'
+                    };
+                }
+            } catch (error) {
+                console.error('Erro ao carregar estatísticas:', error);
+                this.stats = {
+                    pendentes: 0,
+                    em_producao: 0,
+                    hoje: 0,
+                    valor_total: '0,00'
+                };
+            }
         },
 
         filterEncomendas() {
@@ -513,8 +523,9 @@ function encomendasManager() {
                 if (data.success) {
                     // Mostrar mensagem de sucesso
                     this.showToast('Status atualizado com sucesso!', 'success');
-                    // Recarregar encomendas
+                    // Recarregar encomendas e stats
                     this.loadEncomendas();
+                    this.loadStats();
                 } else {
                     // Mostrar erro
                     this.showToast(data.message || 'Erro ao atualizar status', 'error');

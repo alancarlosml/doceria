@@ -3,80 +3,346 @@
 namespace App\Http\Controllers;
 
 use App\Models\Encomenda;
+use App\Models\EncomendaItem;
 use App\Models\Customer;
+use App\Models\Product;
 use App\Services\ThermalPrinterService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class EncomendasController extends Controller
 {
+    /**
+     * Listar encomendas (página principal)
+     */
     public function index()
     {
-        // Usar dados mock por enquanto até implementar completamente
-        $groupedEncomendas = [];
-        $filters = ['status' => '', 'period' => 'todos', 'search' => ''];
-        $stats = [
-            'pendentes' => 0,
-            'em_producao' => 0,
-            'hoje' => 0,
-            'valor_total' => '0,00'
-        ];
-        $encomendas = collect();
-
-        return view('admin.sale.encomendas', compact('groupedEncomendas', 'filters', 'stats', 'encomendas'));
+        return view('admin.sale.encomendas');
     }
 
+    /**
+     * API: Buscar encomendas com filtros
+     */
+    public function apiIndex(Request $request)
+    {
+        $query = Encomenda::with(['customer', 'items.product', 'user'])
+            ->orderBy('delivery_date', 'asc')
+            ->orderBy('delivery_time', 'asc');
+
+        // Filtros
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('delivery_date')) {
+            $query->whereDate('delivery_date', $request->delivery_date);
+        }
+
+        if ($request->filled('period')) {
+            switch ($request->period) {
+                case 'hoje':
+                    $query->whereDate('delivery_date', today());
+                    break;
+                case 'amanha':
+                    $query->whereDate('delivery_date', today()->addDay());
+                    break;
+                case 'semana':
+                    $query->whereBetween('delivery_date', [today(), today()->addWeek()]);
+                    break;
+                case 'mes':
+                    $query->whereMonth('delivery_date', now()->month)
+                          ->whereYear('delivery_date', now()->year);
+                    break;
+            }
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('code', 'like', "%{$search}%")
+                  ->orWhere('title', 'like', "%{$search}%")
+                  ->orWhereHas('customer', function($q) use ($search) {
+                      $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $encomendas = $query->get();
+
+        // Agrupar por data
+        $grouped = $encomendas->groupBy(function($encomenda) {
+            return $encomenda->delivery_date->format('Y-m-d');
+        })->map(function($group, $date) {
+            $first = $group->first();
+            return [
+                'date' => $date,
+                'date_formatted' => $first->delivery_date->locale('pt_BR')->translatedFormat('l, d \d\e F \d\e Y'),
+                'encomendas' => $group->map(function($encomenda) {
+                    return $this->formatEncomendaForApi($encomenda);
+                })->values()
+            ];
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $grouped
+        ]);
+    }
+
+    /**
+     * API: Estatísticas
+     */
+    public function stats()
+    {
+        $pendentes = Encomenda::where('status', 'pendente')->count();
+        $emProducao = Encomenda::where('status', 'em_producao')->count();
+        $hoje = Encomenda::whereDate('delivery_date', today())
+            ->whereIn('status', ['pendente', 'em_producao', 'pronto'])
+            ->count();
+        $valorTotal = Encomenda::whereIn('status', ['pendente', 'em_producao', 'pronto'])
+            ->sum('total');
+
+        return response()->json([
+            'success' => true,
+            'pendentes' => $pendentes,
+            'em_producao' => $emProducao,
+            'hoje' => $hoje,
+            'valor_total' => number_format($valorTotal, 2, ',', '.'),
+        ]);
+    }
+
+    /**
+     * Criar nova encomenda
+     */
     public function create()
     {
         $customers = Customer::orderBy('name')->get();
-        return view('admin.encomendas.create', compact('customers'));
+        $products = Product::where('active', true)->orderBy('name')->get();
+        return view('admin.encomendas.create', compact('customers', 'products'));
     }
 
+    /**
+     * Salvar nova encomenda
+     */
     public function store(Request $request)
     {
-        return redirect()->route('admin.sale.encomendas')->with('info', 'Sistema de encomendas em desenvolvimento');
+        $validated = $request->validate([
+            'customer_id' => 'nullable|exists:customers,id',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'notes' => 'nullable|string',
+            'delivery_date' => 'required|date',
+            'delivery_time' => 'nullable|string',
+            'delivery_address' => 'nullable|string',
+            'delivery_fee' => 'nullable|numeric|min:0',
+            'custom_costs' => 'nullable|numeric|min:0',
+            'discount' => 'nullable|numeric|min:0',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'nullable|exists:products,id',
+            'items.*.product_name' => 'required|string|max:255',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.notes' => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Calcular subtotal dos itens
+            $subtotal = collect($validated['items'])->sum(function($item) {
+                return $item['quantity'] * $item['unit_price'];
+            });
+
+            // Calcular total
+            $total = $subtotal 
+                + ($validated['custom_costs'] ?? 0)
+                + ($validated['delivery_fee'] ?? 0)
+                - ($validated['discount'] ?? 0);
+
+            // Criar encomenda
+            $encomenda = Encomenda::create([
+                'user_id' => Auth::id(),
+                'customer_id' => $validated['customer_id'] ?? null,
+                'code' => Encomenda::generateCode(),
+                'title' => $validated['title'],
+                'description' => $validated['description'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+                'status' => 'pendente',
+                'delivery_date' => $validated['delivery_date'],
+                'delivery_time' => $validated['delivery_time'] ?? null,
+                'delivery_address' => $validated['delivery_address'] ?? null,
+                'delivery_fee' => $validated['delivery_fee'] ?? 0,
+                'custom_costs' => $validated['custom_costs'] ?? 0,
+                'discount' => $validated['discount'] ?? 0,
+                'subtotal' => $subtotal,
+                'total' => $total,
+            ]);
+
+            // Criar itens
+            foreach ($validated['items'] as $itemData) {
+                $product = $itemData['product_id'] ? Product::find($itemData['product_id']) : null;
+                
+                EncomendaItem::create([
+                    'encomenda_id' => $encomenda->id,
+                    'product_id' => $itemData['product_id'] ?? null,
+                    'product_name' => $itemData['product_name'],
+                    'quantity' => $itemData['quantity'],
+                    'unit_price' => $itemData['unit_price'],
+                    'subtotal' => $itemData['quantity'] * $itemData['unit_price'],
+                    'notes' => $itemData['notes'] ?? null,
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route('encomendas.index')
+                ->with('success', 'Encomenda criada com sucesso!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()
+                ->withErrors(['error' => 'Erro ao criar encomenda: ' . $e->getMessage()])
+                ->withInput();
+        }
     }
 
-    public function show($id)
+    /**
+     * Exibir encomenda
+     */
+    public function show(Encomenda $encomenda)
     {
-        return view('admin.encomendas.show', ['encomenda' => null]);
+        $encomenda->load(['customer', 'items.product', 'user']);
+        return view('admin.encomendas.show', compact('encomenda'));
     }
 
-    public function edit($id)
+    /**
+     * Editar encomenda
+     */
+    public function edit(Encomenda $encomenda)
     {
-        return view('admin.encomendas.edit', ['encomenda' => null]);
+        $encomenda->load(['customer', 'items.product', 'user']);
+        $customers = Customer::orderBy('name')->get();
+        $products = Product::where('active', true)->orderBy('name')->get();
+        return view('admin.encomendas.edit', compact('encomenda', 'customers', 'products'));
     }
 
-    public function update(Request $request, $id)
+    /**
+     * Atualizar encomenda
+     */
+    public function update(Request $request, Encomenda $encomenda)
     {
-        return redirect()->route('admin.sale.encomendas')->with('info', 'Sistema de encomendas em desenvolvimento');
+        $validated = $request->validate([
+            'customer_id' => 'nullable|exists:customers,id',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'notes' => 'nullable|string',
+            'delivery_date' => 'required|date',
+            'delivery_time' => 'nullable|string',
+            'delivery_address' => 'nullable|string',
+            'delivery_fee' => 'nullable|numeric|min:0',
+            'custom_costs' => 'nullable|numeric|min:0',
+            'discount' => 'nullable|numeric|min:0',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'nullable|exists:products,id',
+            'items.*.product_name' => 'required|string|max:255',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.notes' => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Calcular subtotal dos itens
+            $subtotal = collect($validated['items'])->sum(function($item) {
+                return $item['quantity'] * $item['unit_price'];
+            });
+
+            // Calcular total
+            $total = $subtotal 
+                + ($validated['custom_costs'] ?? 0)
+                + ($validated['delivery_fee'] ?? 0)
+                - ($validated['discount'] ?? 0);
+
+            // Atualizar encomenda
+            $encomenda->update([
+                'customer_id' => $validated['customer_id'] ?? null,
+                'title' => $validated['title'],
+                'description' => $validated['description'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+                'delivery_date' => $validated['delivery_date'],
+                'delivery_time' => $validated['delivery_time'] ?? null,
+                'delivery_address' => $validated['delivery_address'] ?? null,
+                'delivery_fee' => $validated['delivery_fee'] ?? 0,
+                'custom_costs' => $validated['custom_costs'] ?? 0,
+                'discount' => $validated['discount'] ?? 0,
+                'subtotal' => $subtotal,
+                'total' => $total,
+            ]);
+
+            // Deletar itens antigos
+            $encomenda->items()->delete();
+
+            // Criar novos itens
+            foreach ($validated['items'] as $itemData) {
+                EncomendaItem::create([
+                    'encomenda_id' => $encomenda->id,
+                    'product_id' => $itemData['product_id'] ?? null,
+                    'product_name' => $itemData['product_name'],
+                    'quantity' => $itemData['quantity'],
+                    'unit_price' => $itemData['unit_price'],
+                    'subtotal' => $itemData['quantity'] * $itemData['unit_price'],
+                    'notes' => $itemData['notes'] ?? null,
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route('encomendas.index')
+                ->with('success', 'Encomenda atualizada com sucesso!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()
+                ->withErrors(['error' => 'Erro ao atualizar encomenda: ' . $e->getMessage()])
+                ->withInput();
+        }
     }
 
-    public function destroy($id)
+    /**
+     * Deletar encomenda
+     */
+    public function destroy(Encomenda $encomenda)
     {
-        return redirect()->route('admin.sale.encomendas')->with('info', 'Sistema de encomendas em desenvolvimento');
+        try {
+            $encomenda->delete();
+            return redirect()->route('encomendas.index')
+                ->with('success', 'Encomenda excluída com sucesso!');
+        } catch (\Exception $e) {
+            return back()
+                ->withErrors(['error' => 'Erro ao excluir encomenda: ' . $e->getMessage()]);
+        }
     }
 
-    public function updateStatus(Request $request, $id)
+    /**
+     * Atualizar status da encomenda
+     */
+    public function updateStatus(Request $request, Encomenda $encomenda)
     {
         $request->validate([
             'status' => 'required|in:pendente,em_producao,pronto,entregue,cancelado'
         ]);
 
         try {
-            // Find the encomenda (for now we'll simulate since the model isn't fully implemented)
-            // $encomenda = Encomenda::findOrFail($id);
-            // $encomenda->update(['status' => $request->status]);
-
-            // For now, just simulate success
-            // In production, this would actually update the encomenda in the database
+            $encomenda->updateStatus($request->status);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Status da encomenda atualizado com sucesso',
-                'new_status' => $request->status
+                'new_status' => $request->status,
+                'encomenda' => $this->formatEncomendaForApi($encomenda->fresh(['customer', 'items.product']))
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -85,46 +351,40 @@ class EncomendasController extends Controller
         }
     }
 
-
-    public function printEncomenda(Request $request, $id)
+    /**
+     * Imprimir encomenda
+     */
+    public function printEncomenda(Request $request, Encomenda $encomenda)
     {
         try {
-            // For now, create simulated order data for printing
-            // In production, this would fetch the actual encomenda from database
+            $encomenda->load(['customer', 'items.product']);
 
+            // Preparar dados para impressão
             $orderData = [
-                'order_number' => $id,
-                'date' => now()->format('d/m/Y H:i'),
+                'order_number' => $encomenda->code,
+                'date' => $encomenda->created_at->format('d/m/Y H:i'),
                 'order_type' => 'delivery',
-                'customer_name' => 'Maria Silva',
-                'customer_phone' => '(98) 98765-4321',
-                'delivery_address' => 'Rua das Flores, 123 - Centro',
-                'items' => [
-                    [
-                        'name' => 'Bolo de Chocolate Grande',
-                        'quantity' => 1,
-                        'price' => 45.00,
-                        'subtotal' => 45.00,
-                    ],
-                    [
-                        'name' => 'Brigadeiro Gourmet (25un)',
-                        'quantity' => 1,
-                        'price' => 35.00,
-                        'subtotal' => 35.00,
-                    ]
-                ],
-                'subtotal' => 80.00,
-                'discount' => 0.00,
-                'delivery_fee' => 5.00,
-                'total' => 85.00,
-                'payment_method' => 'pix',
+                'customer_name' => $encomenda->customer ? $encomenda->customer->name : 'Cliente não identificado',
+                'customer_phone' => $encomenda->customer ? $encomenda->customer->phone : null,
+                'delivery_address' => $encomenda->delivery_address,
+                'items' => $encomenda->items->map(function($item) {
+                    return [
+                        'name' => $item->product_name,
+                        'quantity' => $item->quantity,
+                        'price' => $item->unit_price,
+                        'subtotal' => $item->subtotal,
+                    ];
+                })->toArray(),
+                'subtotal' => $encomenda->subtotal,
+                'discount' => $encomenda->discount,
+                'delivery_fee' => $encomenda->delivery_fee,
+                'total' => $encomenda->total,
             ];
 
-            // Get printer configuration from settings or use defaults
-            $printerConfig = [
-                'file_path' => storage_path('app/prints/encomenda_' . $id . '_' . time() . '.txt')
-            ];
+            // Obter configurações da impressora
+            $printerConfig = ThermalPrinterService::getConfigFromSettings();
 
+            // Imprimir
             $printer = new ThermalPrinterService();
             $printer->connect($printerConfig);
             $printer->printHeader('Doce Doce Brigaderia');
@@ -135,7 +395,7 @@ class EncomendasController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Encomenda impressa com sucesso na POS'
+                'message' => 'Encomenda impressa com sucesso!'
             ]);
 
         } catch (\Exception $e) {
@@ -146,16 +406,44 @@ class EncomendasController extends Controller
         }
     }
 
-    public function stats()
+    /**
+     * Formatar encomenda para API
+     */
+    private function formatEncomendaForApi(Encomenda $encomenda)
     {
-        return response()->json([
-            'pendentes' => 0,
-            'em_producao' => 0,
-            'pronto' => 0,
-            'entregue' => 0,
-            'hoje' => 0,
-            'valor_total' => 0,
-            'lucro_estimado' => 0,
-        ]);
+        $items = $encomenda->items->map(function($item) {
+            return [
+                'id' => $item->id,
+                'product_name' => $item->product_name,
+                'quantity' => $item->quantity,
+                'unit_price' => (float) $item->unit_price,
+                'unit_price_formatted' => $item->unit_price_formatted,
+                'subtotal' => (float) $item->subtotal,
+                'subtotal_formatted' => $item->subtotal_formatted,
+                'notes' => $item->notes,
+            ];
+        });
+
+        return [
+            'id' => $encomenda->id,
+            'code' => $encomenda->code,
+            'status' => $encomenda->status,
+            'customer_name' => $encomenda->customer ? $encomenda->customer->name : null,
+            'customer_phone' => $encomenda->customer ? $encomenda->customer->phone : null,
+            'delivery_time' => $encomenda->delivery_time ?: null,
+            'delivery_address' => $encomenda->delivery_address,
+            'items_summary' => $items->map(function($item) {
+                return $item['quantity'] . 'x ' . $item['product_name'];
+            })->join(', '),
+            'total' => (float) $encomenda->total,
+            'total_formatted' => number_format($encomenda->total, 2, ',', '.'),
+            'notes' => $encomenda->notes,
+            'items' => $items->toArray(),
+            'subtotal' => (float) $encomenda->subtotal,
+            'subtotal_formatted' => number_format($encomenda->subtotal, 2, ',', '.'),
+            'discount' => (float) $encomenda->discount,
+            'discount_formatted' => number_format($encomenda->discount, 2, ',', '.'),
+            'delivery_date_formatted' => $encomenda->delivery_date->format('d/m/Y'),
+        ];
     }
 }
