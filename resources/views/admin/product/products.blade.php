@@ -109,53 +109,23 @@
                 </div>
             </div>
 
-            <!-- Filters and Search -->
+            <!-- Search Input -->
             <div class="bg-white shadow rounded-lg mb-6 p-4">
-                <div class="flex items-center space-x-4">
-                    <div class="flex-1">
-                        <input
-                            type="text"
-                            id="search"
-                            name="search"
-                            value="{{ request()->input('search') }}"
-                            placeholder="Buscar produtos..."
-                            class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                        >
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <select
-                            id="status"
-                            name="status"
-                            class="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                        >
-                            <option value="">Todos os Status</option>
-                            <option value="active" {{ request()->input('status') === 'active' ? 'selected' : '' }}>Apenas Ativos</option>
-                            <option value="inactive" {{ request()->input('status') === 'inactive' ? 'selected' : '' }}>Apenas Inativos</option>
-                        </select>
-                        <button type="button"
-                                id="filter-btn"
-                                class="inline-flex items-center px-3 py-2 border border-blue-300 shadow-sm text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                            🔄 Filtrar
-                        </button>
-                        <button type="button"
-                                id="clear-filters-btn"
-                                class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                            🗑️ Limpar
-                        </button>
-                    </div>
-                </div>
+                <input
+                    type="text"
+                    x-model.debounce.300ms="searchQuery"
+                    placeholder="🔍 Buscar produtos ou categorias..."
+                    class="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                >
             </div>
 
             <!-- Products by Category -->
             @php
-                $productsPaginator = $products; // Guardar o paginator completo
-                $productsByCategory = collect($products->items())
+                $productsByCategory = collect($products)
                     ->groupBy(function($product) {
                         return $product->category->name ?? 'Sem categoria';
                     })
                     ->sortKeys();
-
-                $hasPages = $productsPaginator->hasPages();
             @endphp
 
             @if($productsByCategory->isEmpty())
@@ -175,22 +145,28 @@
                     </div>
                 </div>
             @else
-                @foreach($productsByCategory as $categoryName => $products)
+                @foreach($productsByCategory as $categoryName => $categoryProducts)
                     @php
-                        $category = $products->first()->category;
+                        $category = $categoryProducts->first()->category;
                         $categoryId = $category->id ?? null;
+                        $productNamesJson = json_encode($categoryProducts->pluck('name')->values()->all());
                     @endphp
-                    <div class="mb-12" x-data="{ categoryId: {{ $categoryId }}, categoryActive: {{ $category->active ? 'true' : 'false' }} }">
+                    <div 
+                        x-data="categoryComponent(@js($categoryName), {{ $categoryId }}, {{ $category->active ? 'true' : 'false' }}, {{ $productNamesJson }})"
+                        x-show="isVisible()"
+                        x-cloak
+                        class="mb-8"
+                    >
                         <!-- Category Header -->
-                        <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 mb-6 shadow-sm">
+                        <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 mb-4 shadow-sm">
                             <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-4">
-                                    <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center text-2xl shadow">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-xl shadow">
                                         {{ $category->emoji ?? '📦' }}
                                     </div>
                                     <div>
-                                        <h3 class="text-2xl font-bold text-gray-900">{{ $categoryName }}</h3>
-                                        <p class="text-sm text-gray-600">{{ $products->count() }} produtos nesta categoria</p>
+                                        <h3 class="text-lg font-bold text-gray-900">{{ $categoryName }}</h3>
+                                        <p class="text-xs text-gray-600">{{ $categoryProducts->count() }} produtos nesta categoria</p>
                                     </div>
                                 </div>
                                 
@@ -200,7 +176,7 @@
                                         <span class="text-sm font-medium text-gray-700">Categoria:</span>
                                         <button
                                             type="button"
-                                            @click="toggleCategory(categoryId)"
+                                            @click="$root.toggleCategory(categoryId)"
                                             :class="categoryActive ? 'bg-green-600' : 'bg-gray-200'"
                                             class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                                         >
@@ -220,53 +196,50 @@
                         </div>
 
                         <!-- Products Grid -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            @foreach($products as $product)
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                            @foreach($categoryProducts as $product)
                                 <div 
-                                    class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200"
+                                    x-show="productMatchesSearch('{{ addslashes($product->name) }}')"
+                                    class="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-200"
                                     x-data="{ productActive: {{ $product->active ? 'true' : 'false' }} }"
                                 >
                                     <!-- Product Image -->
-                                    <div class="h-48 bg-gradient-to-br from-pink-100 to-green-100 flex items-center justify-center relative">
+                                    <div class="h-32 bg-gradient-to-br from-pink-100 to-green-100 flex items-center justify-center relative">
                                         @if($product->image)
                                             <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" class="w-full h-full object-cover">
                                         @else
-                                            <div class="text-6xl opacity-70">
+                                            <div class="text-4xl opacity-70">
                                                 {{ $product->category->emoji ?? '🍰' }}
                                             </div>
                                         @endif
                                         
                                         <!-- Status Badge -->
-                                        <div class="absolute top-2 right-2">
+                                        <div class="absolute top-1 right-1">
                                             <span 
                                                 :class="productActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                                class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium"
                                             >
-                                                <span x-show="productActive">✅ Ativo</span>
-                                                <span x-show="!productActive">❌ Inativo</span>
+                                                <span x-show="productActive">✅</span>
+                                                <span x-show="!productActive">❌</span>
                                             </span>
                                         </div>
                                     </div>
 
                                     <!-- Product Info -->
-                                    <div class="p-5">
-                                        <h4 class="text-lg font-bold text-gray-900 mb-2 line-clamp-2 min-h-[3.5rem]">
+                                    <div class="p-3">
+                                        <h4 class="text-sm font-bold text-gray-900 mb-1 line-clamp-2 min-h-[2.5rem]">
                                             {{ $product->name }}
                                         </h4>
                                         
                                         @if($product->description)
-                                            <p class="text-sm text-gray-600 mb-3 line-clamp-2 min-h-[2.5rem]">
+                                            <p class="text-xs text-gray-600 mb-2 line-clamp-1 min-h-[1.25rem]">
                                                 {{ $product->description }}
-                                            </p>
-                                        @else
-                                            <p class="text-sm text-gray-400 italic mb-3 min-h-[2.5rem]">
-                                                Sem descrição
                                             </p>
                                         @endif
 
                                         <!-- Price -->
-                                        <div class="mb-4">
-                                            <div class="text-2xl font-bold text-green-600">
+                                        <div class="mb-2">
+                                            <div class="text-lg font-bold text-green-600">
                                                 R$ {{ number_format($product->price, 2, ',', '.') }}
                                             </div>
                                             @if($product->cost_price)
@@ -277,29 +250,29 @@
                                         </div>
 
                                         <!-- Product Toggle -->
-                                        <div class="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
-                                            <span class="text-sm font-medium text-gray-700">Status do Produto:</span>
+                                        <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
+                                            <span class="text-xs font-medium text-gray-700">Status:</span>
                                             <button
                                                 type="button"
-                                                @click="toggleProduct({{ $product->id }})"
+                                                @click="$root.toggleProduct({{ $product->id }})"
                                                 :class="productActive ? 'bg-green-600' : 'bg-gray-200'"
-                                                class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                                class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                                             >
                                                 <span
-                                                    :class="productActive ? 'translate-x-5' : 'translate-x-0'"
-                                                    class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                                                    :class="productActive ? 'translate-x-4' : 'translate-x-0'"
+                                                    class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
                                                 ></span>
                                             </button>
                                         </div>
 
                                         <!-- Actions -->
-                                        <div class="flex items-center space-x-2">
+                                        <div class="flex items-center space-x-1">
                                             <a
                                                 href="{{ route('products.show', $product) }}"
-                                                class="inline-flex items-center justify-center p-2 border border-green-600 rounded-lg text-green-600 hover:bg-green-50 transition-colors"
+                                                class="inline-flex items-center justify-center p-1.5 border border-green-600 rounded-lg text-green-600 hover:bg-green-50 transition-colors"
                                                 title="Ver detalhes"
                                             >
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                                 </svg>
@@ -307,9 +280,9 @@
 
                                             <a
                                                 href="{{ route('products.edit', $product) }}"
-                                                class="flex-1 inline-flex items-center justify-center px-4 py-2 border border-blue-600 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors"
+                                                class="flex-1 inline-flex items-center justify-center px-2 py-1.5 border border-blue-600 rounded-lg text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors"
                                             >
-                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                                 </svg>
                                                 Editar
@@ -325,10 +298,10 @@
                                                 @method('DELETE')
                                                 <button
                                                     type="submit"
-                                                    class="inline-flex items-center justify-center p-2 border border-red-600 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                                                    class="inline-flex items-center justify-center p-1.5 border border-red-600 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
                                                     title="Excluir produto"
                                                 >
-                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                                     </svg>
                                                 </button>
@@ -341,102 +314,15 @@
                     </div>
                 @endforeach
             @endif
-
-            <!-- Pagination -->
-            @if($hasPages)
-                <div class="mt-8 mb-8">
-                    <div class="flex items-center justify-between bg-white border-t border-gray-200 px-4 py-3 sm:px-6">
-                        <div class="flex flex-1 justify-between sm:hidden">
-                            {!! $productsPaginator->links() !!}
-                        </div>
-                        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                            <div>
-                                <p class="text-sm text-gray-700">
-                                    Mostrando
-                                    <span class="font-medium">{{ $productsPaginator->firstItem() }}</span>
-                                    a
-                                    <span class="font-medium">{{ $productsPaginator->lastItem() }}</span>
-                                    de
-                                    <span class="font-medium">{{ $productsPaginator->total() }}</span>
-                                    resultados
-                                </p>
-                            </div>
-                            <div>
-                                {!! $productsPaginator->links() !!}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            @endif
         </div>
     </div>
 </main>
 
 <!-- Alpine.js Products Manager -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const filterBtn = document.getElementById('filter-btn');
-    const clearFiltersBtn = document.getElementById('clear-filters-btn');
-
-    // Função para aplicar filtros
-    function applyFilters() {
-        const search = document.getElementById('search').value;
-        const status = document.getElementById('status').value;
-
-        // Construir URL com parâmetros
-        let url = '{{ route("products.index") }}?';
-        const params = [];
-
-        if (search) params.push('search=' + encodeURIComponent(search));
-        if (status) params.push('status=' + encodeURIComponent(status));
-
-        url += params.join('&');
-
-        // Redirecionar para aplicar filtros
-        window.location.href = url;
-    }
-
-    // Função para limpar filtros
-    function clearFilters() {
-        document.getElementById('search').value = '';
-        document.getElementById('status').value = '';
-
-        // Voltar para URL sem filtros
-        window.location.href = '{{ route("products.index") }}';
-    }
-
-    // Event listeners
-    if (filterBtn) {
-        filterBtn.addEventListener('click', applyFilters);
-    }
-
-    if (clearFiltersBtn) {
-        clearFiltersBtn.addEventListener('click', clearFilters);
-    }
-
-    // Permitir filtrar pressionando Enter no campo de busca
-    const searchInput = document.getElementById('search');
-    if (searchInput) {
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                applyFilters();
-            }
-        });
-    }
-
-    // Permitir filtrar automaticamente ao mudar status
-    const statusSelect = document.getElementById('status');
-    if (statusSelect) {
-        statusSelect.addEventListener('change', function() {
-            setTimeout(applyFilters, 100);
-        });
-    }
-});
-
 function productsManager() {
     return {
         searchQuery: '',
-        statusFilter: 'all',
 
         init() {
             console.log('Products Manager initialized');
@@ -457,7 +343,6 @@ function productsManager() {
                     const data = await response.json();
                     this.showToast(data.message, 'success');
                     
-                    // Recarregar a página após 500ms
                     setTimeout(() => window.location.reload(), 500);
                 } else {
                     throw new Error('Falha ao atualizar status');
@@ -483,7 +368,6 @@ function productsManager() {
                     const data = await response.json();
                     this.showToast(data.message, 'success');
                     
-                    // Recarregar a página após 500ms
                     setTimeout(() => window.location.reload(), 500);
                 } else {
                     throw new Error('Falha ao atualizar status');
@@ -512,6 +396,41 @@ function productsManager() {
                 toast.classList.add('opacity-0');
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
+        }
+    }
+}
+
+function categoryComponent(categoryName, categoryId, categoryActive, productNames) {
+    return {
+        categoryName: categoryName,
+        categoryId: categoryId,
+        categoryActive: categoryActive,
+        productNames: productNames,
+
+        isVisible() {
+            const searchQuery = this.$root.searchQuery;
+            if (!searchQuery) return true;
+            
+            const query = searchQuery.toLowerCase();
+            
+            // Se a categoria corresponde, mostrar
+            if (this.categoryName.toLowerCase().includes(query)) {
+                return true;
+            }
+            
+            // Ou se algum produto corresponde
+            return this.productNames.some(name => 
+                name.toLowerCase().includes(query)
+            );
+        },
+
+        productMatchesSearch(productName) {
+            const searchQuery = this.$root.searchQuery;
+            if (!searchQuery) return true;
+            
+            const query = searchQuery.toLowerCase();
+            return productName.toLowerCase().includes(query) || 
+                   this.categoryName.toLowerCase().includes(query);
         }
     }
 }

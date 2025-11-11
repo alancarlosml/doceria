@@ -73,7 +73,7 @@
                             <!-- Price -->
                             <div>
                                 <label for="price" class="block text-sm font-medium text-gray-700">Preço (R$)</label>
-                                <input type="number" step="0.01" id="price" name="price" value="{{ old('price', $isEditing ? $product->price : '') }}" required class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 mt-2">
+                                <input type="text" inputmode="decimal" id="price" name="price" value="{{ old('price', $isEditing && $product->price ? number_format($product->price, 2, ',', '.') : '') }}" required class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 mt-2" placeholder="0,00">
                                 @error('price')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -82,7 +82,7 @@
                             <!-- Cost Price -->
                             <div class="opacity-50" title="Preço de custo (opcional)">
                                 <label for="cost_price" class="block text-sm font-medium text-gray-700">Preço de Custo (R$)</label>
-                                <input type="number" step="0.01" id="cost_price" name="cost_price" value="{{ old('cost_price', $isEditing ? $product->cost_price : '') }}" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 mt-2" tabindex="-1">
+                                <input type="text" inputmode="decimal" id="cost_price" name="cost_price" value="{{ old('cost_price', $isEditing && $product->cost_price ? number_format($product->cost_price, 2, ',', '.') : '') }}" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 mt-2" placeholder="0,00" tabindex="-1">
                                 @error('cost_price')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -165,4 +165,88 @@
         </div>
     </div>
 </main>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Função para aplicar máscara monetária brasileira
+    function aplicarMascaraMonetaria(input) {
+        let value = input.value;
+        
+        // Se já está formatado (tem vírgula), não reformata
+        if (value.includes(',') && value.match(/^\d{1,3}(\.\d{3})*,\d{2}$/)) {
+            return removerMascaraMonetaria(value);
+        }
+        
+        // Remove tudo que não é número
+        value = value.replace(/\D/g, '');
+        
+        // Converte para número e divide por 100 para ter centavos
+        if (value === '') {
+            input.value = '';
+            return 0;
+        }
+        
+        const number = parseFloat(value) / 100;
+        
+        // Formata como moeda brasileira
+        input.value = number.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+        
+        return number;
+    }
+
+    // Função para remover máscara e retornar valor numérico
+    function removerMascaraMonetaria(value) {
+        if (!value) return 0;
+        // Remove pontos e substitui vírgula por ponto
+        const cleanValue = value.replace(/\./g, '').replace(',', '.');
+        return parseFloat(cleanValue) || 0;
+    }
+
+    // Aplicar máscara nos campos monetários
+    const camposMonetarios = ['price', 'cost_price'];
+    
+    camposMonetarios.forEach(fieldId => {
+        const element = document.getElementById(fieldId);
+        if (element) {
+            // Aplicar máscara ao digitar
+            element.addEventListener('input', function() {
+                aplicarMascaraMonetaria(this);
+            });
+
+            // Aplicar máscara ao perder o foco
+            element.addEventListener('blur', function() {
+                aplicarMascaraMonetaria(this);
+            });
+        }
+    });
+
+    // Converter valores monetários antes de enviar o formulário
+    const form = document.querySelector('form[method="POST"]');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Converter campos monetários para formato numérico (ponto decimal)
+            camposMonetarios.forEach(fieldId => {
+                const element = document.getElementById(fieldId);
+                if (element && element.value) {
+                    const numericValue = removerMascaraMonetaria(element.value);
+                    element.value = numericValue.toFixed(2);
+                }
+            });
+        });
+    }
+
+    // Aplicar máscara nos valores iniciais se existirem
+    camposMonetarios.forEach(fieldId => {
+        const element = document.getElementById(fieldId);
+        if (element && element.value) {
+            aplicarMascaraMonetaria(element);
+        }
+    });
+});
+</script>
+@endpush
 @endsection

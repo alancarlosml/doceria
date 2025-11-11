@@ -140,16 +140,28 @@ class EncomendasController extends Controller
             'delivery_fee' => 'nullable|numeric|min:0',
             'custom_costs' => 'nullable|numeric|min:0',
             'discount' => 'nullable|numeric|min:0',
-            'items' => 'required|array|min:1',
+            'subtotal' => 'required|numeric|min:0',
+            'items' => 'nullable|array',
             'items.*.product_id' => 'nullable|exists:products,id',
-            'items.*.product_name' => 'required|string|max:255',
-            'items.*.quantity' => 'required|integer|min:1',
-            'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.product_name' => 'required_with:items|string|max:255',
+            'items.*.quantity' => 'required_with:items|integer|min:1',
+            'items.*.unit_price' => 'required_with:items|numeric|min:0',
             'items.*.notes' => 'nullable|string',
         ]);
 
         DB::beginTransaction();
         try {
+            // Se não houver itens, criar um item padrão baseado no subtotal
+            if (empty($validated['items']) || count($validated['items']) === 0) {
+                $validated['items'] = [[
+                    'product_id' => null,
+                    'product_name' => $validated['title'],
+                    'quantity' => 1,
+                    'unit_price' => $validated['subtotal'],
+                    'notes' => $validated['description'] ?? null,
+                ]];
+            }
+
             // Calcular subtotal dos itens
             $subtotal = collect($validated['items'])->sum(function($item) {
                 return $item['quantity'] * $item['unit_price'];

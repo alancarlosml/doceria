@@ -32,7 +32,7 @@ class ProductController extends Controller
             }
         }
 
-        $products = $query->orderBy('name')->paginate(12);
+        $products = $query->orderBy('name')->get();
 
         return view('admin.product.products', compact('products'));
     }

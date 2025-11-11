@@ -78,11 +78,11 @@
                                             <span class="text-gray-500 sm:text-sm">R$</span>
                                         </div>
                                         <input
-                                            type="number"
+                                            type="text"
                                             id="opening_balance"
                                             name="opening_balance"
-                                            value="{{ $isEditing ? old('opening_balance', $cashRegister->opening_balance) : old('opening_balance', 0) }}"
-                                            step="0.01"
+                                            value="{{ $isEditing ? old('opening_balance', number_format($cashRegister->opening_balance, 2, ',', '.')) : old('opening_balance', '0,00') }}"
+                                            inputmode="decimal"
                                             min="0"
                                             class="pl-12 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 @error('opening_balance') border-red-300 @enderror"
                                             placeholder="0,00"
@@ -309,10 +309,10 @@
                                             <span class="text-gray-500 sm:text-sm">R$</span>
                                         </div>
                                         <input
-                                            type="number"
+                                            type="text"
                                             id="closing_balance"
                                             name="closing_balance"
-                                            step="0.01"
+                                            inputmode="decimal"
                                             min="0"
                                             class="pl-12 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
                                             placeholder="0,00"
@@ -363,29 +363,72 @@
 <!-- JavaScript for form enhancements -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Format currency input
-    const currencyInputs = document.querySelectorAll('input[type="number"][step="0.01"]');
+    // Função para aplicar máscara monetária brasileira
+    function aplicarMascaraMonetaria(input) {
+        let value = input.value;
+        
+        // Se já está formatado (tem vírgula), não reformata
+        if (value.includes(',') && value.match(/^\d{1,3}(\.\d{3})*,\d{2}$/)) {
+            return removerMascaraMonetaria(value);
+        }
+        
+        // Remove tudo que não é número
+        value = value.replace(/\D/g, '');
+        
+        // Converte para número e divide por 100 para ter centavos
+        if (value === '') {
+            input.value = '';
+            return 0;
+        }
+        
+        const number = parseFloat(value) / 100;
+        
+        // Formata como moeda brasileira
+        input.value = number.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+        
+        return number;
+    }
+
+    // Função para remover máscara e retornar valor numérico
+    function removerMascaraMonetaria(value) {
+        if (!value) return 0;
+        // Remove pontos e substitui vírgula por ponto
+        const cleanValue = value.replace(/\./g, '').replace(',', '.');
+        return parseFloat(cleanValue) || 0;
+    }
+
+    // Format currency input com máscara brasileira
+    const currencyInputs = document.querySelectorAll('input[inputmode="decimal"]');
     currencyInputs.forEach(function(input) {
-        input.addEventListener('blur', function(e) {
-            if (e.target.value) {
-                const value = parseFloat(e.target.value);
-                if (!isNaN(value)) {
-                    e.target.value = value.toFixed(2);
-                }
-            }
+        // Aplicar máscara ao digitar
+        input.addEventListener('input', function() {
+            aplicarMascaraMonetaria(this);
         });
 
-        input.addEventListener('input', function(e) {
-            // Allow only numbers and decimal point
-            let value = e.target.value.replace(/[^\d.]/g, '');
-            const parts = value.split('.');
-            if (parts.length > 2) {
-                value = parts[0] + '.' + parts.slice(1).join('');
-            }
-            if (parts[1] && parts[1].length > 2) {
-                value = parts[0] + '.' + parts[1].substring(0, 2);
-            }
-            e.target.value = value;
+        // Aplicar máscara ao perder o foco
+        input.addEventListener('blur', function() {
+            aplicarMascaraMonetaria(this);
+        });
+
+        // Aplicar máscara no valor inicial se existir
+        if (input.value) {
+            aplicarMascaraMonetaria(input);
+        }
+    });
+
+    // Converter valores monetários antes de enviar o formulário
+    const forms = document.querySelectorAll('form');
+    forms.forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            currencyInputs.forEach(function(input) {
+                if (input.value) {
+                    const numericValue = removerMascaraMonetaria(input.value);
+                    input.value = numericValue.toFixed(2);
+                }
+            });
         });
     });
 

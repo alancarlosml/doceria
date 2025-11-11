@@ -98,8 +98,7 @@
                             <div>
                                 <label for="delivery_date" class="block text-sm font-medium text-gray-700 mb-1">Data de Entrega*</label>
                                 <input type="date" name="delivery_date" id="delivery_date" required
-                                       class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 mt-2"
-                                       min="{{ date('Y-m-d', strtotime('+1 day')) }}">
+                                       class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 mt-2">
                                 @error('delivery_date')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -136,7 +135,7 @@
                             <div class="md:col-span-2">
                                 <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Descrição Detalhada</label>
                                 <textarea name="description" id="description" rows="4"
-                                          class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 mt-2"
+                                          class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 mt-2"
                                           placeholder="Descreva em detalhes o que será encomendado (doces, bolo, quantidades, sabores, etc.)"></textarea>
                                 @error('description')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -146,7 +145,7 @@
                             <!-- Subtotal -->
                             <div>
                                 <label for="subtotal" class="block text-sm font-medium text-gray-700 mb-1">Valor do Produto (R$)*</label>
-                                <input type="number" name="subtotal" id="subtotal" step="0.01" min="0" required
+                                <input type="text" name="subtotal" id="subtotal" inputmode="decimal" min="0" required
                                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 mt-2"
                                        placeholder="0,00">
                                 @error('subtotal')
@@ -157,7 +156,7 @@
                             <!-- Taxa de Entrega -->
                             <div>
                                 <label for="delivery_fee" class="block text-sm font-medium text-gray-700 mb-1">Taxa de Entrega (R$)</label>
-                                <input type="number" name="delivery_fee" id="delivery_fee" step="0.01" min="0"
+                                <input type="text" name="delivery_fee" id="delivery_fee" inputmode="decimal" min="0"
                                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 mt-2"
                                        placeholder="0,00">
                                 @error('delivery_fee')
@@ -168,7 +167,7 @@
                             <!-- Custos Extras -->
                             <div>
                                 <label for="custom_costs" class="block text-sm font-medium text-gray-700 mb-1">Custos Extras (R$)</label>
-                                <input type="number" name="custom_costs" id="custom_costs" step="0.01" min="0"
+                                <input type="text" name="custom_costs" id="custom_costs" inputmode="decimal" min="0"
                                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 mt-2"
                                        placeholder="0,00"
                                        title="Ex: custos de ingredientes especiais, embalagem personalizada, etc.">
@@ -180,7 +179,7 @@
                             <!-- Desconto -->
                             <div>
                                 <label for="discount" class="block text-sm font-medium text-gray-700 mb-1">Desconto (R$)</label>
-                                <input type="number" name="discount" id="discount" step="0.01" min="0"
+                                <input type="text" name="discount" id="discount" inputmode="decimal" min="0"
                                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 mt-2"
                                        placeholder="0,00">
                                 @error('discount')
@@ -233,12 +232,74 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Função para aplicar máscara monetária brasileira
+    function aplicarMascaraMonetaria(input) {
+        let value = input.value;
+        
+        // Se já está formatado (tem vírgula), não reformata
+        if (value.includes(',') && value.match(/^\d{1,3}(\.\d{3})*,\d{2}$/)) {
+            return removerMascaraMonetaria(value);
+        }
+        
+        // Remove tudo que não é número
+        value = value.replace(/\D/g, '');
+        
+        // Converte para número e divide por 100 para ter centavos
+        if (value === '') {
+            input.value = '';
+            return 0;
+        }
+        
+        const number = parseFloat(value) / 100;
+        
+        // Formata como moeda brasileira
+        input.value = number.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+        
+        return number;
+    }
+
+    // Função para remover máscara e retornar valor numérico
+    function removerMascaraMonetaria(value) {
+        if (!value) return 0;
+        // Remove pontos e substitui vírgula por ponto
+        const cleanValue = value.replace(/\./g, '').replace(',', '.');
+        return parseFloat(cleanValue) || 0;
+    }
+
+    // Aplicar máscara nos campos monetários
+    const camposMonetarios = ['subtotal', 'delivery_fee', 'custom_costs', 'discount'];
+    
+    camposMonetarios.forEach(fieldId => {
+        const element = document.getElementById(fieldId);
+        if (element) {
+            // Aplicar máscara ao digitar
+            element.addEventListener('input', function() {
+                aplicarMascaraMonetaria(this);
+                calcularTotal();
+            });
+
+            // Aplicar máscara ao perder o foco
+            element.addEventListener('blur', function() {
+                aplicarMascaraMonetaria(this);
+            });
+
+            // Remover máscara antes de enviar o formulário
+            element.addEventListener('focus', function() {
+                // Salva o valor numérico para quando perder o foco
+                this.dataset.rawValue = removerMascaraMonetaria(this.value).toString();
+            });
+        }
+    });
+
     // Função para cálculo automático do total
     function calcularTotal() {
-        const subtotal = parseFloat(document.getElementById('subtotal')?.value || 0);
-        const deliveryFee = parseFloat(document.getElementById('delivery_fee')?.value || 0);
-        const customCosts = parseFloat(document.getElementById('custom_costs')?.value || 0);
-        const discount = parseFloat(document.getElementById('discount')?.value || 0);
+        const subtotal = removerMascaraMonetaria(document.getElementById('subtotal')?.value || 0);
+        const deliveryFee = removerMascaraMonetaria(document.getElementById('delivery_fee')?.value || 0);
+        const customCosts = removerMascaraMonetaria(document.getElementById('custom_costs')?.value || 0);
+        const discount = removerMascaraMonetaria(document.getElementById('discount')?.value || 0);
 
         const total = subtotal + deliveryFee + customCosts - discount;
 
@@ -251,35 +312,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Adicionar eventos de mudança para os campos de valor
-    ['subtotal', 'delivery_fee', 'custom_costs', 'discount'].forEach(fieldId => {
+            // Converter valores monetários antes de enviar o formulário
+            const form = document.getElementById('encomenda-form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    // Converter campos monetários para formato numérico (ponto decimal)
+                    camposMonetarios.forEach(fieldId => {
+                        const element = document.getElementById(fieldId);
+                        if (element && element.value) {
+                            const numericValue = removerMascaraMonetaria(element.value);
+                            element.value = numericValue.toFixed(2);
+                        }
+                    });
+                });
+            }
+
+    // Aplicar máscara nos valores iniciais se existirem
+    camposMonetarios.forEach(fieldId => {
         const element = document.getElementById(fieldId);
-        if (element) {
-            element.addEventListener('input', calcularTotal);
-            element.addEventListener('change', calcularTotal);
+        if (element && element.value) {
+            aplicarMascaraMonetaria(element);
         }
     });
-
-    // Validação da data de entrega
-    const form = document.getElementById('encomenda-form');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            const deliveryDate = document.getElementById('delivery_date');
-            if (deliveryDate && deliveryDate.value) {
-                const selectedDate = new Date(deliveryDate.value + 'T00:00:00');
-                const today = new Date();
-                today.setDate(today.getDate() + 1); // Pelo menos amanhã
-                today.setHours(0, 0, 0, 0);
-
-                if (selectedDate < today) {
-                    e.preventDefault();
-                    alert('A data de entrega deve ser pelo menos amanhã!');
-                    deliveryDate.focus();
-                    return false;
-                }
-            }
-        });
-    }
 
     // Calcular total inicial
     calcularTotal();

@@ -68,8 +68,8 @@
                             <!-- Amount -->
                             <div>
                                 <label for="amount" class="block text-sm font-medium text-gray-700">Valor (R$)</label>
-                                <input type="number" step="0.01" id="amount" name="amount" value="{{ old('amount', $isEditing ? number_format($expense->amount, 2, '.', '') : '') }}" required class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 mt-2" placeholder="0,00">
-                                <p class="mt-1 text-xs text-gray-500">Valor em reais (use ponto para centavos)</p>
+                                <input type="text" inputmode="decimal" id="amount" name="amount" value="{{ old('amount', $isEditing ? number_format($expense->amount, 2, ',', '.') : '') }}" required class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 mt-2" placeholder="0,00">
+                                <p class="mt-1 text-xs text-gray-500">Digite o valor e ele será formatado automaticamente</p>
                                 @error('amount')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -141,9 +141,46 @@
                             </div>
                         </div>
 
-                        <!-- Script for Live Preview -->
+                        <!-- Script for Live Preview and Currency Mask -->
                         <script>
                             document.addEventListener('DOMContentLoaded', function() {
+                                // Função para aplicar máscara monetária brasileira
+                                function aplicarMascaraMonetaria(input) {
+                                    let value = input.value;
+                                    
+                                    // Se já está formatado (tem vírgula), não reformata
+                                    if (value.includes(',') && value.match(/^\d{1,3}(\.\d{3})*,\d{2}$/)) {
+                                        return removerMascaraMonetaria(value);
+                                    }
+                                    
+                                    // Remove tudo que não é número
+                                    value = value.replace(/\D/g, '');
+                                    
+                                    // Converte para número e divide por 100 para ter centavos
+                                    if (value === '') {
+                                        input.value = '';
+                                        return 0;
+                                    }
+                                    
+                                    const number = parseFloat(value) / 100;
+                                    
+                                    // Formata como moeda brasileira
+                                    input.value = number.toLocaleString('pt-BR', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    });
+                                    
+                                    return number;
+                                }
+
+                                // Função para remover máscara e retornar valor numérico
+                                function removerMascaraMonetaria(value) {
+                                    if (!value) return 0;
+                                    // Remove pontos e substitui vírgula por ponto
+                                    const cleanValue = value.replace(/\./g, '').replace(',', '.');
+                                    return parseFloat(cleanValue) || 0;
+                                }
+
                                 const typeSelect = document.getElementById('type');
                                 const amountInput = document.getElementById('amount');
                                 const dateInput = document.getElementById('date');
@@ -151,17 +188,36 @@
                                 const previewAmount = document.getElementById('preview-amount');
                                 const previewDate = document.getElementById('preview-date');
 
+                                // Aplicar máscara monetária no campo amount
+                                if (amountInput) {
+                                    // Aplicar máscara ao digitar
+                                    amountInput.addEventListener('input', function() {
+                                        aplicarMascaraMonetaria(this);
+                                        updatePreview();
+                                    });
+
+                                    // Aplicar máscara ao perder o foco
+                                    amountInput.addEventListener('blur', function() {
+                                        aplicarMascaraMonetaria(this);
+                                    });
+
+                                    // Aplicar máscara no valor inicial se existir
+                                    if (amountInput.value) {
+                                        aplicarMascaraMonetaria(amountInput);
+                                    }
+                                }
+
                                 function updatePreview() {
                                     // Update type
                                     const typeValue = typeSelect.value;
                                     previewType.textContent = typeValue === 'entrada' ? 'Entrada' : typeValue === 'saida' ? 'Saída' : 'Selecione...';
 
                                     // Update amount
-                                    const amountValue = parseFloat(amountInput.value || 0).toLocaleString('pt-BR', {
+                                    const amountValue = removerMascaraMonetaria(amountInput.value || 0);
+                                    previewAmount.textContent = 'R$ ' + amountValue.toLocaleString('pt-BR', {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2
                                     });
-                                    previewAmount.textContent = 'R$ ' + amountValue;
 
                                     // Update date
                                     if (dateInput.value) {
@@ -171,8 +227,18 @@
                                 }
 
                                 typeSelect.addEventListener('change', updatePreview);
-                                amountInput.addEventListener('input', updatePreview);
                                 dateInput.addEventListener('change', updatePreview);
+
+                                // Converter valor monetário antes de enviar o formulário
+                                const form = document.querySelector('form[method="POST"]');
+                                if (form) {
+                                    form.addEventListener('submit', function(e) {
+                                        if (amountInput && amountInput.value) {
+                                            const numericValue = removerMascaraMonetaria(amountInput.value);
+                                            amountInput.value = numericValue.toFixed(2);
+                                        }
+                                    });
+                                }
 
                                 // Initial update
                                 updatePreview();
