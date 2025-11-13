@@ -80,9 +80,9 @@
                             </div>
 
                             <!-- Cost Price -->
-                            <div class="opacity-50" title="Preço de custo (opcional)">
+                            <div title="Preço de custo (opcional)">
                                 <label for="cost_price" class="block text-sm font-medium text-gray-700">Preço de Custo (R$)</label>
-                                <input type="text" inputmode="decimal" id="cost_price" name="cost_price" value="{{ old('cost_price', $isEditing && $product->cost_price ? number_format($product->cost_price, 2, ',', '.') : '') }}" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 mt-2" placeholder="0,00" tabindex="-1">
+                                <input type="text" inputmode="decimal" id="cost_price" name="cost_price" value="{{ old('cost_price', $isEditing && $product->cost_price ? number_format($product->cost_price, 2, ',', '.') : '') }}" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 mt-2" placeholder="0,00">
                                 @error('cost_price')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
