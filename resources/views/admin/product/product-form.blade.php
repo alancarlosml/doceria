@@ -231,9 +231,18 @@ document.addEventListener('DOMContentLoaded', function() {
             // Converter campos monetários para formato numérico (ponto decimal)
             camposMonetarios.forEach(fieldId => {
                 const element = document.getElementById(fieldId);
-                if (element && element.value) {
-                    const numericValue = removerMascaraMonetaria(element.value);
+                if (element && element.value && element.value.trim() !== '') {
+                    // Remove pontos de milhar e substitui vírgula por ponto
+                    let value = element.value.trim();
+                    value = value.replace(/\./g, '').replace(',', '.');
+                    // Garante que seja um número válido
+                    const numericValue = parseFloat(value) || 0;
                     element.value = numericValue.toFixed(2);
+                } else if (element && (!element.value || element.value.trim() === '')) {
+                    // Se o campo estiver vazio e não for obrigatório, define como vazio
+                    if (fieldId === 'cost_price') {
+                        element.value = '';
+                    }
                 }
             });
         });

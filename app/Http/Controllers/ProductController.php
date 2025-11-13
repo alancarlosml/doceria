@@ -11,6 +11,30 @@ use Illuminate\Support\Facades\Storage;
 class ProductController extends Controller
 {
     /**
+     * Normaliza valor monetário brasileiro para formato numérico
+     * Converte "1.234,56" ou "10,50" para "1234.56" ou "10.50"
+     */
+    private function normalizeMonetaryValue($value)
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+        
+        // Se contém vírgula, assume formato brasileiro (1.234,56)
+        if (strpos($value, ',') !== false) {
+            // Remove pontos (separadores de milhar) e substitui vírgula por ponto
+            $value = str_replace('.', '', $value);
+            $value = str_replace(',', '.', $value);
+        }
+        // Se não tem vírgula mas tem ponto, pode ser formato internacional (10.50)
+        // Nesse caso, mantém como está
+        
+        return $value;
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
@@ -52,6 +76,12 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
+        // Normalizar valores monetários (converter vírgula para ponto)
+        $request->merge([
+            'price' => $this->normalizeMonetaryValue($request->price),
+            'cost_price' => $this->normalizeMonetaryValue($request->cost_price),
+        ]);
+
         $validated = $request->validate([
             'category_id' => 'required|exists:categories,id',
             'name' => 'required|string|max:255',
@@ -129,6 +159,12 @@ class ProductController extends Controller
      */
     public function update(Request $request, Product $product)
     {
+        // Normalizar valores monetários (converter vírgula para ponto)
+        $request->merge([
+            'price' => $this->normalizeMonetaryValue($request->price),
+            'cost_price' => $this->normalizeMonetaryValue($request->cost_price),
+        ]);
+
         $validated = $request->validate([
             'category_id' => 'required|exists:categories,id',
             'name' => 'required|string|max:255',
