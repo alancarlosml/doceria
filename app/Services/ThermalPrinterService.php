@@ -593,4 +593,77 @@ class ThermalPrinterService
         $printer = new self();
         $printer->printSale($sale, $config);
     }
+
+    /**
+     * Imprimir cupom de teste
+     */
+    public function printTestReceipt()
+    {
+        if (!$this->isConnected) {
+            throw new Exception('Impressora não conectada');
+        }
+
+        Log::channel('printer')->info('=== INICIANDO IMPRESSÃO DE TESTE ===');
+
+        try {
+            // Cabeçalho
+            $this->printer->setJustification(Printer::JUSTIFY_CENTER);
+            $this->printer->setTextSize(1, 2);
+            $this->printer->text("TESTE DE IMPRESSORA\n");
+            $this->printer->setTextSize(1, 1);
+            $this->printer->text("Doce Doce Brigaderia\n");
+            
+            $this->printer->setJustification(Printer::JUSTIFY_LEFT);
+            $this->printer->text(str_repeat('-', self::LINE_WIDTH) . "\n");
+            
+            // Informações do teste
+            $this->printer->text("Data/Hora: " . date('d/m/Y H:i:s') . "\n");
+            $this->printer->text("Status: Conexão OK\n");
+            $this->printer->text(str_repeat('-', self::LINE_WIDTH) . "\n");
+            
+            // Mensagem de teste
+            $this->printer->setJustification(Printer::JUSTIFY_CENTER);
+            $this->printer->text("\n");
+            $this->printer->text("✅ IMPRESSORA FUNCIONANDO\n");
+            $this->printer->text("CORRETAMENTE!\n");
+            $this->printer->text("\n");
+            
+            // Informações técnicas
+            $this->printer->setJustification(Printer::JUSTIFY_LEFT);
+            $this->printer->text(str_repeat('-', self::LINE_WIDTH) . "\n");
+            $this->printer->text("Configuração:\n");
+            
+            $config = self::getConfigFromSettings();
+            if (isset($config['host'])) {
+                $this->printer->text("Tipo: Rede (Network)\n");
+                $this->printer->text("IP: " . $config['host'] . "\n");
+                $this->printer->text("Porta: " . ($config['port'] ?? 9100) . "\n");
+            } elseif (isset($config['windows_printer_name'])) {
+                $this->printer->text("Tipo: USB/Windows\n");
+                $this->printer->text("Nome: " . $config['windows_printer_name'] . "\n");
+            }
+            
+            $this->printer->text(str_repeat('-', self::LINE_WIDTH) . "\n");
+            
+            // Rodapé
+            $this->printer->setJustification(Printer::JUSTIFY_CENTER);
+            $this->printer->text("\n");
+            $this->printer->text("Este é um cupom de teste\n");
+            $this->printer->text("para verificar a conexão.\n");
+            $this->printer->text("\n");
+            
+            // Cortar papel
+            $this->cut();
+            
+            Log::channel('printer')->info('✅ IMPRESSÃO DE TESTE CONCLUÍDA COM SUCESSO');
+            
+        } catch (Exception $e) {
+            Log::channel('printer')->error('❌ ERRO DURANTE IMPRESSÃO DE TESTE:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            throw $e;
+        }
+    }
 }

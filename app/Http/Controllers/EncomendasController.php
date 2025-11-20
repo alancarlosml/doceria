@@ -6,6 +6,7 @@ use App\Models\Encomenda;
 use App\Models\EncomendaItem;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\CashRegister;
 use App\Services\ThermalPrinterService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -347,6 +348,16 @@ class EncomendasController extends Controller
         ]);
 
         try {
+            // Se a encomenda está sendo marcada como entregue e não tem caixa vinculado,
+            // vincular ao caixa aberto atual
+            if ($request->status === 'entregue' && !$encomenda->cash_register_id) {
+                $openCashRegister = CashRegister::where('status', 'aberto')->first();
+                if ($openCashRegister) {
+                    $encomenda->cash_register_id = $openCashRegister->id;
+                    $encomenda->save(); // Salvar o cash_register_id antes de atualizar o status
+                }
+            }
+
             $encomenda->updateStatus($request->status);
 
             return response()->json([

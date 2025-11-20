@@ -253,6 +253,9 @@
                                             Itens & Valor
                                         </th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Frete
+                                        </th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Pagamento
                                         </th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -297,7 +300,16 @@
                                         <!-- Items & Value -->
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm text-gray-900">{{ $sale->items->count() }} produto{{ $sale->items->count() !== 1 ? 's' : '' }}</div>
-                                            <div class="text-lg font-semibold text-green-600">R$ {{ number_format($sale->total, 2, ',', '.') }}</div>
+                                            <div class="text-lg font-semibold text-green-600">R$ {{ number_format($sale->subtotal, 2, ',', '.') }}</div>
+                                        </td>
+
+                                        <!-- Delivery Fee -->
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            @if($sale->type === 'delivery' && $sale->delivery_fee > 0)
+                                                <div class="text-lg font-semibold text-blue-600">R$ {{ number_format($sale->delivery_fee, 2, ',', '.') }}</div>
+                                            @else
+                                                <div class="text-sm text-gray-400">—</div>
+                                            @endif
                                         </td>
 
                                         <!-- Payment Method -->

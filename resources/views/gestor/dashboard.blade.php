@@ -342,9 +342,9 @@
                                     @endif
 
                                     <div class="text-sm text-gray-700 font-medium mb-1">
-                                        📅 {{ \Carbon\Carbon::parse($encomenda->delivery_date)->format('d/m') }}
+                                        📅 {{ $encomenda->delivery_date ? $encomenda->delivery_date->format('d/m') : 'Data não definida' }}
                                         @if($encomenda->delivery_time)
-                                        às {{ \Carbon\Carbon::parse($encomenda->delivery_time)->format('H:i') }}
+                                        às {{ is_string($encomenda->delivery_time) ? \Carbon\Carbon::parse($encomenda->delivery_time)->format('H:i') : $encomenda->delivery_time->format('H:i') }}
                                         @endif
                                     </div>
 

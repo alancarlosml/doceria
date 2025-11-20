@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CashRegister;
+use App\Models\Encomenda;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -87,6 +88,7 @@ class CashRegisterController extends Controller
 
         // Estatísticas do caixa
         $totalSales = $cashRegister->getTotalSales();
+        $totalEncomendas = $cashRegister->getTotalEncomendas();
         $totalExpenses = $cashRegister->getTotalExpenses();
         $totalRevenues = $cashRegister->getTotalRevenues();
         $expectedBalance = $cashRegister->getExpectedBalance();
@@ -113,6 +115,7 @@ class CashRegisterController extends Controller
         return view('admin.cash_register.cash_register-show', compact(
             'cashRegister',
             'totalSales',
+            'totalEncomendas',
             'totalExpenses',
             'totalRevenues',
             'expectedBalance',
@@ -175,6 +178,11 @@ class CashRegisterController extends Controller
             ];
         })->values();
 
+        // Encomendas entregues vinculadas a este caixa
+        $finalizedOrders = Encomenda::where('status', 'entregue')
+            ->where('cash_register_id', $cashRegister->id)
+            ->get();
+
         // Encomendas (delivery) - vendas do tipo 'delivery'
         $deliveryOrders = $completedSales->filter(function($sale) {
             return $sale->type === 'delivery';
@@ -209,26 +217,45 @@ class CashRegisterController extends Controller
             'outros' => $paymentMethods->whereNotIn('method', ['pix', 'cartao_credito', 'cartao_debito', 'cartao', 'dinheiro'])->sum('total')
         ];
 
-        // Determinar data do caixa (abertura)
-        $caixaDate = $cashRegister->opened_at->format('d/m/Y');
+        // Determinar data do caixa (abertura) para exibição
+        $caixaDateFormatted = $cashRegister->opened_at->format('d/m/Y');
 
         // Calcular totais usando dados do caixa
         $totalSales = $cashRegister->getTotalSales();
         $totalExpenses = $cashRegister->getTotalExpenses();
         $totalRevenues = $cashRegister->getTotalRevenues();
+        
+        // Total de encomendas finalizadas
+        $totalFinalizedOrders = $finalizedOrders->sum('total');
+        
+        // Vendas (todas as vendas são contabilizadas, encomendas são separadas)
+        $salesExcludingOrders = $completedSales->sum('total');
+        
+        // Resultado Final = Saldo Inicial + Vendas (excluindo encomendas) + Encomendas Finalizadas - Despesas + Receitas
+        $finalResult = $cashRegister->opening_balance + 
+                      $salesExcludingOrders + 
+                      $totalFinalizedOrders + 
+                      $totalRevenues - 
+                      $totalExpenses;
+
+        // Total de entregas sem as taxas (subtotal - desconto, sem delivery_fee)
+        $deliveryOrdersTotalWithoutFees = $deliveryOrders->sum(function($order) {
+            return $order->subtotal - ($order->discount ?? 0);
+        });
 
         return [
-            'date' => $caixaDate,
+            'date' => $caixaDateFormatted,
             'total_sales' => $totalSales,
             'sales_count' => $completedSales->count(),
             'payment_methods' => $paymentSummary,
-            'paid_orders_count' => $completedSales->count(),
-            'paid_orders_total' => $totalSales,
+            'paid_orders_count' => $finalizedOrders->count(),
+            'paid_orders_total' => $totalFinalizedOrders,
             'delivery_orders_count' => $deliveryOrders->count(),
-            'delivery_orders_total' => $deliveryOrders->sum('total'),
+            'delivery_orders_total' => $deliveryOrdersTotalWithoutFees,
             'motoboy_earnings' => array_values($motoboyEarnings),
             'opening_balance' => $cashRegister->opening_balance,
             'current_expected' => $cashRegister->getExpectedBalance(),
+            'final_result' => $finalResult,
             'total_expenses' => $totalExpenses,
             'total_revenues' => $totalRevenues,
         ];
@@ -289,6 +316,11 @@ class CashRegisterController extends Controller
             'outros' => $paymentMethods->whereNotIn('method', ['pix', 'cartao_credito', 'cartao_debito', 'dinheiro'])->sum('total')
         ];
 
+        // Total de entregas sem as taxas (subtotal - desconto, sem delivery_fee)
+        $deliveryOrdersTotalWithoutFees = $deliveryOrders->sum(function($order) {
+            return $order->subtotal - ($order->discount ?? 0);
+        });
+
         return [
             'date' => now()->format('d/m/Y'),
             'total_sales' => $completedSales->sum('total'),
@@ -297,7 +329,7 @@ class CashRegisterController extends Controller
             'paid_orders_count' => $completedSales->count(), // Todas são pagas/finalizadas
             'paid_orders_total' => $completedSales->sum('total'),
             'delivery_orders_count' => $deliveryOrders->count(),
-            'delivery_orders_total' => $deliveryOrders->sum('total'),
+            'delivery_orders_total' => $deliveryOrdersTotalWithoutFees,
             'motoboy_earnings' => array_values($motoboyEarnings),
             'opening_balance' => $cashRegister->opening_balance,
             'current_expected' => $cashRegister->getExpectedBalance(),
@@ -493,6 +525,7 @@ class CashRegisterController extends Controller
         }
 
         $totalSales = $openRegister->getTotalSales();
+        $totalEncomendas = $openRegister->getTotalEncomendas();
         $totalExpenses = $openRegister->getTotalExpenses();
         $totalRevenues = $openRegister->getTotalRevenues();
         $expectedBalance = $openRegister->getExpectedBalance();
@@ -500,7 +533,8 @@ class CashRegisterController extends Controller
         return response()->json([
             'has_open_register' => true,
             'opening_balance' => $openRegister->opening_balance,
-            'total_sales' => $totalSales,
+            'total_sales' => $totalEncomendas,
+            'total_encomendas' => $totalSales,
             'total_expenses' => $totalExpenses,
             'total_revenues' => $totalRevenues,
             'expected_balance' => $expectedBalance,

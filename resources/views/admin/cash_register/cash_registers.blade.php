@@ -74,7 +74,8 @@
                     </div>
                 </div>
             @endif
-
+            
+            @if(Auth::user()->hasRole('admin'))
             <!-- Statistics Cards -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <div class="bg-white rounded-lg shadow p-5">
@@ -149,6 +150,7 @@
                     </div>
                 </div>
             </div>
+            @endif
 
             <!-- Cash Registers Table -->
             <div class="bg-white shadow rounded-lg overflow-hidden">
@@ -240,9 +242,20 @@
                                                 <div class="text-sm text-gray-600">
                                                     <span class="font-medium">{{ $cashRegister->sales()->whereNotIn('status', ['cancelado'])->count() }}</span> vendas
                                                 </div>
+                                                @php
+                                                    $caixaDate = $cashRegister->opened_at->format('Y-m-d');
+                                                    $finalizedOrdersCount = $cashRegister->encomendas()->count();
+                                                @endphp
+                                                @if($finalizedOrdersCount > 0)
+                                                    <div class="text-sm text-gray-600">
+                                                        <span class="font-medium">{{ $finalizedOrdersCount }}</span> encomendas finalizadas
+                                                    </div>
+                                                @endif
+                                                @if($cashRegister->expenses()->where('type', 'saida')->count() > 0)
                                                 <div class="text-sm text-gray-600">
                                                     <span class="font-medium">{{ $cashRegister->expenses()->where('type', 'saida')->count() }}</span> despesas
                                                 </div>
+                                                @endif
                                                 @if($cashRegister->expenses()->where('type', 'entrada')->count() > 0)
                                                     <div class="text-sm text-gray-600">
                                                         <span class="font-medium">{{ $cashRegister->expenses()->where('type', 'entrada')->count() }}</span> entradas

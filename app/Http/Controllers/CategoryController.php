@@ -12,7 +12,10 @@ class CategoryController extends Controller
      */
     public function index()
     {
-        $categories = Category::withCount('products')->paginate(15);
+        $categories = Category::withCount('products')
+            ->orderBy('order')
+            ->orderBy('name')
+            ->paginate(15);
         return view('admin.category.categories', compact('categories'));
     }
 
@@ -34,9 +37,16 @@ class CategoryController extends Controller
             'description' => 'nullable|string',
             'emoji' => 'nullable|string|max:10',
             'active' => 'boolean',
+            'order' => 'nullable|integer|min:0',
         ]);
 
         $validated['active'] = $request->has('active');
+        
+        // Se não foi informado um order, usar o próximo número disponível
+        if (!isset($validated['order']) || $validated['order'] === null) {
+            $maxOrder = Category::max('order') ?? 0;
+            $validated['order'] = $maxOrder + 1;
+        }
 
         Category::create($validated);
 
@@ -79,9 +89,15 @@ class CategoryController extends Controller
             'description' => 'nullable|string',
             'emoji' => 'nullable|string|max:10',
             'active' => 'boolean',
+            'order' => 'nullable|integer|min:0',
         ]);
 
         $validated['active'] = $request->has('active');
+        
+        // Se não foi informado um order, manter o valor atual ou usar 0
+        if (!isset($validated['order']) || $validated['order'] === null) {
+            $validated['order'] = $category->order ?? 0;
+        }
 
         $category->update($validated);
 
@@ -127,6 +143,7 @@ class CategoryController extends Controller
     {
         $categories = Category::where('active', true)
             ->withCount('products')
+            ->orderBy('order')
             ->orderBy('name')
             ->get();
 

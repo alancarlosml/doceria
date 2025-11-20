@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Setting;
+use App\Services\ThermalPrinterService;
 use Illuminate\Http\Request;
 
 class SettingController extends Controller
@@ -60,5 +61,47 @@ class SettingController extends Controller
         }
 
         return redirect()->back()->with('success', 'Configurações salvas com sucesso!');
+    }
+
+    /**
+     * Test printer connection and print a test receipt
+     */
+    public function testPrinter(Request $request)
+    {
+        $printerService = null;
+        
+        try {
+            $printerService = new ThermalPrinterService();
+            
+            // Get configuration from settings
+            $config = ThermalPrinterService::getConfigFromSettings();
+            
+            if (empty($config)) {
+                return redirect()->back()->with('error', 'Por favor, configure a impressora antes de testar.');
+            }
+            
+            // Connect to printer
+            $printerService->connect($config);
+            
+            // Print test receipt
+            $printerService->printTestReceipt();
+            
+            // Finalize
+            $printerService->finalize();
+            
+            return redirect()->back()->with('success', '✅ Teste de impressão realizado com sucesso! Verifique se o cupom foi impresso.');
+            
+        } catch (\Exception $e) {
+            // Ensure connection is closed even on error
+            if ($printerService && $printerService->isConnected()) {
+                try {
+                    $printerService->finalize();
+                } catch (\Exception $finalizeException) {
+                    // Ignore errors during finalization
+                }
+            }
+            
+            return redirect()->back()->with('error', '❌ Erro ao testar impressora: ' . $e->getMessage());
+        }
     }
 }

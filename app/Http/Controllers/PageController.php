@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Sale;
+use App\Models\Encomenda;
 use App\Models\Table;
 use App\Models\Menu;
 use App\Models\Product;
@@ -82,12 +83,22 @@ class PageController extends Controller
         }
 
         // Agrupar produtos por categoria para melhor exibição
-        $menuByCategory = $menuItems->groupBy(function($item) {
+        // Ordenar primeiro pela ordem da categoria, depois pelo nome
+        $menuByCategory = $menuItems->sortBy(function($item) {
+            $category = $item->product->category;
+            if (!$category) {
+                return [999999, 'Outros']; // Categorias sem categoria aparecem por último
+            }
+            return [$category->order ?? 999999, $category->name];
+        })->groupBy(function($item) {
             return $item->product->category->name ?? 'Outros';
         });
 
         // Get categories for navigation
-        $categories = Category::where('active', true)->orderBy('name')->get();
+        $categories = Category::where('active', true)
+            ->orderBy('order')
+            ->orderBy('name')
+            ->get();
 
         // Nome formatado do dia para exibição
         $dayNamesDisplay = [
@@ -146,21 +157,36 @@ class PageController extends Controller
             ->orderBy('number')
             ->get();
 
-        // Encomendas próximas (prontas ou saiu para entrega)
-        $upcomingDeliveries = Sale::whereIn('status', ['pronto', 'saiu_entrega', 'pendente', 'finalizado'])
+        // Entregas em andamento (apenas pedidos que realmente saíram para entrega)
+        $upcomingDeliveries = Sale::where('status', 'saiu_entrega')
             ->where('type', 'delivery')
             ->with(['customer', 'motoboy'])
             ->orderBy('updated_at', 'desc')
             ->get();
 
-        // Encomendas pendentes
-        $pendingEncomendas = Sale::whereIn('status', ['pendente', 'em_preparo'])
+        // Encomendas pendentes - buscar de ambos os modelos (Sale e Encomenda)
+        // Encomendas do modelo Sale (apenas com delivery_date preenchida)
+        $pendingEncomendasFromSales = Sale::whereIn('status', ['pendente', 'em_preparo', 'pronto'])
             ->where('type', 'encomenda')
+            ->whereNotNull('delivery_date')
             ->with(['customer'])
-            ->whereDate('delivery_date', '>=', now()->format('Y-m-d'))
-            ->orderBy('delivery_date')
-            ->orderBy('delivery_time')
             ->get();
+        
+        // Encomendas do modelo Encomenda (status: pendente, em_producao, pronto)
+        // delivery_date é obrigatório neste modelo, então não precisa filtrar
+        $pendingEncomendasFromModel = Encomenda::whereIn('status', ['pendente', 'em_producao', 'pronto'])
+            ->with(['customer'])
+            ->get();
+        
+        // Combinar e ordenar todas as encomendas
+        $pendingEncomendas = $pendingEncomendasFromSales->concat($pendingEncomendasFromModel)
+            ->sortBy(function($encomenda) {
+                // Ordenar por data de entrega e depois por hora
+                $date = $encomenda->delivery_date ? $encomenda->delivery_date->format('Y-m-d') : '9999-12-31';
+                $time = $encomenda->delivery_time ? (is_string($encomenda->delivery_time) ? $encomenda->delivery_time : $encomenda->delivery_time->format('H:i:s')) : '23:59:59';
+                return $date . ' ' . $time;
+            })
+            ->values();
 
         // Estatísticas rápidas
         $pendingSalesCount = $pendingSales->count();

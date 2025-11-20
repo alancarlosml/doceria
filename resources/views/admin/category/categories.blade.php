@@ -68,8 +68,8 @@
                                     </td>
 
                                     <!-- Desription -->
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900">{{ $category->description }}</div>
+                                    <td class="px-6 py-4">
+                                        <div class="text-sm font-medium text-gray-900 max-w-md break-words">{{ $category->description }}</div>
                                     </td>
 
                                     <!-- Actions -->

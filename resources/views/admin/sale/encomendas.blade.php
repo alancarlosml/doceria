@@ -265,6 +265,13 @@
                                                     >
                                                         👁️ Detalhes
                                                     </button>
+
+                                                    <a
+                                                        :href="`/gestor/encomendas/${encomenda.id}/editar`"
+                                                        class="px-3 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600 transition-colors text-center"
+                                                    >
+                                                        ✏️ Editar
+                                                    </a>
                                                 </div>
                                             </div>
                                         </div>
@@ -379,6 +386,12 @@
 
                         <!-- Ações -->
                         <div class="flex gap-3">
+                            <a
+                                :href="`/gestor/encomendas/${selectedEncomenda.id}/editar`"
+                                class="flex-1 bg-yellow-500 text-white py-3 rounded-lg font-bold hover:bg-yellow-600 transition-colors text-center"
+                            >
+                                ✏️ Editar
+                            </a>
                             <button
                                 @click="printEncomenda()"
                                 class="flex-1 bg-blue-500 text-white py-3 rounded-lg font-bold hover:bg-blue-600 transition-colors"

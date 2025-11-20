@@ -50,24 +50,24 @@
 
             <!-- Grid de Produtos -->
             <div class="flex-1 overflow-y-auto p-4">
-                <div class="grid grid-cols-3 gap-3">
+                <div class="grid grid-cols-4 gap-2">
                     @foreach($products as $product)
                     <button
                         @click="addItemWithFeedback({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $product->price }}, '{{ $product->category->name ?? 'Sem categoria' }}')"
                         x-show="(selectedCategory === null || selectedCategory === {{ $product->category_id }}) && productMatchesSearch('{{ addslashes($product->name) }}')"
                         x-data="{ justAdded: false }"
                         :class="justAdded ? 'scale-95 border-green-500 bg-green-50' : 'bg-white border-2 border-gray-200 hover:border-pink-500 hover:shadow-lg'"
-                        class="rounded-xl p-4 transition-all duration-200 text-left active:scale-95"
+                        class="rounded-lg p-2 transition-all duration-200 text-left active:scale-95"
                     >
-                        <div class="h-20 bg-gradient-to-br from-pink-50 to-purple-50 rounded-lg flex items-center justify-center mb-2 transition-transform duration-200 hover:scale-105">
+                        <div class="h-16 bg-gradient-to-br from-pink-50 to-purple-50 rounded-lg flex items-center justify-center mb-1.5 transition-transform duration-200 hover:scale-105">
                             @if($product->image)
                                 <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" class="h-full w-full object-cover rounded-lg">
                             @else
-                                <span class="text-3xl">{{ $product->category->emoji ?? '🍰' }}</span>
+                                <span class="text-2xl">{{ $product->category->emoji ?? '🍰' }}</span>
                             @endif
                         </div>
-                        <h4 class="font-bold text-gray-800 text-xs mb-1 line-clamp-2">{{ $product->name }}</h4>
-                        <p class="text-sm font-bold text-pink-600">R$ {{ number_format($product->price, 2, ',', '.') }}</p>
+                        <h4 class="font-bold text-gray-800 text-xs mb-0.5 line-clamp-2">{{ $product->name }}</h4>
+                        <p class="text-xs font-bold text-pink-600">R$ {{ number_format($product->price, 2, ',', '.') }}</p>
                     </button>
                     @endforeach
                 </div>
@@ -173,7 +173,7 @@
                             <div class="space-y-2">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-700 mb-0.5">
-                                        Endereço <span class="text-red-500">*</span>
+                                        Endereço
                                     </label>
                                     <textarea
                                         x-model="cart.delivery_address"
@@ -822,10 +822,6 @@ function posSystem() {
             }
 
             if (this.cart.type === 'delivery') {
-                if (!this.cart.delivery_address || this.cart.delivery_address.trim() === '') {
-                    this.showToast('⚠️ Endereço é obrigatório para delivery!', 'error');
-                    return;
-                }
                 if (!this.cart.motoboy_id) {
                     this.showToast('⚠️ Selecione um motoboy!', 'error');
                     return;
@@ -1014,12 +1010,24 @@ function posSystem() {
                 });
 
                 const data = await response.json();
+                
+                if (!response.ok) {
+                    // Erro HTTP (422, 500, etc.)
+                    const errorMessage = data.message || `Erro ${response.status}: ${response.statusText}`;
+                    this.showToast(`❌ ${errorMessage}`, 'error');
+                    console.error('Erro ao atualizar status:', data);
+                    return;
+                }
+
                 if (data.success) {
                     this.showToast('✅ Pedido marcado como entregue!', 'success');
                     setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    this.showToast(`❌ ${data.message || 'Erro ao atualizar status'}`, 'error');
                 }
             } catch (error) {
-                this.showToast('❌ Erro ao atualizar status', 'error');
+                console.error('Erro na requisição:', error);
+                this.showToast('❌ Erro ao atualizar status: ' + error.message, 'error');
             }
         },
 

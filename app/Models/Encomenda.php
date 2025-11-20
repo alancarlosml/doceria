@@ -13,6 +13,7 @@ class Encomenda extends Model
 
     protected $fillable = [
         'user_id',
+        'cash_register_id',
         'customer_id',
         'code',
         'title',
@@ -50,6 +51,11 @@ class Encomenda extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function cashRegister()
+    {
+        return $this->belongsTo(CashRegister::class);
     }
 
     public function customer()

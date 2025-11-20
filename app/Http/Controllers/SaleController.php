@@ -150,12 +150,6 @@ class SaleController extends Controller
 
         // Validações específicas
         if ($validated['type'] === 'delivery') {
-            if (empty($validated['delivery_address'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Endereço é obrigatório para delivery!'
-                ], 422);
-            }
             if (empty($validated['motoboy_id'])) {
                 return response()->json([
                     'success' => false,
@@ -380,12 +374,6 @@ class SaleController extends Controller
 
         // Validações específicas
         if ($validated['type'] === 'delivery') {
-            if (empty($validated['delivery_address'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Endereço é obrigatório para delivery!'
-                ], 422);
-            }
             if (empty($validated['motoboy_id'])) {
                 return response()->json([
                     'success' => false,
@@ -570,17 +558,29 @@ class SaleController extends Controller
             'status' => 'required|in:pendente,em_preparo,pronto,saiu_entrega,entregue,cancelado,finalizado',
         ]);
 
+        $oldStatus = $sale->status;
         $sale->update(['status' => $validated['status']]);
+
+        // Recarregar o objeto do banco para garantir dados atualizados
+        $sale->refresh();
 
         // Liberar mesa se finalizado/cancelado/entregue
         if (in_array($validated['status'], ['finalizado', 'entregue', 'cancelado']) && $sale->table_id) {
             $sale->table->update(['status' => 'disponivel']);
         }
 
+        // Log para debug
+        \Log::info('Status da venda atualizado', [
+            'sale_id' => $sale->id,
+            'old_status' => $oldStatus,
+            'new_status' => $sale->status,
+            'type' => $sale->type
+        ]);
+
         return response()->json([
             'success' => true,
             'message' => 'Status atualizado!',
-            'sale' => $sale
+            'sale' => $sale->load(['customer', 'motoboy', 'table', 'items.product'])
         ]);
     }
 

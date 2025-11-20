@@ -42,6 +42,11 @@ class CashRegister extends Model
         return $this->hasMany(Expense::class);
     }
 
+    public function encomendas()
+    {
+        return $this->hasMany(Encomenda::class);
+    }
+
     public function isOpen()
     {
         return $this->status === 'aberto';
@@ -54,9 +59,15 @@ class CashRegister extends Model
 
     public function getTotalSales()
     {
-        return $this->sales()
+        $salesTotal = $this->sales()
             ->whereNotIn('status', ['cancelado'])
             ->sum('total');
+        
+        $encomendasTotal = $this->encomendas()
+            ->where('status', 'entregue')
+            ->sum('total');
+        
+        return $salesTotal + $encomendasTotal;
     }
 
     public function getTotalExpenses()
@@ -73,10 +84,18 @@ class CashRegister extends Model
             ->sum('amount');
     }
 
+    public function getTotalEncomendas()
+    {
+        return $this->encomendas()
+            ->where('status', 'entregue')
+            ->sum('total');
+    }
+
     public function getExpectedBalance()
     {
         return $this->opening_balance + 
                $this->getTotalSales() + 
+               $this->getTotalEncomendas() +
                $this->getTotalRevenues() - 
                $this->getTotalExpenses();
     }

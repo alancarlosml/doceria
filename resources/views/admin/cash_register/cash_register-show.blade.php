@@ -190,6 +190,10 @@
                                 <dd class="mt-1 text-xl font-bold text-green-600">R$ {{ number_format($totalSales, 2, ',', '.') }}</dd>
                             </div>
                             <div>
+                                <dt class="text-sm font-medium text-gray-500">Encomendas Finalizadas</dt>
+                                <dd class="mt-1 text-xl font-bold text-green-600">R$ {{ number_format($totalEncomendas, 2, ',', '.') }}</dd>
+                            </div>
+                            <div>
                                 <dt class="text-sm font-medium text-gray-500">Despesas</dt>
                                 <dd class="mt-1 text-lg font-semibold text-red-600">- R$ {{ number_format($totalExpenses, 2, ',', '.') }}</dd>
                             </div>
@@ -294,8 +298,8 @@
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-500 font-medium">Encomendas Pagas</p>
-                                    <p class="text-2xl font-bold text-gray-900">{{ $dailySummary['paid_orders_count'] }}</p>
-                                    <p class="text-xs text-gray-600">R$ {{ number_format($dailySummary['paid_orders_total'], 2, ',', '.') }}</p>
+                                    <p class="text-2xl font-bold text-gray-900">R$ {{ number_format($dailySummary['paid_orders_total'], 2, ',', '.') }}</p>
+                                    <p class="text-xs text-gray-600">{{ $dailySummary['paid_orders_count'] }} encomendas finalizadas</p>
                                 </div>
                             </div>
                         </div>
@@ -310,7 +314,7 @@
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-500 font-medium">{{ $cashRegister->isOpen() ? 'Saldo Atual' : 'Resultado Final' }}</p>
-                                    <p class="text-2xl font-bold text-gray-900">R$ {{ number_format($dailySummary['current_expected'], 2, ',', '.') }}</p>
+                                    <p class="text-2xl font-bold text-gray-900">R$ {{ number_format($cashRegister->isOpen() ? $dailySummary['current_expected'] : ($dailySummary['final_result'] ?? $dailySummary['current_expected']), 2, ',', '.') }}</p>
                                     <p class="text-xs text-gray-600">Saldo inicial: R$ {{ number_format($dailySummary['opening_balance'], 2, ',', '.') }}</p>
                                 </div>
                             </div>
@@ -417,7 +421,7 @@
                         <!-- Valores por Motoboy -->
                         <div class="bg-white rounded-lg p-4 shadow border">
                             <h4 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                                <span class="mr-2">🏍️</span>Valores dos Motoboys
+                                <span class="mr-2">🏍️</span>Delivery
                             </h4>
 
                             <div class="text-sm text-gray-600 mb-4">

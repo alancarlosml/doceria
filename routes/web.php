@@ -123,6 +123,7 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
     Route::middleware('auth')->group(function () {
         Route::get('configuracoes', [SettingController::class, 'index'])->name('settings.index');
         Route::put('configuracoes', [SettingController::class, 'update'])->name('settings.update');
+        Route::post('configuracoes/testar-impressora', [SettingController::class, 'testPrinter'])->name('settings.test-printer');
     });
 
     // ========================================
