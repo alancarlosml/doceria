@@ -20,6 +20,19 @@ class CashRegister extends Model
         'closing_notes',
     ];
 
+    /**
+     * Campos que não podem ser atualizados após a criação
+     */
+    protected static function booted()
+    {
+        static::updating(function ($cashRegister) {
+            // Preserva o opened_at original, impedindo que seja alterado durante updates
+            if ($cashRegister->isDirty('opened_at')) {
+                $cashRegister->opened_at = $cashRegister->getOriginal('opened_at');
+            }
+        });
+    }
+
     protected $casts = [
         'opening_balance' => 'decimal:2',
         'closing_balance' => 'decimal:2',

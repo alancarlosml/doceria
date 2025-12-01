@@ -50,7 +50,7 @@ class CashRegisterController extends Controller
             $query->whereDate('opened_at', '<=', $dateTo);
         }
 
-        $cashRegisters = $query->orderBy('created_at', 'desc')->paginate(15);
+        $cashRegisters = $query->orderBy('opened_at', 'desc')->paginate(15);
         $openRegister = CashRegister::where('status', 'aberto')->first();
 
         // Calcular total de encomendas finalizadas no período (sem taxa de entrega)
