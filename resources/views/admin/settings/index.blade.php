@@ -199,167 +199,130 @@
                     </div>
                 </div>
 
-                <!-- Printer Configuration Section -->
-                <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+                <!-- QZ Tray Printer Configuration Section -->
+                <div class="bg-white shadow-lg rounded-lg overflow-hidden" x-data="qzTrayConfig()">
                     <div class="px-6 py-4 bg-purple-50 border-b border-purple-200">
                         <h3 class="text-lg font-medium text-gray-900 flex items-center">
-                            <span class="mr-3">🖨️</span>Configuração da Impressora Térmica
+                            <span class="mr-3">🖨️</span>Configuração da Impressora Térmica (QZ Tray)
                         </h3>
-                        <p class="mt-1 text-sm text-gray-600">Configure a conexão com a impressora de recibos</p>
+                        <p class="mt-1 text-sm text-gray-600">Configure a impressão direta via QZ Tray - funciona com sistema hospedado na nuvem</p>
                     </div>
                     <div class="px-6 py-6 space-y-6">
-                        <!-- Printer Type Selection -->
+                        
+                        <!-- Status do QZ Tray -->
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="w-4 h-4 rounded-full mr-3" :class="qzConnected ? 'bg-green-500' : 'bg-red-500'"></div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">
+                                            Status QZ Tray: <span x-text="qzConnected ? 'Conectado' : 'Desconectado'"></span>
+                                        </p>
+                                        <p class="text-xs text-gray-600 mt-1" x-show="!qzConnected">
+                                            ⚠️ QZ Tray não detectado. Verifique se está instalado e rodando.
+                                        </p>
+                                        <p class="text-xs text-green-600 mt-1" x-show="qzConnected">
+                                            ✅ Pronto para imprimir!
+                                        </p>
+                                    </div>
+                                </div>
+                                <button 
+                                    @click="connectQZ()"
+                                    :disabled="connecting"
+                                    class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50"
+                                >
+                                    <span x-show="!connecting">🔄 Reconectar</span>
+                                    <span x-show="connecting">Conectando...</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Seleção de Impressora -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-3">
-                                Tipo de Conexão
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Impressora
                             </label>
-                            <div class="space-y-3">
-                                <label class="flex items-center">
-                                    <input type="radio"
-                                           name="printer_type"
-                                           value="network"
-                                           {{ App\Models\Setting::get('printer_type', 'network') === 'network' ? 'checked' : '' }}
-                                           class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
-                                           onchange="togglePrinterConfig()">
-                                    <span class="ml-3 text-sm text-gray-700">
-                                        <span class="font-medium">Rede (Network/IP)</span>
-                                        <span class="text-gray-500 block text-xs">Impressora conectada à rede via cabo ou Wi-Fi</span>
-                                    </span>
-                                </label>
-                                <label class="flex items-center">
-                                    <input type="radio"
-                                           name="printer_type"
-                                           value="windows"
-                                           {{ App\Models\Setting::get('printer_type') === 'windows' ? 'checked' : '' }}
-                                           class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
-                                           onchange="togglePrinterConfig()">
-                                    <span class="ml-3 text-sm text-gray-700">
-                                        <span class="font-medium">USB/Windows</span>
-                                        <span class="text-gray-500 block text-xs">Impressora conectada diretamente ao computador via USB</span>
-                                    </span>
-                                </label>
+                            <div class="flex gap-2">
+                                <select 
+                                    id="qz_printer_select"
+                                    x-model="selectedPrinter"
+                                    @change="savePrinter()"
+                                    class="flex-1 shadow-sm focus:ring-purple-500 focus:border-purple-500 block sm:text-sm border-gray-300 rounded-md"
+                                    :disabled="!qzConnected || printers.length === 0"
+                                >
+                                    <option value="">-- Selecione uma impressora --</option>
+                                    <template x-for="printer in printers" :key="printer">
+                                        <option :value="printer" x-text="printer"></option>
+                                    </template>
+                                </select>
+                                <button 
+                                    @click="refreshPrinters()"
+                                    :disabled="!qzConnected || loadingPrinters"
+                                    class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50"
+                                    title="Atualizar lista de impressoras"
+                                >
+                                    <span x-show="!loadingPrinters">🔄</span>
+                                    <span x-show="loadingPrinters">⏳</span>
+                                </button>
                             </div>
+                            <p class="mt-1 text-xs text-gray-500">
+                                Selecione a impressora térmica (ex: EPSON TM-T20X)
+                            </p>
                         </div>
 
-                        <!-- Network Configuration -->
-                        <div id="network-config" class="space-y-4 {{ App\Models\Setting::get('printer_type', 'network') === 'network' ? '' : 'hidden' }}">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Impressora Configurada -->
+                        <div x-show="selectedPrinter" class="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <div class="flex items-center">
+                                <span class="text-green-500 mr-2">✅</span>
                                 <div>
-                                    <label for="printer_host" class="block text-sm font-medium text-gray-700 mb-2">
-                                        IP da Impressora
-                                    </label>
-                                    <input type="text"
-                                           id="printer_host"
-                                           name="printer_host"
-                                           value="{{ old('printer_host', App\Models\Setting::get('printer_host', '')) }}"
-                                           placeholder="192.168.1.100"
-                                           class="shadow-sm focus:ring-purple-500 focus:border-purple-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                                    <p class="mt-1 text-xs text-gray-500">
-                                        Exemplo: 192.168.1.100
-                                    </p>
-                                    @error('printer_host')
-                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                    @enderror
-                                </div>
-
-                                <div>
-                                    <label for="printer_port" class="block text-sm font-medium text-gray-700 mb-2">
-                                        Porta
-                                    </label>
-                                    <input type="number"
-                                           id="printer_port"
-                                           name="printer_port"
-                                           value="{{ old('printer_port', App\Models\Setting::get('printer_port', 9100)) }}"
-                                           placeholder="9100"
-                                           class="shadow-sm focus:ring-purple-500 focus:border-purple-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                                    <p class="mt-1 text-xs text-gray-500">
-                                        Padrão: 9100 (RAW)
-                                    </p>
-                                    @error('printer_port')
-                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                    @enderror
-                                </div>
-                            </div>
-
-                            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
-                                <div class="flex">
-                                    <div class="ml-3">
-                                        <p class="text-sm text-blue-700">
-                                            <strong>💡 Como descobrir o IP:</strong><br>
-                                            • Painel de Controle → Dispositivos e Impressoras → Propriedades → Aba Porta<br>
-                                            • Ou execute: <code class="bg-blue-100 px-1 rounded">Get-Printer | Select-Object Name, PortName</code> no PowerShell
-                                        </p>
-                                    </div>
+                                    <p class="text-sm font-medium text-green-800">Impressora Configurada:</p>
+                                    <p class="text-sm text-green-700" x-text="selectedPrinter"></p>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Windows Configuration -->
-                        <div id="windows-config" class="space-y-4 {{ App\Models\Setting::get('printer_type') === 'windows' ? '' : 'hidden' }}">
-                            <div>
-                                <label for="printer_windows_name" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Nome da Impressora no Windows
-                                </label>
-                                <input type="text"
-                                       id="printer_windows_name"
-                                       name="printer_windows_name"
-                                       value="{{ old('printer_windows_name', App\Models\Setting::get('printer_windows_name', '')) }}"
-                                       placeholder="XP-80C"
-                                       class="shadow-sm focus:ring-purple-500 focus:border-purple-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                                <p class="mt-1 text-xs text-gray-500">
-                                    Use o nome exato como aparece em: Painel de Controle → Dispositivos e Impressoras
+                        <!-- Instruções de Instalação -->
+                        <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-blue-800 mb-2">📥 Como instalar o QZ Tray:</p>
+                                <ol class="text-sm text-blue-700 list-decimal list-inside space-y-1">
+                                    <li>Baixe o QZ Tray em: <a href="https://qz.io/download/" target="_blank" class="underline font-medium">qz.io/download</a></li>
+                                    <li>Execute o instalador e siga as instruções</li>
+                                    <li>Após instalado, o QZ Tray iniciará automaticamente com o Windows</li>
+                                    <li>Clique em "Reconectar" acima para detectar o QZ Tray</li>
+                                    <li>Selecione sua impressora EPSON TM-T20X na lista</li>
+                                </ol>
+                                <p class="text-xs text-blue-600 mt-3">
+                                    💡 <strong>Dica:</strong> O ícone do QZ Tray aparecerá na bandeja do sistema (próximo ao relógio)
                                 </p>
-                                @error('printer_windows_name')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
-                                <div class="flex">
-                                    <div class="ml-3">
-                                        <p class="text-sm text-blue-700">
-                                            <strong>💡 Como descobrir o nome:</strong><br>
-                                            • Painel de Controle → Dispositivos e Impressoras → Veja o nome da impressora<br>
-                                            • Ou execute: <code class="bg-blue-100 px-1 rounded">Get-Printer | Select-Object Name</code> no PowerShell
-                                        </p>
-                                    </div>
-                                </div>
                             </div>
                         </div>
-
-                        <!-- Current Configuration Display -->
-                        @if(App\Models\Setting::get('printer_host') || App\Models\Setting::get('printer_windows_name'))
-                            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                                <h4 class="text-sm font-medium text-gray-900 mb-2">📋 Configuração Atual:</h4>
-                                <div class="text-sm text-gray-600 space-y-1">
-                                    @if(App\Models\Setting::get('printer_type') === 'windows')
-                                        <p><strong>Tipo:</strong> USB/Windows</p>
-                                        <p><strong>Nome:</strong> {{ App\Models\Setting::get('printer_windows_name', 'Não configurado') }}</p>
-                                    @else
-                                        <p><strong>Tipo:</strong> Rede (Network/IP)</p>
-                                        <p><strong>IP:</strong> {{ App\Models\Setting::get('printer_host', 'Não configurado') }}</p>
-                                        <p><strong>Porta:</strong> {{ App\Models\Setting::get('printer_port', 9100) }}</p>
-                                    @endif
-                                </div>
-                            </div>
-                        @endif
 
                         <!-- Test Printer Button -->
                         <div class="flex items-center justify-between pt-4 border-t border-gray-200">
                             <div>
                                 <h4 class="text-sm font-medium text-gray-900 mb-1">🧪 Testar Impressora</h4>
-                                <p class="text-xs text-gray-500">Clique no botão abaixo para imprimir um cupom de teste e verificar se a configuração está funcionando corretamente.</p>
+                                <p class="text-xs text-gray-500">Imprime um cupom de teste para verificar se a configuração está funcionando.</p>
                             </div>
-                            <form method="POST" action="{{ route('settings.test-printer') }}" class="ml-4">
-                                @csrf
-                                <button type="submit" 
-                                        class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
-                                    <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    Testar Impressora
-                                </button>
-                            </form>
+                            <button 
+                                @click="testPrint()"
+                                :disabled="!qzConnected || !selectedPrinter || testing"
+                                class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span x-show="!testing">Testar Impressora</span>
+                                <span x-show="testing">Imprimindo...</span>
+                            </button>
+                        </div>
+
+                        <!-- Mensagem de resultado do teste -->
+                        <div x-show="testMessage" 
+                             :class="testSuccess ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'"
+                             class="border rounded-lg p-3 text-sm"
+                             x-transition>
+                            <span x-text="testMessage"></span>
                         </div>
                     </div>
                 </div>
@@ -420,24 +383,100 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize
     updatePreview();
-
-    // Toggle printer configuration fields
-    function togglePrinterConfig() {
-        const printerType = document.querySelector('input[name="printer_type"]:checked').value;
-        const networkConfig = document.getElementById('network-config');
-        const windowsConfig = document.getElementById('windows-config');
-        
-        if (printerType === 'network') {
-            networkConfig.classList.remove('hidden');
-            windowsConfig.classList.add('hidden');
-        } else {
-            networkConfig.classList.add('hidden');
-            windowsConfig.classList.remove('hidden');
-        }
-    }
-    
-    // Make function available globally
-    window.togglePrinterConfig = togglePrinterConfig;
 });
+
+// Alpine.js component for QZ Tray configuration
+function qzTrayConfig() {
+    return {
+        qzConnected: false,
+        connecting: false,
+        printers: [],
+        selectedPrinter: localStorage.getItem('qz_printer_name') || '',
+        loadingPrinters: false,
+        testing: false,
+        testMessage: '',
+        testSuccess: false,
+
+        async init() {
+            // Try to connect to QZ Tray on page load
+            await this.connectQZ();
+        },
+
+        async connectQZ() {
+            this.connecting = true;
+            this.testMessage = '';
+            
+            try {
+                if (typeof QZPrint !== 'undefined') {
+                    const connected = await QZPrint.init();
+                    this.qzConnected = connected;
+                    
+                    if (connected) {
+                        await this.refreshPrinters();
+                    }
+                } else {
+                    console.error('QZPrint not loaded');
+                    this.qzConnected = false;
+                }
+            } catch (error) {
+                console.error('Error connecting to QZ Tray:', error);
+                this.qzConnected = false;
+            } finally {
+                this.connecting = false;
+            }
+        },
+
+        async refreshPrinters() {
+            if (!this.qzConnected) return;
+            
+            this.loadingPrinters = true;
+            try {
+                this.printers = await QZPrint.listPrinters();
+                
+                // If previously selected printer is still available, keep it selected
+                if (this.selectedPrinter && !this.printers.includes(this.selectedPrinter)) {
+                    this.selectedPrinter = '';
+                }
+            } catch (error) {
+                console.error('Error listing printers:', error);
+                this.printers = [];
+            } finally {
+                this.loadingPrinters = false;
+            }
+        },
+
+        savePrinter() {
+            if (this.selectedPrinter) {
+                QZPrint.setPrinter(this.selectedPrinter);
+                this.testMessage = '✅ Impressora salva: ' + this.selectedPrinter;
+                this.testSuccess = true;
+                
+                // Clear message after 3 seconds
+                setTimeout(() => {
+                    this.testMessage = '';
+                }, 3000);
+            }
+        },
+
+        async testPrint() {
+            if (!this.qzConnected || !this.selectedPrinter) return;
+            
+            this.testing = true;
+            this.testMessage = '';
+            
+            try {
+                await QZPrint.printTest();
+                this.testMessage = '✅ Cupom de teste enviado com sucesso! Verifique a impressora.';
+                this.testSuccess = true;
+            } catch (error) {
+                console.error('Print test error:', error);
+                this.testMessage = '❌ Erro ao imprimir: ' + error.message;
+                this.testSuccess = false;
+            } finally {
+                this.testing = false;
+            }
+        }
+    };
+}
 </script>
 @endsection

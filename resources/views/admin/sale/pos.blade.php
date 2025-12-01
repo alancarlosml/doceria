@@ -505,8 +505,8 @@
     <!-- Modal de Finalização -->
     <div x-show="showModal"
          x-cloak
-         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4 relative">
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto py-4">
+        <div class="bg-white rounded-2xl p-6 max-w-lg w-full mx-4 relative max-h-[95vh] overflow-y-auto">
             <!-- Botão X para fechar no canto superior direito -->
             <button
                 @click="showModal = false"
@@ -537,44 +537,214 @@
                 </div>
             </div>
 
-            <!-- Forma de Pagamento -->
-            <label class="block text-sm font-bold mb-3">Forma de Pagamento:</label>
-            <div class="grid grid-cols-2 gap-2 mb-6">
-                <button
-                    @click="cart.payment_method = 'dinheiro'"
-                    :class="cart.payment_method === 'dinheiro' ? 'bg-green-500 text-white shadow-lg scale-105' : 'bg-white border-2 border-gray-200 hover:border-green-300'"
-                    class="py-3 rounded-lg font-medium transition-all duration-200 active:scale-95"
+            <!-- Toggle Pagamento Dividido -->
+            <div class="flex items-center justify-between mb-4 p-3 bg-purple-50 rounded-lg">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">💰</span>
+                    <span class="font-medium text-gray-700">Pagamento Dividido</span>
+                </div>
+                <button 
+                    @click="toggleSplitPayment()"
+                    :class="payment.isSplit ? 'bg-purple-600' : 'bg-gray-300'"
+                    class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
                 >
-                    💵 Dinheiro
-                </button>
-                <button
-                    @click="cart.payment_method = 'pix'"
-                    :class="cart.payment_method === 'pix' ? 'bg-green-500 text-white shadow-lg scale-105' : 'bg-white border-2 border-gray-200 hover:border-green-300'"
-                    class="py-3 rounded-lg font-medium transition-all duration-200 active:scale-95"
-                >
-                    📱 PIX
-                </button>
-                <button
-                    @click="cart.payment_method = 'cartao_debito'"
-                    :class="cart.payment_method === 'cartao_debito' ? 'bg-green-500 text-white shadow-lg scale-105' : 'bg-white border-2 border-gray-200 hover:border-green-300'"
-                    class="py-3 rounded-lg font-medium transition-all duration-200 active:scale-95"
-                >
-                    💳 Débito
-                </button>
-                <button
-                    @click="cart.payment_method = 'cartao_credito'"
-                    :class="cart.payment_method === 'cartao_credito' ? 'bg-green-500 text-white shadow-lg scale-105' : 'bg-white border-2 border-gray-200 hover:border-green-300'"
-                    class="py-3 rounded-lg font-medium transition-all duration-200 active:scale-95"
-                >
-                    💳 Crédito
+                    <span 
+                        :class="payment.isSplit ? 'translate-x-6' : 'translate-x-1'"
+                        class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                    ></span>
                 </button>
             </div>
 
+            <!-- Pagamento Simples (Uma forma) -->
+            <div x-show="!payment.isSplit">
+                <label class="block text-sm font-bold mb-3">Forma de Pagamento:</label>
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <button
+                        @click="selectPaymentMethod('dinheiro')"
+                        :class="cart.payment_method === 'dinheiro' ? 'bg-green-500 text-white shadow-lg scale-105' : 'bg-white border-2 border-gray-200 hover:border-green-300'"
+                        class="py-3 rounded-lg font-medium transition-all duration-200 active:scale-95"
+                    >
+                        💵 Dinheiro
+                    </button>
+                    <button
+                        @click="selectPaymentMethod('pix')"
+                        :class="cart.payment_method === 'pix' ? 'bg-green-500 text-white shadow-lg scale-105' : 'bg-white border-2 border-gray-200 hover:border-green-300'"
+                        class="py-3 rounded-lg font-medium transition-all duration-200 active:scale-95"
+                    >
+                        📱 PIX
+                    </button>
+                    <button
+                        @click="selectPaymentMethod('cartao_debito')"
+                        :class="cart.payment_method === 'cartao_debito' ? 'bg-green-500 text-white shadow-lg scale-105' : 'bg-white border-2 border-gray-200 hover:border-green-300'"
+                        class="py-3 rounded-lg font-medium transition-all duration-200 active:scale-95"
+                    >
+                        💳 Débito
+                    </button>
+                    <button
+                        @click="selectPaymentMethod('cartao_credito')"
+                        :class="cart.payment_method === 'cartao_credito' ? 'bg-green-500 text-white shadow-lg scale-105' : 'bg-white border-2 border-gray-200 hover:border-green-300'"
+                        class="py-3 rounded-lg font-medium transition-all duration-200 active:scale-95"
+                    >
+                        💳 Crédito
+                    </button>
+                </div>
+
+                <!-- Valor Recebido e Troco (apenas para dinheiro) -->
+                <div x-show="cart.payment_method === 'dinheiro'" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                    <label class="block text-sm font-bold text-yellow-800 mb-2">💵 Valor Recebido:</label>
+                    <input 
+                        type="text" 
+                        inputmode="decimal"
+                        x-model="payment.amountReceivedFormatted"
+                        @input="handleAmountReceivedInput($event)"
+                        @focus="$event.target.select()"
+                        :placeholder="'Mínimo: R$ ' + formatMoney(cart.total)"
+                        class="w-full px-4 py-3 border-2 border-yellow-300 rounded-lg text-lg font-bold text-center focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                    >
+                    
+                    <!-- Atalhos de valor -->
+                    <div class="flex gap-2 mt-2 flex-wrap">
+                        <button 
+                            @click="setAmountReceived(Math.ceil(cart.total / 10) * 10)"
+                            class="px-3 py-1 bg-yellow-200 hover:bg-yellow-300 rounded text-sm font-medium"
+                        >
+                            R$ <span x-text="formatMoney(Math.ceil(cart.total / 10) * 10)"></span>
+                        </button>
+                        <button 
+                            @click="setAmountReceived(Math.ceil(cart.total / 20) * 20)"
+                            class="px-3 py-1 bg-yellow-200 hover:bg-yellow-300 rounded text-sm font-medium"
+                        >
+                            R$ <span x-text="formatMoney(Math.ceil(cart.total / 20) * 20)"></span>
+                        </button>
+                        <button 
+                            @click="setAmountReceived(Math.ceil(cart.total / 50) * 50)"
+                            class="px-3 py-1 bg-yellow-200 hover:bg-yellow-300 rounded text-sm font-medium"
+                        >
+                            R$ <span x-text="formatMoney(Math.ceil(cart.total / 50) * 50)"></span>
+                        </button>
+                        <button 
+                            @click="setAmountReceived(100)"
+                            class="px-3 py-1 bg-yellow-200 hover:bg-yellow-300 rounded text-sm font-medium"
+                        >
+                            R$ 100,00
+                        </button>
+                    </div>
+                    
+                    <!-- Troco -->
+                    <div x-show="payment.changeAmount > 0" class="mt-3 p-3 bg-green-100 border border-green-300 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-green-800">🔄 TROCO:</span>
+                            <span class="text-2xl font-bold text-green-700">R$ <span x-text="formatMoney(payment.changeAmount)"></span></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Aviso se valor insuficiente -->
+                    <div x-show="payment.amountReceived > 0 && payment.amountReceived < cart.total" class="mt-3 p-3 bg-red-100 border border-red-300 rounded-lg">
+                        <span class="text-red-700 font-medium">⚠️ Valor insuficiente! Faltam R$ <span x-text="formatMoney(cart.total - payment.amountReceived)"></span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pagamento Dividido (Múltiplas formas) -->
+            <div x-show="payment.isSplit">
+                <label class="block text-sm font-bold mb-3">Formas de Pagamento:</label>
+                
+                <!-- Lista de pagamentos -->
+                <div class="space-y-3 mb-4">
+                    <template x-for="(split, index) in payment.splits" :key="index">
+                        <div class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                            <select 
+                                x-model="split.method"
+                                @change="updateSplitPayments()"
+                                class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                            >
+                                <option value="">Selecione...</option>
+                                <option value="dinheiro">💵 Dinheiro</option>
+                                <option value="pix">📱 PIX</option>
+                                <option value="cartao_debito">💳 Débito</option>
+                                <option value="cartao_credito">💳 Crédito</option>
+                            </select>
+                            <input 
+                                type="text" 
+                                inputmode="decimal"
+                                :value="formatMoneyInput(split.value)"
+                                @input="handleSplitValueInput($event, index)"
+                                @focus="$event.target.select()"
+                                placeholder="R$ 0,00"
+                                class="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm text-right"
+                            >
+                            <button 
+                                @click="removeSplitPayment(index)"
+                                x-show="payment.splits.length > 1"
+                                class="p-2 text-red-500 hover:bg-red-100 rounded-lg"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    </template>
+                </div>
+                
+                <!-- Botão adicionar forma -->
+                <button 
+                    @click="addSplitPayment()"
+                    class="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-purple-400 hover:text-purple-600 font-medium mb-4"
+                >
+                    + Adicionar forma de pagamento
+                </button>
+                
+                <!-- Resumo do pagamento dividido -->
+                <div class="bg-purple-50 rounded-lg p-4 mb-4">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-gray-700">Total informado:</span>
+                        <span 
+                            class="font-bold"
+                            :class="payment.splitTotal >= cart.total ? 'text-green-600' : 'text-red-600'"
+                        >
+                            R$ <span x-text="formatMoney(payment.splitTotal)"></span>
+                        </span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-gray-700">Total da venda:</span>
+                        <span class="font-bold">R$ <span x-text="formatMoney(cart.total)"></span></span>
+                    </div>
+                    <div x-show="payment.splitTotal < cart.total" class="flex justify-between pt-2 border-t border-purple-200">
+                        <span class="text-red-600 font-medium">Faltam:</span>
+                        <span class="font-bold text-red-600">R$ <span x-text="formatMoney(cart.total - payment.splitTotal)"></span></span>
+                    </div>
+                    <div x-show="payment.splitTotal > cart.total" class="flex justify-between pt-2 border-t border-purple-200">
+                        <span class="text-orange-600 font-medium">Excedente (troco):</span>
+                        <span class="font-bold text-orange-600">R$ <span x-text="formatMoney(payment.splitTotal - cart.total)"></span></span>
+                    </div>
+                </div>
+                
+                <!-- Campos de troco para dinheiro no split -->
+                <template x-for="(split, index) in payment.splits" :key="'cash-' + index">
+                    <div x-show="split.method === 'dinheiro' && split.value > 0" class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                        <label class="block text-sm font-bold text-yellow-800 mb-2">
+                            💵 Valor Recebido em Dinheiro (Pagamento <span x-text="index + 1"></span>):
+                        </label>
+                        <input 
+                            type="text" 
+                            inputmode="decimal"
+                            :value="formatMoneyInput(split.amountReceived)"
+                            @input="handleSplitAmountReceivedInput($event, index)"
+                            @focus="$event.target.select()"
+                            :placeholder="'Mínimo: R$ ' + formatMoney(split.value)"
+                            class="w-full px-3 py-2 border-2 border-yellow-300 rounded-lg text-center font-bold"
+                        >
+                        <div x-show="split.changeAmount > 0" class="mt-2 p-2 bg-green-100 rounded flex justify-between items-center">
+                            <span class="text-green-800 font-medium">🔄 Troco:</span>
+                            <span class="font-bold text-green-700">R$ <span x-text="formatMoney(split.changeAmount)"></span></span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
             <!-- Botões -->
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-2 gap-3 mt-4">
                 <button
                     @click="onlyConfirmSale()"
-                    :disabled="!cart.payment_method || isLoading"
+                    :disabled="!isPaymentValid() || isLoading"
                     class="bg-green-600 hover:bg-green-700 active:scale-95 text-white py-3 rounded-lg font-bold disabled:opacity-50 text-sm transition-all duration-200 shadow-md hover:shadow-lg disabled:shadow-none"
                 >
                     <span x-show="!isLoading">✅ Confirmar</span>
@@ -587,7 +757,7 @@
                 </button>
                 <button
                     @click="confirmAndPrint()"
-                    :disabled="!cart.payment_method || isLoading"
+                    :disabled="!isPaymentValid() || isLoading"
                     class="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white py-3 rounded-lg font-bold disabled:opacity-50 text-sm transition-all duration-200 shadow-md hover:shadow-lg disabled:shadow-none"
                 >
                     <span x-show="!isLoading">🖨️ Confirmar & Imprimir</span>
@@ -631,12 +801,201 @@ function posSystem() {
             total: 0
         },
         
+        // Sistema de pagamento expandido
+        payment: {
+            isSplit: false, // Se é pagamento dividido
+            amountReceived: 0, // Valor recebido (para dinheiro)
+            amountReceivedFormatted: '', // Valor formatado para exibição
+            changeAmount: 0, // Troco
+            splits: [ // Array de pagamentos divididos
+                { method: '', value: 0, amountReceived: 0, changeAmount: 0 }
+            ],
+            splitTotal: 0 // Total dos pagamentos divididos
+        },
+        
         selectedTableOccupied: false,
 
         init() {
             console.log('PDV iniciado');
             this.setType(this.cart.type); // Inicializar tipo corretamente
             this.updateTableOptions(); // Desabilitar mesas ocupadas no select
+            this.resetPayment(); // Inicializar pagamento
+        },
+        
+        // ===== FUNÇÕES DE PAGAMENTO =====
+        
+        resetPayment() {
+            this.payment = {
+                isSplit: false,
+                amountReceived: 0,
+                amountReceivedFormatted: '',
+                changeAmount: 0,
+                splits: [{ method: '', value: 0, amountReceived: 0, changeAmount: 0 }],
+                splitTotal: 0
+            };
+        },
+        
+        // ===== FUNÇÕES DE MÁSCARA MONETÁRIA =====
+        
+        // Formata valor numérico para exibição no input (R$ 1.234,56)
+        formatMoneyInput(value) {
+            if (value === 0 || value === '' || value === null || value === undefined) return '';
+            return parseFloat(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        },
+        
+        // Converte string formatada para número
+        parseMoneyInput(value) {
+            if (!value || value === '') return 0;
+            // Remove pontos (milhares) e substitui vírgula por ponto (decimal)
+            const cleaned = value.toString()
+                .replace(/[^\d,.-]/g, '') // Remove tudo exceto números, vírgula, ponto e hífen
+                .replace(/\./g, '') // Remove pontos (milhares)
+                .replace(',', '.'); // Substitui vírgula por ponto
+            return parseFloat(cleaned) || 0;
+        },
+        
+        // Handler para input do valor recebido (pagamento simples)
+        handleAmountReceivedInput(event) {
+            const rawValue = event.target.value;
+            const numericValue = this.parseMoneyInput(rawValue);
+            this.payment.amountReceived = numericValue;
+            this.payment.amountReceivedFormatted = this.formatMoneyInput(numericValue);
+            this.calculateChange();
+        },
+        
+        // Handler para input do valor no pagamento dividido
+        handleSplitValueInput(event, index) {
+            const rawValue = event.target.value;
+            const numericValue = this.parseMoneyInput(rawValue);
+            this.payment.splits[index].value = numericValue;
+            // Atualiza o input com valor formatado
+            this.$nextTick(() => {
+                event.target.value = this.formatMoneyInput(numericValue);
+            });
+            this.updateSplitPayments();
+        },
+        
+        // Handler para input do valor recebido no pagamento dividido
+        handleSplitAmountReceivedInput(event, index) {
+            const rawValue = event.target.value;
+            const numericValue = this.parseMoneyInput(rawValue);
+            this.payment.splits[index].amountReceived = numericValue;
+            // Atualiza o input com valor formatado
+            this.$nextTick(() => {
+                event.target.value = this.formatMoneyInput(numericValue);
+            });
+            this.calculateSplitChange(index);
+        },
+        
+        toggleSplitPayment() {
+            this.payment.isSplit = !this.payment.isSplit;
+            if (this.payment.isSplit) {
+                // Iniciar com o valor total no primeiro split
+                this.payment.splits = [{ method: '', value: this.cart.total, amountReceived: 0, changeAmount: 0 }];
+                this.cart.payment_method = null;
+                // Limpar valor formatado do pagamento simples
+                this.payment.amountReceivedFormatted = '';
+                this.payment.amountReceived = 0;
+            } else {
+                this.payment.splits = [{ method: '', value: 0, amountReceived: 0, changeAmount: 0 }];
+            }
+            this.updateSplitPayments();
+        },
+        
+        selectPaymentMethod(method) {
+            this.cart.payment_method = method;
+            // Resetar valor recebido ao mudar método
+            if (method !== 'dinheiro') {
+                this.payment.amountReceived = 0;
+                this.payment.amountReceivedFormatted = '';
+                this.payment.changeAmount = 0;
+            }
+        },
+        
+        setAmountReceived(value) {
+            this.payment.amountReceived = value;
+            this.payment.amountReceivedFormatted = this.formatMoneyInput(value);
+            this.calculateChange();
+        },
+        
+        calculateChange() {
+            if (this.payment.amountReceived >= this.cart.total) {
+                this.payment.changeAmount = this.payment.amountReceived - this.cart.total;
+            } else {
+                this.payment.changeAmount = 0;
+            }
+        },
+        
+        addSplitPayment() {
+            this.payment.splits.push({ method: '', value: 0, amountReceived: 0, changeAmount: 0 });
+        },
+        
+        removeSplitPayment(index) {
+            if (this.payment.splits.length > 1) {
+                this.payment.splits.splice(index, 1);
+                this.updateSplitPayments();
+            }
+        },
+        
+        updateSplitPayments() {
+            this.payment.splitTotal = this.payment.splits.reduce((sum, split) => sum + (parseFloat(split.value) || 0), 0);
+        },
+        
+        calculateSplitChange(index) {
+            const split = this.payment.splits[index];
+            if (split.amountReceived >= split.value) {
+                split.changeAmount = split.amountReceived - split.value;
+            } else {
+                split.changeAmount = 0;
+            }
+        },
+        
+        isPaymentValid() {
+            if (this.payment.isSplit) {
+                // Verificar se todos os splits têm método selecionado
+                const allMethodsSelected = this.payment.splits.every(split => split.method && split.value > 0);
+                // Verificar se o total cobre a venda
+                const totalCovers = this.payment.splitTotal >= this.cart.total;
+                // Verificar se pagamentos em dinheiro têm valor recebido suficiente
+                const cashValid = this.payment.splits.every(split => {
+                    if (split.method === 'dinheiro' && split.value > 0) {
+                        return split.amountReceived >= split.value;
+                    }
+                    return true;
+                });
+                return allMethodsSelected && totalCovers && cashValid;
+            } else {
+                // Pagamento simples
+                if (!this.cart.payment_method) return false;
+                // Se for dinheiro, verificar valor recebido
+                if (this.cart.payment_method === 'dinheiro') {
+                    return this.payment.amountReceived >= this.cart.total;
+                }
+                return true;
+            }
+        },
+        
+        getPaymentDataForSubmit() {
+            if (this.payment.isSplit) {
+                return {
+                    payment_method: 'split', // Indica pagamento dividido
+                    payment_methods_split: this.payment.splits.map(split => ({
+                        method: split.method,
+                        value: split.value,
+                        amount_received: split.method === 'dinheiro' ? split.amountReceived : null,
+                        change_amount: split.method === 'dinheiro' ? split.changeAmount : null
+                    })),
+                    amount_received: null,
+                    change_amount: this.payment.splitTotal > this.cart.total ? this.payment.splitTotal - this.cart.total : 0
+                };
+            } else {
+                return {
+                    payment_method: this.cart.payment_method,
+                    payment_methods_split: null,
+                    amount_received: this.cart.payment_method === 'dinheiro' ? this.payment.amountReceived : null,
+                    change_amount: this.cart.payment_method === 'dinheiro' ? this.payment.changeAmount : null
+                };
+            }
         },
         
         updateTableOptions() {
@@ -828,12 +1187,14 @@ function posSystem() {
                 }
             }
 
+            // Resetar estado do pagamento ao abrir modal
+            this.resetPayment();
             this.showModal = true;
         },
 
-        async confirmSale() {
-            if (!this.cart.payment_method) {
-                this.showToast('⚠️ Selecione a forma de pagamento!', 'error');
+        async confirmSale(closeAccount = false) {
+            if (!this.isPaymentValid()) {
+                this.showToast('⚠️ Complete os dados de pagamento!', 'error');
                 return;
             }
 
@@ -850,6 +1211,9 @@ function posSystem() {
                     method = 'POST';
                 }
 
+                // Obter dados de pagamento
+                const paymentData = this.getPaymentDataForSubmit();
+
                 const response = await fetch(url, {
                     method: method,
                     headers: {
@@ -859,7 +1223,9 @@ function posSystem() {
                     },
                     body: JSON.stringify({
                         ...this.cart,
-                        finalize: true
+                        ...paymentData,
+                        finalize: true,
+                        close_account: closeAccount // true = fechar conta da mesa, false = apenas atualizar pedido
                     })
                 });
 
@@ -870,7 +1236,9 @@ function posSystem() {
                     const saleId = data.sale?.id || this.cart.sale_id;
                     this.cart.sale_id = saleId;
 
-                    this.showToast('🎉 Venda finalizada com sucesso!', 'success');
+                    // Mensagem diferente baseada no tipo de operação
+                    const message = closeAccount ? '🎉 Venda finalizada com sucesso!' : '✅ Pedido atualizado com sucesso!';
+                    this.showToast(message, 'success');
                     return saleId;
                 } else {
                     throw new Error(data.message || 'Erro ao finalizar venda');
@@ -920,8 +1288,12 @@ function posSystem() {
 
         async onlyConfirmSale() {
             try {
-                await this.confirmSale();
-                this.showToast('✅ Venda confirmada!', 'success');
+                // Se é venda de mesa (table_id definido), apenas atualiza sem fechar conta
+                // Se é venda rápida (sem mesa), finaliza normalmente
+                const isTableSale = !!this.cart.table_id;
+                const closeAccount = !isTableSale; // Só fecha conta se NÃO tiver mesa
+                
+                await this.confirmSale(closeAccount);
                 this.showModal = false;
                 this.selectedTableOccupied = false;
                 setTimeout(() => window.location.reload(), 1000);
@@ -933,34 +1305,80 @@ function posSystem() {
 
         async confirmAndPrint() {
             try {
-                const saleId = await this.confirmSale();
+                // Confirmar e Imprimir sempre fecha a conta (closeAccount = true)
+                // pois indica que o cliente está pagando e saindo
+                const saleId = await this.confirmSale(true);
 
-                // Try to print after confirmation (but don't fail if printing fails)
-                const response = await fetch(`/gestor/vendas/${saleId}/print-receipt`, {
-                    method: 'POST',
+                // Fechar modal imediatamente após confirmar a venda
+                this.showModal = false;
+                
+                // Tentar imprimir via QZ Tray em background (não bloqueia)
+                this.printViaQZTray(saleId).catch(error => {
+                    console.log('Impressão em background falhou:', error.message);
+                });
+
+                // Recarregar página após um breve delay
+                setTimeout(() => window.location.reload(), 1500);
+            } catch (error) {
+                console.error('Erro:', error);
+                // Se a venda falhou, mostrar erro
+                this.showToast('❌ Erro ao confirmar venda: ' + error.message, 'error');
+            }
+        },
+
+        async printViaQZTray(saleId) {
+            try {
+                // Verificar se QZ Tray está disponível
+                if (typeof QZPrint === 'undefined') {
+                    console.log('QZ Tray não carregado - impressão ignorada');
+                    return;
+                }
+
+                // Verificar conexão com QZ Tray (com timeout curto)
+                if (!QZPrint.isConnected()) {
+                    try {
+                        const connected = await Promise.race([
+                            QZPrint.init(),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+                        ]);
+                        if (!connected) {
+                            console.log('QZ Tray não conectado - impressão ignorada');
+                            return;
+                        }
+                    } catch (e) {
+                        console.log('QZ Tray não disponível - impressão ignorada');
+                        return;
+                    }
+                }
+
+                // Verificar se há impressora configurada
+                const printerName = QZPrint.getPrinter();
+                if (!printerName) {
+                    this.showToast('⚠️ Nenhuma impressora configurada. Configure em Configurações > Impressora.', 'info');
+                    return;
+                }
+
+                // Buscar dados do recibo do servidor
+                const response = await fetch(`/gestor/vendas/${saleId}/receipt-data`, {
                     headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                     }
                 });
 
                 const data = await response.json();
-                if (data.success) {
-                    this.showToast('🎉 Venda confirmada e recibo impresso!', 'success');
-                } else {
-                    // Print failed, but sale is still confirmed
-                    this.showToast('✅ Venda confirmada! (Impressora indisponível)', 'info');
+                if (!data.success) {
+                    throw new Error(data.message || 'Erro ao obter dados do recibo');
                 }
 
-                this.showModal = false;
-                setTimeout(() => window.location.reload(), 1000);
+                // Imprimir via QZ Tray
+                await QZPrint.printReceipt(data.receipt);
+                this.showToast('🖨️ Recibo impresso com sucesso!', 'success');
+
             } catch (error) {
-                console.error('Erro:', error);
-                // Even if printing fails, the sale should already be confirmed at this point
-                this.showToast('✅ Venda confirmada! (Erro na impressão)', 'info');
-                this.showModal = false;
-                setTimeout(() => window.location.reload(), 1000);
+                console.error('Erro ao imprimir via QZ Tray:', error);
+                // Não mostrar toast de erro intrusivo, apenas logar
+                // A venda já foi confirmada com sucesso
             }
         },
 

@@ -1,8 +1,10 @@
 <!-- Top Navigation -->
 <div class="relative z-10 flex-shrink-0 flex h-16 bg-white shadow">
-    <button type="button" class="px-4 border-r border-gray-200 text-gray-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 md:hidden">
-        <span class="sr-only">Open sidebar</span>
-        📱
+    <button type="button" id="mobileMenuBtn" class="px-4 border-r border-gray-200 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 md:hidden">
+        <span class="sr-only">Abrir menu</span>
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
     </button>
 
     <div class="flex-1 px-4 flex justify-between">

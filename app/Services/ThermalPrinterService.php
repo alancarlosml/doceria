@@ -357,9 +357,41 @@ class ThermalPrinterService
         $this->printer->setJustification(Printer::JUSTIFY_LEFT);
 
         // Método de pagamento
-        if (isset($orderData['payment_method'])) {
+        if (isset($orderData['payment_methods_split']) && !empty($orderData['payment_methods_split'])) {
+            // Pagamento dividido
+            $this->printer->text("PAGAMENTO DIVIDIDO:\n");
+            foreach ($orderData['payment_methods_split'] as $split) {
+                $methodName = $this->getPaymentMethodName($split['method']);
+                $value = number_format($split['value'], 2, ',', '.');
+                $this->printer->text("  {$methodName}: R$ {$value}\n");
+                
+                // Se for dinheiro e tiver troco
+                if ($split['method'] === 'dinheiro' && isset($split['change_amount']) && $split['change_amount'] > 0) {
+                    $received = number_format($split['amount_received'] ?? 0, 2, ',', '.');
+                    $change = number_format($split['change_amount'], 2, ',', '.');
+                    $this->printer->text("    Recebido: R$ {$received}\n");
+                    $this->printer->text("    Troco: R$ {$change}\n");
+                }
+            }
+        } elseif (isset($orderData['payment_method'])) {
             $methodName = $this->getPaymentMethodName($orderData['payment_method']);
             $this->printer->text("Pagamento: $methodName\n");
+            
+            // Valor recebido e troco (para dinheiro)
+            if ($orderData['payment_method'] === 'dinheiro') {
+                if (isset($orderData['amount_received']) && $orderData['amount_received'] > 0) {
+                    $received = number_format($orderData['amount_received'], 2, ',', '.');
+                    $this->printer->text("Valor Recebido: R$ {$received}\n");
+                }
+                if (isset($orderData['change_amount']) && $orderData['change_amount'] > 0) {
+                    $change = number_format($orderData['change_amount'], 2, ',', '.');
+                    $this->printer->setJustification(Printer::JUSTIFY_CENTER);
+                    $this->printer->setTextSize(1, 2);
+                    $this->printer->text("TROCO: R$ {$change}\n");
+                    $this->printer->setTextSize(1, 1);
+                    $this->printer->setJustification(Printer::JUSTIFY_LEFT);
+                }
+            }
         }
 
         // Tipo do pedido
@@ -531,6 +563,9 @@ class ThermalPrinterService
                 'delivery_fee' => $sale->delivery_fee ?? 0,
                 'total' => $sale->total,
                 'payment_method' => $sale->payment_method,
+                'payment_methods_split' => $sale->payment_methods_split, // Pagamento dividido
+                'amount_received' => $sale->amount_received, // Valor recebido
+                'change_amount' => $sale->change_amount, // Troco
                 'order_type' => $sale->type, // 'balcao' ou 'delivery'
             ];
 

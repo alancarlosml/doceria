@@ -195,6 +195,7 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
         Route::post('vendas/{sale}/update-status', [SaleController::class, 'updateStatus'])->name('sales.update-status');
         Route::post('vendas/{sale}/cancelar', [SaleController::class, 'cancel'])->name('sales.cancel');
         Route::post('vendas/{sale}/imprimir-recibo', [SaleController::class, 'printReceipt'])->name('sales.print-receipt');
+        Route::get('vendas/{sale}/receipt-data', [SaleController::class, 'getReceiptData'])->name('sales.receipt-data');
         Route::get('vendas-estatisticas', [SaleController::class, 'statistics'])->name('sales.statistics');
     });
 
@@ -331,6 +332,7 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
         Route::delete('encomendas/{encomenda}', [EncomendasController::class, 'destroy'])->name('encomendas.destroy');
         Route::post('encomendas/{encomenda}/atualizar-status', [EncomendasController::class, 'updateStatus'])->name('encomendas.update-status');
         Route::post('encomendas/{encomenda}/imprimir', [EncomendasController::class, 'printEncomenda'])->name('encomendas.print');
+        Route::post('encomendas/{encomenda}/finalizar-pagamento', [EncomendasController::class, 'finalizarComPagamento'])->name('encomendas.finalizar-pagamento');
     });
 
     // Menu data para interface web
@@ -376,6 +378,7 @@ Route::middleware('auth.api')->prefix('api')->group(function () {
         Route::post('sales/{sale}/finalize', [SaleController::class, 'finalize']);
         Route::post('sales/{sale}/cancel', [SaleController::class, 'cancel']);
         Route::post('sales/{sale}/print-receipt', [SaleController::class, 'printReceipt']);
+        Route::get('sales/{sale}/receipt-data', [SaleController::class, 'getReceiptData']);
         Route::get('sales-statistics', [SaleController::class, 'statistics']);
     });
 

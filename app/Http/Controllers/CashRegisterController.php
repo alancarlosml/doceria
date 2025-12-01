@@ -17,23 +17,66 @@ class CashRegisterController extends Controller
     {
         $query = CashRegister::with('user');
 
+        // Determinar período do filtro
+        $periodo = $request->get('periodo', 'mes_atual');
+        $dateFrom = null;
+        $dateTo = null;
+
+        switch ($periodo) {
+            case 'mes_atual':
+                $dateFrom = now()->startOfMonth()->format('Y-m-d');
+                $dateTo = now()->endOfMonth()->format('Y-m-d');
+                break;
+            case 'mes_anterior':
+                $dateFrom = now()->subMonth()->startOfMonth()->format('Y-m-d');
+                $dateTo = now()->subMonth()->endOfMonth()->format('Y-m-d');
+                break;
+            case 'customizado':
+                $dateFrom = $request->get('date_from');
+                $dateTo = $request->get('date_to');
+                break;
+        }
+
         // Filter by status
         if ($request->filled('status') && $request->status !== 'todos') {
             $query->where('status', $request->status);
         }
 
-        // Filter by date range
-        if ($request->filled('date_from')) {
-            $query->whereDate('opened_at', '>=', $request->date_from);
+        // Filter by date range (período)
+        if ($dateFrom) {
+            $query->whereDate('opened_at', '>=', $dateFrom);
         }
-        if ($request->filled('date_to')) {
-            $query->whereDate('opened_at', '<=', $request->date_to);
+        if ($dateTo) {
+            $query->whereDate('opened_at', '<=', $dateTo);
         }
 
         $cashRegisters = $query->orderBy('created_at', 'desc')->paginate(15);
         $openRegister = CashRegister::where('status', 'aberto')->first();
 
-        return view('admin.cash_register.cash_registers', compact('cashRegisters', 'openRegister'));
+        // Calcular total de encomendas finalizadas no período (sem taxa de entrega)
+        $encomendasQuery = Encomenda::where('status', 'entregue');
+        if ($dateFrom) {
+            $encomendasQuery->whereDate('updated_at', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $encomendasQuery->whereDate('updated_at', '<=', $dateTo);
+        }
+        
+        $totalEncomendasPeriodo = $encomendasQuery->selectRaw('SUM(total - COALESCE(delivery_fee, 0)) as total_sem_taxa')->value('total_sem_taxa') ?? 0;
+        $countEncomendasPeriodo = Encomenda::where('status', 'entregue')
+            ->when($dateFrom, fn($q) => $q->whereDate('updated_at', '>=', $dateFrom))
+            ->when($dateTo, fn($q) => $q->whereDate('updated_at', '<=', $dateTo))
+            ->count();
+
+        return view('admin.cash_register.cash_registers', compact(
+            'cashRegisters', 
+            'openRegister', 
+            'periodo', 
+            'dateFrom', 
+            'dateTo',
+            'totalEncomendasPeriodo',
+            'countEncomendasPeriodo'
+        ));
     }
 
     /**

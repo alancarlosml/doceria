@@ -79,22 +79,22 @@
                     </div>
                 </div>
 
-                <!-- Entregas em Andamento -->
+                <!-- Encomendas Hoje -->
                 <div class="bg-gradient-to-r from-purple-50 to-pink-50 border-l-4 border-purple-400 p-6 rounded-lg">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-purple-600 truncate">
-                                Em Entrega
+                                Encomendas Hoje
                             </p>
                             <p class="text-2xl font-bold text-purple-700">
-                                {{ $upcomingDeliveriesCount }}
+                                R$ {{ number_format($todayEncomendasTotal, 2, ',', '.') }}
                             </p>
                             <p class="text-xs text-purple-600 mt-1">
-                                Saiu para entrega
+                                {{ $todayEncomendasCount }} finalizadas
                             </p>
                         </div>
                         <div class="p-3 bg-purple-100 rounded-full">
-                            <span class="text-purple-600">🏍️</span>
+                            <span class="text-purple-600">📦</span>
                         </div>
                     </div>
                 </div>

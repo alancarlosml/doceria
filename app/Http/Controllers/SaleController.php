@@ -141,7 +141,14 @@ class SaleController extends Controller
             'delivery_address' => 'nullable|string',
             'delivery_fee' => 'nullable|numeric|min:0',
             'discount' => 'nullable|numeric|min:0',
-            'payment_method' => 'required|in:dinheiro,pix,cartao_debito,cartao_credito',
+            'payment_method' => 'required|in:dinheiro,pix,cartao_debito,cartao_credito,split',
+            'payment_methods_split' => 'nullable|array', // Array de pagamentos divididos
+            'payment_methods_split.*.method' => 'required_with:payment_methods_split|in:dinheiro,pix,cartao_debito,cartao_credito',
+            'payment_methods_split.*.value' => 'required_with:payment_methods_split|numeric|min:0',
+            'payment_methods_split.*.amount_received' => 'nullable|numeric|min:0',
+            'payment_methods_split.*.change_amount' => 'nullable|numeric|min:0',
+            'amount_received' => 'nullable|numeric|min:0', // Valor recebido (dinheiro)
+            'change_amount' => 'nullable|numeric|min:0', // Troco
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
@@ -228,10 +235,11 @@ class SaleController extends Controller
 
             // Determinar status da venda
             $finalize = $validated['finalize'] ?? false;
+            $closeAccount = $request->input('close_account', false); // Indica se quer fechar a conta da mesa
             $currentStatus = $sale->status;
             
             if ($finalize) {
-                // Se está finalizando, determinar status apropriado (mesma lógica do store)
+                // Se está finalizando, determinar status apropriado
                 if ($validated['type'] === 'delivery') {
                     $status = 'saiu_entrega'; // Delivery vai direto para entrega
                 } else {
@@ -239,9 +247,10 @@ class SaleController extends Controller
                     if (empty($validated['table_id'])) {
                         $status = 'finalizado'; // Venda rápida sem mesa
                     } else {
-                        // Com mesa: quando finaliza uma venda existente com mesa, deve ir para finalizado
-                        // pois o pagamento foi realizado e a mesa será liberada
-                        $status = 'finalizado'; // Finalizando venda com mesa
+                        // Com mesa: verificar se quer fechar a conta ou apenas atualizar o pedido
+                        // close_account = true → finaliza (fechar conta/imprimir recibo)
+                        // close_account = false → permanece pendente (apenas atualizar itens)
+                        $status = $closeAccount ? 'finalizado' : 'pendente';
                     }
                 }
             } else {
@@ -261,6 +270,31 @@ class SaleController extends Controller
             // Limpar itens antigos e recriar
             $sale->items()->delete();
 
+            // Determinar método de pagamento principal
+            $paymentMethod = $validated['payment_method'];
+            $paymentMethodsSplit = null;
+            $amountReceived = null;
+            $changeAmount = null;
+            
+            // Se for pagamento dividido
+            if ($paymentMethod === 'split' && !empty($validated['payment_methods_split'])) {
+                $paymentMethodsSplit = $validated['payment_methods_split'];
+                // Usar o primeiro método como principal para compatibilidade
+                $paymentMethod = $paymentMethodsSplit[0]['method'] ?? 'dinheiro';
+                // Calcular troco total para pagamentos em dinheiro
+                $totalChange = 0;
+                foreach ($paymentMethodsSplit as $split) {
+                    if ($split['method'] === 'dinheiro' && isset($split['change_amount'])) {
+                        $totalChange += $split['change_amount'];
+                    }
+                }
+                $changeAmount = $totalChange > 0 ? $totalChange : ($validated['change_amount'] ?? null);
+            } else {
+                // Pagamento simples
+                $amountReceived = $validated['amount_received'] ?? null;
+                $changeAmount = $validated['change_amount'] ?? null;
+            }
+
             // Atualizar venda
             $sale->update([
                 'customer_id' => $validated['customer_id'] ?? null,
@@ -272,7 +306,10 @@ class SaleController extends Controller
                 'discount' => $discount,
                 'delivery_fee' => $deliveryFee,
                 'total' => $total,
-                'payment_method' => $validated['payment_method'],
+                'payment_method' => $paymentMethod,
+                'payment_methods_split' => $paymentMethodsSplit,
+                'amount_received' => $amountReceived,
+                'change_amount' => $changeAmount,
                 'delivery_address' => $validated['delivery_address'] ?? null,
             ]);
 
@@ -365,7 +402,14 @@ class SaleController extends Controller
             'delivery_address' => 'nullable|string',
             'delivery_fee' => 'nullable|numeric|min:0',
             'discount' => 'nullable|numeric|min:0',
-            'payment_method' => 'required|in:dinheiro,pix,cartao_debito,cartao_credito',
+            'payment_method' => 'required|in:dinheiro,pix,cartao_debito,cartao_credito,split',
+            'payment_methods_split' => 'nullable|array', // Array de pagamentos divididos
+            'payment_methods_split.*.method' => 'required_with:payment_methods_split|in:dinheiro,pix,cartao_debito,cartao_credito',
+            'payment_methods_split.*.value' => 'required_with:payment_methods_split|numeric|min:0',
+            'payment_methods_split.*.amount_received' => 'nullable|numeric|min:0',
+            'payment_methods_split.*.change_amount' => 'nullable|numeric|min:0',
+            'amount_received' => 'nullable|numeric|min:0', // Valor recebido (dinheiro)
+            'change_amount' => 'nullable|numeric|min:0', // Troco
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
@@ -457,6 +501,31 @@ class SaleController extends Controller
                 $status = 'pendente'; // Salvando sem finalizar
             }
 
+            // Determinar método de pagamento principal
+            $paymentMethod = $validated['payment_method'];
+            $paymentMethodsSplit = null;
+            $amountReceived = null;
+            $changeAmount = null;
+            
+            // Se for pagamento dividido
+            if ($paymentMethod === 'split' && !empty($validated['payment_methods_split'])) {
+                $paymentMethodsSplit = $validated['payment_methods_split'];
+                // Usar o primeiro método como principal para compatibilidade
+                $paymentMethod = $paymentMethodsSplit[0]['method'] ?? 'dinheiro';
+                // Calcular troco total para pagamentos em dinheiro
+                $totalChange = 0;
+                foreach ($paymentMethodsSplit as $split) {
+                    if ($split['method'] === 'dinheiro' && isset($split['change_amount'])) {
+                        $totalChange += $split['change_amount'];
+                    }
+                }
+                $changeAmount = $totalChange > 0 ? $totalChange : ($validated['change_amount'] ?? null);
+            } else {
+                // Pagamento simples
+                $amountReceived = $validated['amount_received'] ?? null;
+                $changeAmount = $validated['change_amount'] ?? null;
+            }
+
             // Criar venda
             $sale = Sale::create([
                 'cash_register_id' => $openCashRegister->id,
@@ -470,7 +539,10 @@ class SaleController extends Controller
                 'discount' => $discount,
                 'delivery_fee' => $deliveryFee,
                 'total' => $total,
-                'payment_method' => $validated['payment_method'],
+                'payment_method' => $paymentMethod,
+                'payment_methods_split' => $paymentMethodsSplit,
+                'amount_received' => $amountReceived,
+                'change_amount' => $changeAmount,
                 'delivery_address' => $validated['delivery_address'] ?? null,
             ]);
 
@@ -632,5 +704,66 @@ class SaleController extends Controller
         // Senão retorna view
         $sale->load(['customer', 'table', 'motoboy', 'user', 'items.product.category']);
         return view('sales.show', compact('sale'));
+    }
+
+    /**
+     * Get receipt data for QZ Tray printing
+     * Returns formatted data for ESC/POS printing via browser
+     */
+    public function getReceiptData(Sale $sale)
+    {
+        try {
+            // Carregar relacionamentos necessários
+            $sale->load(['customer', 'table', 'motoboy', 'user', 'items.product']);
+
+            // Formatar dados para o QZ Tray
+            $receiptData = [
+                'business_name' => 'Doce Doce Brigaderia',
+                'order_number' => $sale->id,
+                'date' => $sale->created_at->format('d/m/Y H:i'),
+                'items' => $sale->items->map(function ($item) {
+                    return [
+                        'name' => $item->product->name ?? 'Produto',
+                        'quantity' => $item->quantity,
+                        'price' => $item->unit_price,
+                        'subtotal' => $item->subtotal
+                    ];
+                })->toArray(),
+                'subtotal' => $sale->subtotal,
+                'discount' => $sale->discount ?? 0,
+                'delivery_fee' => $sale->delivery_fee ?? 0,
+                'total' => $sale->total,
+                'payment_method' => $sale->payment_method,
+                'order_type' => $sale->type,
+                'footer' => 'Obrigado pela preferencia!'
+            ];
+
+            // Adicionar dados do cliente se existir
+            if ($sale->customer) {
+                $receiptData['customer_name'] = $sale->customer->name;
+                $receiptData['customer_phone'] = $sale->customer->phone;
+            }
+
+            // Adicionar endereço de entrega se for delivery
+            if ($sale->delivery_address) {
+                $receiptData['delivery_address'] = $sale->delivery_address;
+            }
+
+            // Adicionar mesa se for balcão
+            if ($sale->table) {
+                $receiptData['table_number'] = $sale->table->number;
+            }
+
+            return response()->json([
+                'success' => true,
+                'receipt' => $receiptData
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao obter dados do recibo: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

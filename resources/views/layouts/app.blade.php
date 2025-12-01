@@ -83,6 +83,10 @@
 <body class="antialiased font-sans bg-gray-50">
     @yield('content')
 
+    <!-- QZ Tray Library (para impressão direta em impressoras térmicas) -->
+    <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.min.js"></script>
+    <script src="{{ asset('js/qz-print.js') }}"></script>
+    
     <!-- Scripts -->
     @stack('scripts')
 

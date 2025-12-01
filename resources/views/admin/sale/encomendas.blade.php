@@ -252,11 +252,11 @@
                                                     </button>
                                                     
                                                     <button
-                                                        @click.stop="updateStatus(encomenda.id, 'entregue')"
+                                                        @click.stop="openPaymentModal(encomenda)"
                                                         x-show="encomenda.status === 'pronto'"
                                                         class="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600 transition-colors"
                                                     >
-                                                        📦 Marcar Entregue
+                                                        💰 Finalizar Entrega
                                                     </button>
 
                                                     <button
@@ -399,12 +399,241 @@
                                 🖨️ Imprimir
                             </button>
                             <button
+                                x-show="selectedEncomenda.status === 'pronto'"
+                                @click="resetEncomendaPayment(); encomendaPayment.splits = [{method: '', value: selectedEncomenda.total, amountReceived: 0, changeAmount: 0}]; showPaymentModal = true; showModal = false"
+                                class="flex-1 bg-green-500 text-white py-3 rounded-lg font-bold hover:bg-green-600 transition-colors"
+                            >
+                                💰 Finalizar
+                            </button>
+                            <button
                                 @click="showModal = false"
                                 class="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-400 transition-colors"
                             >
                                 Fechar
                             </button>
                         </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Modal de Pagamento para Encomenda -->
+    <div x-show="showPaymentModal" 
+         x-cloak
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto py-4"
+         @click.self="showPaymentModal = false"
+    >
+        <div class="bg-white rounded-2xl max-w-lg w-full mx-4 shadow-2xl max-h-[95vh] overflow-y-auto" @click.stop>
+            <template x-if="selectedEncomenda">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-2xl font-bold">💳 Finalizar Encomenda</h3>
+                        <button @click="showPaymentModal = false" class="text-gray-400 hover:text-gray-600 text-xl font-bold">✕</button>
+                    </div>
+                    
+                    <p class="text-gray-600 mb-4">Encomenda: <span class="font-bold" x-text="'#' + selectedEncomenda.code"></span></p>
+
+                    <!-- Resumo -->
+                    <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                        <div class="flex justify-between pt-2 text-xl">
+                            <span class="font-bold">TOTAL:</span>
+                            <span class="font-bold text-green-600">R$ <span x-text="selectedEncomenda.total_formatted"></span></span>
+                        </div>
+                    </div>
+
+                    <!-- Toggle Pagamento Dividido -->
+                    <div class="flex items-center justify-between mb-4 p-3 bg-purple-50 rounded-lg">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg">💰</span>
+                            <span class="font-medium text-gray-700">Pagamento Dividido</span>
+                        </div>
+                        <button 
+                            @click="encomendaPayment.isSplit = !encomendaPayment.isSplit; if (encomendaPayment.isSplit) { encomendaPayment.splits = [{method: '', value: selectedEncomenda.total, amountReceived: 0, changeAmount: 0}]; } else { encomendaPayment.splits = [{method: '', value: 0, amountReceived: 0, changeAmount: 0}]; }"
+                            :class="encomendaPayment.isSplit ? 'bg-purple-600' : 'bg-gray-300'"
+                            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+                        >
+                            <span 
+                                :class="encomendaPayment.isSplit ? 'translate-x-6' : 'translate-x-1'"
+                                class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                            ></span>
+                        </button>
+                    </div>
+
+                    <!-- Pagamento Simples -->
+                    <div x-show="!encomendaPayment.isSplit">
+                        <label class="block text-sm font-bold mb-3">Forma de Pagamento:</label>
+                        <div class="grid grid-cols-2 gap-2 mb-4">
+                            <button
+                                @click="encomendaPayment.method = 'dinheiro'"
+                                :class="encomendaPayment.method === 'dinheiro' ? 'bg-green-500 text-white shadow-lg scale-105' : 'bg-white border-2 border-gray-200 hover:border-green-300'"
+                                class="py-3 rounded-lg font-medium transition-all duration-200 active:scale-95"
+                            >
+                                💵 Dinheiro
+                            </button>
+                            <button
+                                @click="encomendaPayment.method = 'pix'"
+                                :class="encomendaPayment.method === 'pix' ? 'bg-green-500 text-white shadow-lg scale-105' : 'bg-white border-2 border-gray-200 hover:border-green-300'"
+                                class="py-3 rounded-lg font-medium transition-all duration-200 active:scale-95"
+                            >
+                                📱 PIX
+                            </button>
+                            <button
+                                @click="encomendaPayment.method = 'cartao_debito'"
+                                :class="encomendaPayment.method === 'cartao_debito' ? 'bg-green-500 text-white shadow-lg scale-105' : 'bg-white border-2 border-gray-200 hover:border-green-300'"
+                                class="py-3 rounded-lg font-medium transition-all duration-200 active:scale-95"
+                            >
+                                💳 Débito
+                            </button>
+                            <button
+                                @click="encomendaPayment.method = 'cartao_credito'"
+                                :class="encomendaPayment.method === 'cartao_credito' ? 'bg-green-500 text-white shadow-lg scale-105' : 'bg-white border-2 border-gray-200 hover:border-green-300'"
+                                class="py-3 rounded-lg font-medium transition-all duration-200 active:scale-95"
+                            >
+                                💳 Crédito
+                            </button>
+                        </div>
+
+                        <!-- Valor Recebido e Troco (apenas para dinheiro) -->
+                        <div x-show="encomendaPayment.method === 'dinheiro'" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                            <label class="block text-sm font-bold text-yellow-800 mb-2">💵 Valor Recebido:</label>
+                            <input 
+                                type="number" 
+                                x-model.number="encomendaPayment.amountReceived"
+                                @input="encomendaPayment.changeAmount = encomendaPayment.amountReceived >= selectedEncomenda.total ? encomendaPayment.amountReceived - selectedEncomenda.total : 0"
+                                step="0.01"
+                                min="0"
+                                class="w-full px-4 py-3 border-2 border-yellow-300 rounded-lg text-lg font-bold text-center focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                            >
+                            
+                            <!-- Atalhos de valor -->
+                            <div class="flex gap-2 mt-2 flex-wrap">
+                                <button 
+                                    @click="encomendaPayment.amountReceived = Math.ceil(selectedEncomenda.total / 10) * 10; encomendaPayment.changeAmount = encomendaPayment.amountReceived - selectedEncomenda.total"
+                                    class="px-3 py-1 bg-yellow-200 hover:bg-yellow-300 rounded text-sm font-medium"
+                                >
+                                    R$ <span x-text="formatMoney(Math.ceil(selectedEncomenda.total / 10) * 10)"></span>
+                                </button>
+                                <button 
+                                    @click="encomendaPayment.amountReceived = Math.ceil(selectedEncomenda.total / 50) * 50; encomendaPayment.changeAmount = encomendaPayment.amountReceived - selectedEncomenda.total"
+                                    class="px-3 py-1 bg-yellow-200 hover:bg-yellow-300 rounded text-sm font-medium"
+                                >
+                                    R$ <span x-text="formatMoney(Math.ceil(selectedEncomenda.total / 50) * 50)"></span>
+                                </button>
+                                <button 
+                                    @click="encomendaPayment.amountReceived = 100; encomendaPayment.changeAmount = 100 - selectedEncomenda.total"
+                                    class="px-3 py-1 bg-yellow-200 hover:bg-yellow-300 rounded text-sm font-medium"
+                                >
+                                    R$ 100,00
+                                </button>
+                            </div>
+                            
+                            <!-- Troco -->
+                            <div x-show="encomendaPayment.changeAmount > 0" class="mt-3 p-3 bg-green-100 border border-green-300 rounded-lg">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-bold text-green-800">🔄 TROCO:</span>
+                                    <span class="text-2xl font-bold text-green-700">R$ <span x-text="formatMoney(encomendaPayment.changeAmount)"></span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pagamento Dividido -->
+                    <div x-show="encomendaPayment.isSplit">
+                        <label class="block text-sm font-bold mb-3">Formas de Pagamento:</label>
+                        
+                        <div class="space-y-3 mb-4">
+                            <template x-for="(split, index) in encomendaPayment.splits" :key="index">
+                                <div class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                                    <select 
+                                        x-model="split.method"
+                                        class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                    >
+                                        <option value="">Selecione...</option>
+                                        <option value="dinheiro">💵 Dinheiro</option>
+                                        <option value="pix">📱 PIX</option>
+                                        <option value="cartao_debito">💳 Débito</option>
+                                        <option value="cartao_credito">💳 Crédito</option>
+                                    </select>
+                                    <input 
+                                        type="number" 
+                                        x-model.number="split.value"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="R$ 0,00"
+                                        class="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm text-right"
+                                    >
+                                    <button 
+                                        @click="encomendaPayment.splits.splice(index, 1)"
+                                        x-show="encomendaPayment.splits.length > 1"
+                                        class="p-2 text-red-500 hover:bg-red-100 rounded-lg"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                        
+                        <button 
+                            @click="encomendaPayment.splits.push({method: '', value: 0, amountReceived: 0, changeAmount: 0})"
+                            class="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-purple-400 hover:text-purple-600 font-medium mb-4"
+                        >
+                            + Adicionar forma de pagamento
+                        </button>
+                        
+                        <!-- Resumo -->
+                        <div class="bg-purple-50 rounded-lg p-4 mb-4">
+                            <div class="flex justify-between mb-2">
+                                <span class="text-gray-700">Total informado:</span>
+                                <span 
+                                    class="font-bold"
+                                    :class="getSplitTotal() >= selectedEncomenda.total ? 'text-green-600' : 'text-red-600'"
+                                >
+                                    R$ <span x-text="formatMoney(getSplitTotal())"></span>
+                                </span>
+                            </div>
+                            <div x-show="getSplitTotal() < selectedEncomenda.total" class="text-red-600 text-sm">
+                                ⚠️ Faltam R$ <span x-text="formatMoney(selectedEncomenda.total - getSplitTotal())"></span>
+                            </div>
+                        </div>
+                        
+                        <!-- Campos de troco para dinheiro no split -->
+                        <template x-for="(split, index) in encomendaPayment.splits" :key="'cash-enc-' + index">
+                            <div x-show="split.method === 'dinheiro' && split.value > 0" class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                                <label class="block text-sm font-bold text-yellow-800 mb-2">
+                                    💵 Valor Recebido (Pagamento <span x-text="index + 1"></span>):
+                                </label>
+                                <input 
+                                    type="number" 
+                                    x-model.number="split.amountReceived"
+                                    @input="split.changeAmount = split.amountReceived >= split.value ? split.amountReceived - split.value : 0"
+                                    step="0.01"
+                                    min="0"
+                                    class="w-full px-3 py-2 border-2 border-yellow-300 rounded-lg text-center font-bold"
+                                >
+                                <div x-show="split.changeAmount > 0" class="mt-2 p-2 bg-green-100 rounded flex justify-between items-center">
+                                    <span class="text-green-800 font-medium">🔄 Troco:</span>
+                                    <span class="font-bold text-green-700">R$ <span x-text="formatMoney(split.changeAmount)"></span></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Botões -->
+                    <div class="grid grid-cols-2 gap-3 mt-4">
+                        <button
+                            @click="showPaymentModal = false"
+                            class="bg-gray-300 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-400 transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            @click="finalizarEncomendaComPagamento()"
+                            :disabled="!isEncomendaPaymentValid()"
+                            class="bg-green-600 hover:bg-green-700 active:scale-95 text-white py-3 rounded-lg font-bold disabled:opacity-50 transition-all duration-200"
+                        >
+                            ✅ Confirmar Entrega
+                        </button>
                     </div>
                 </div>
             </template>
@@ -431,11 +660,123 @@ function encomendasManager() {
 
         groupedEncomendas: [],
         showModal: false,
+        showPaymentModal: false,
         selectedEncomenda: null,
+        
+        // Sistema de pagamento para encomendas
+        encomendaPayment: {
+            isSplit: false,
+            method: null,
+            amountReceived: 0,
+            changeAmount: 0,
+            splits: [{ method: '', value: 0, amountReceived: 0, changeAmount: 0 }]
+        },
 
         init() {
             this.loadEncomendas();
             this.loadStats();
+        },
+        
+        formatMoney(value) {
+            return parseFloat(value || 0).toFixed(2).replace('.', ',');
+        },
+        
+        getSplitTotal() {
+            return this.encomendaPayment.splits.reduce((sum, split) => sum + (parseFloat(split.value) || 0), 0);
+        },
+        
+        isEncomendaPaymentValid() {
+            if (this.encomendaPayment.isSplit) {
+                const allMethodsSelected = this.encomendaPayment.splits.every(split => split.method && split.value > 0);
+                const totalCovers = this.getSplitTotal() >= this.selectedEncomenda.total;
+                const cashValid = this.encomendaPayment.splits.every(split => {
+                    if (split.method === 'dinheiro' && split.value > 0) {
+                        return split.amountReceived >= split.value;
+                    }
+                    return true;
+                });
+                return allMethodsSelected && totalCovers && cashValid;
+            } else {
+                if (!this.encomendaPayment.method) return false;
+                if (this.encomendaPayment.method === 'dinheiro') {
+                    return this.encomendaPayment.amountReceived >= this.selectedEncomenda.total;
+                }
+                return true;
+            }
+        },
+        
+        async finalizarEncomendaComPagamento() {
+            if (!this.isEncomendaPaymentValid()) {
+                this.showToast('Complete os dados de pagamento!', 'error');
+                return;
+            }
+            
+            try {
+                // Preparar dados de pagamento
+                let paymentData = {};
+                if (this.encomendaPayment.isSplit) {
+                    paymentData = {
+                        payment_method: 'split',
+                        payment_methods_split: this.encomendaPayment.splits.map(split => ({
+                            method: split.method,
+                            value: split.value,
+                            amount_received: split.method === 'dinheiro' ? split.amountReceived : null,
+                            change_amount: split.method === 'dinheiro' ? split.changeAmount : null
+                        })),
+                        amount_received: null,
+                        change_amount: null
+                    };
+                } else {
+                    paymentData = {
+                        payment_method: this.encomendaPayment.method,
+                        payment_methods_split: null,
+                        amount_received: this.encomendaPayment.method === 'dinheiro' ? this.encomendaPayment.amountReceived : null,
+                        change_amount: this.encomendaPayment.method === 'dinheiro' ? this.encomendaPayment.changeAmount : null
+                    };
+                }
+                
+                const response = await fetch(`/gestor/encomendas/${this.selectedEncomenda.id}/finalizar-pagamento`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                    },
+                    body: JSON.stringify(paymentData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.showToast('Encomenda finalizada com sucesso!', 'success');
+                    this.showPaymentModal = false;
+                    this.resetEncomendaPayment();
+                    this.loadEncomendas();
+                    this.loadStats();
+                } else {
+                    this.showToast(data.message || 'Erro ao finalizar encomenda', 'error');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                this.showToast('Erro ao finalizar encomenda', 'error');
+            }
+        },
+        
+        resetEncomendaPayment() {
+            this.encomendaPayment = {
+                isSplit: false,
+                method: null,
+                amountReceived: 0,
+                changeAmount: 0,
+                splits: [{ method: '', value: 0, amountReceived: 0, changeAmount: 0 }]
+            };
+        },
+        
+        openPaymentModal(encomenda) {
+            this.selectedEncomenda = encomenda;
+            this.resetEncomendaPayment();
+            // Inicializar o primeiro split com o valor total da encomenda
+            this.encomendaPayment.splits = [{ method: '', value: encomenda.total, amountReceived: 0, changeAmount: 0 }];
+            this.showPaymentModal = true;
         },
 
         async loadEncomendas() {

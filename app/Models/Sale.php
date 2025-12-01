@@ -24,6 +24,9 @@ class Sale extends Model
         'delivery_fee',
         'total',
         'payment_method',
+        'payment_methods_split', // JSON com múltiplas formas de pagamento
+        'amount_received', // Valor recebido do cliente (dinheiro)
+        'change_amount', // Troco
         'delivery_date',
         'delivery_time',
         'notes',
@@ -35,6 +38,9 @@ class Sale extends Model
         'discount' => 'decimal:2',
         'delivery_fee' => 'decimal:2',
         'total' => 'decimal:2',
+        'amount_received' => 'decimal:2',
+        'change_amount' => 'decimal:2',
+        'payment_methods_split' => 'array', // JSON para array
         'delivery_date' => 'date',
     ];
 
@@ -172,5 +178,55 @@ class Sale extends Model
             'cancelado' => 'Cancelado',
             'finalizado' => 'Finalizado'
         ];
+    }
+
+    /**
+     * Verifica se é pagamento dividido
+     */
+    public function isSplitPayment(): bool
+    {
+        return !empty($this->payment_methods_split) && count($this->payment_methods_split) > 0;
+    }
+
+    /**
+     * Obter nome legível do método de pagamento
+     */
+    public static function getPaymentMethodName($method): string
+    {
+        $methods = [
+            'dinheiro' => 'Dinheiro',
+            'cartao_credito' => 'Cartão Crédito',
+            'cartao_debito' => 'Cartão Débito',
+            'pix' => 'PIX',
+            'transferencia' => 'Transferência',
+        ];
+
+        return $methods[$method] ?? $method;
+    }
+
+    /**
+     * Obter resumo dos métodos de pagamento formatado
+     */
+    public function getPaymentSummaryAttribute(): string
+    {
+        if ($this->isSplitPayment()) {
+            $parts = [];
+            foreach ($this->payment_methods_split as $payment) {
+                $methodName = self::getPaymentMethodName($payment['method']);
+                $value = number_format($payment['value'], 2, ',', '.');
+                $parts[] = "{$methodName}: R$ {$value}";
+            }
+            return implode(' + ', $parts);
+        }
+        
+        return self::getPaymentMethodName($this->payment_method);
+    }
+
+    /**
+     * Verifica se tem troco
+     */
+    public function hasChange(): bool
+    {
+        return $this->change_amount && $this->change_amount > 0;
     }
 }

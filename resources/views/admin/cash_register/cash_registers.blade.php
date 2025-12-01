@@ -38,6 +38,53 @@
                 </div>
             </div>
 
+            <!-- Filtro de Período -->
+            <div class="bg-white shadow rounded-lg p-4 mb-8">
+                <form method="GET" action="{{ route('cash-registers.index') }}" class="flex flex-wrap items-end gap-4">
+                    <div>
+                        <label for="periodo" class="block text-sm font-medium text-gray-700 mb-1">Período</label>
+                        <select name="periodo" id="periodo" onchange="toggleCustomDates(this.value)" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            <option value="mes_atual" {{ ($periodo ?? 'mes_atual') == 'mes_atual' ? 'selected' : '' }}>Mês Atual</option>
+                            <option value="mes_anterior" {{ ($periodo ?? '') == 'mes_anterior' ? 'selected' : '' }}>Mês Anterior</option>
+                            <option value="customizado" {{ ($periodo ?? '') == 'customizado' ? 'selected' : '' }}>Período Customizado</option>
+                        </select>
+                    </div>
+                    
+                    <div id="custom-dates" class="{{ ($periodo ?? 'mes_atual') == 'customizado' ? 'flex' : 'hidden' }} gap-4">
+                        <div>
+                            <label for="date_from" class="block text-sm font-medium text-gray-700 mb-1">Data Inicial</label>
+                            <input type="date" name="date_from" id="date_from" value="{{ $dateFrom ?? '' }}" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="date_to" class="block text-sm font-medium text-gray-700 mb-1">Data Final</label>
+                            <input type="date" name="date_to" id="date_to" value="{{ $dateTo ?? '' }}" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+                            </svg>
+                            Filtrar
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <script>
+                function toggleCustomDates(value) {
+                    const customDates = document.getElementById('custom-dates');
+                    if (value === 'customizado') {
+                        customDates.classList.remove('hidden');
+                        customDates.classList.add('flex');
+                    } else {
+                        customDates.classList.add('hidden');
+                        customDates.classList.remove('flex');
+                    }
+                }
+            </script>
+
             <!-- Current Status Alert -->
             @if($openRegister)
                 <div class="bg-green-50 border-l-4 border-green-400 p-4 mb-8">
@@ -117,16 +164,15 @@
                 <div class="bg-white rounded-lg shadow p-5">
                     <div class="flex items-center">
                         <div class="flex-shrink-0">
-                            <div class="rounded-md bg-gray-100 p-3">
-                                <svg class="h-6 w-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
+                            <div class="rounded-md bg-orange-100 p-3">
+                                <span class="text-2xl">📦</span>
                             </div>
                         </div>
                         <div class="ml-5 w-0 flex-1">
                             <dl>
-                                <dt class="text-sm font-medium text-gray-500 truncate">Caixas Fechados</dt>
-                                <dd class="text-2xl font-semibold text-gray-900">{{ \App\Models\CashRegister::where('status', 'fechado')->count() }}</dd>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Encomendas no Período</dt>
+                                <dd class="text-2xl font-semibold text-gray-900">R$ {{ number_format($totalEncomendasPeriodo, 2, ',', '.') }}</dd>
+                                <dd class="text-xs text-gray-500">{{ $countEncomendasPeriodo }} finalizadas</dd>
                             </dl>
                         </div>
                     </div>

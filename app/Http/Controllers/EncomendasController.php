@@ -375,6 +375,82 @@ class EncomendasController extends Controller
     }
 
     /**
+     * Finalizar encomenda com dados de pagamento
+     */
+    public function finalizarComPagamento(Request $request, Encomenda $encomenda)
+    {
+        $validated = $request->validate([
+            'payment_method' => 'required|in:dinheiro,pix,cartao_debito,cartao_credito,split',
+            'payment_methods_split' => 'nullable|array',
+            'payment_methods_split.*.method' => 'required_with:payment_methods_split|in:dinheiro,pix,cartao_debito,cartao_credito',
+            'payment_methods_split.*.value' => 'required_with:payment_methods_split|numeric|min:0',
+            'payment_methods_split.*.amount_received' => 'nullable|numeric|min:0',
+            'payment_methods_split.*.change_amount' => 'nullable|numeric|min:0',
+            'amount_received' => 'nullable|numeric|min:0',
+            'change_amount' => 'nullable|numeric|min:0',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Determinar método de pagamento principal
+            $paymentMethod = $validated['payment_method'];
+            $paymentMethodsSplit = null;
+            $amountReceived = null;
+            $changeAmount = null;
+            
+            // Se for pagamento dividido
+            if ($paymentMethod === 'split' && !empty($validated['payment_methods_split'])) {
+                $paymentMethodsSplit = $validated['payment_methods_split'];
+                // Usar o primeiro método como principal para compatibilidade
+                $paymentMethod = $paymentMethodsSplit[0]['method'] ?? 'dinheiro';
+                // Calcular troco total para pagamentos em dinheiro
+                $totalChange = 0;
+                foreach ($paymentMethodsSplit as $split) {
+                    if ($split['method'] === 'dinheiro' && isset($split['change_amount'])) {
+                        $totalChange += $split['change_amount'];
+                    }
+                }
+                $changeAmount = $totalChange > 0 ? $totalChange : ($validated['change_amount'] ?? null);
+            } else {
+                // Pagamento simples
+                $amountReceived = $validated['amount_received'] ?? null;
+                $changeAmount = $validated['change_amount'] ?? null;
+            }
+
+            // Vincular ao caixa aberto atual
+            $openCashRegister = CashRegister::where('status', 'aberto')->first();
+            if ($openCashRegister) {
+                $encomenda->cash_register_id = $openCashRegister->id;
+            }
+
+            // Atualizar dados de pagamento e status
+            $encomenda->update([
+                'status' => 'entregue',
+                'payment_method' => $paymentMethod,
+                'payment_methods_split' => $paymentMethodsSplit,
+                'amount_received' => $amountReceived,
+                'change_amount' => $changeAmount,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Encomenda finalizada com sucesso!',
+                'encomenda' => $this->formatEncomendaForApi($encomenda->fresh(['customer', 'items.product']))
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao finalizar encomenda: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Imprimir encomenda
      */
     public function printEncomenda(Request $request, Encomenda $encomenda)
@@ -386,7 +462,7 @@ class EncomendasController extends Controller
             $orderData = [
                 'order_number' => $encomenda->code,
                 'date' => $encomenda->created_at->format('d/m/Y H:i'),
-                'order_type' => 'delivery',
+                'order_type' => 'encomenda',
                 'customer_name' => $encomenda->customer ? $encomenda->customer->name : 'Cliente não identificado',
                 'customer_phone' => $encomenda->customer ? $encomenda->customer->phone : null,
                 'delivery_address' => $encomenda->delivery_address,
@@ -402,6 +478,10 @@ class EncomendasController extends Controller
                 'discount' => $encomenda->discount,
                 'delivery_fee' => $encomenda->delivery_fee,
                 'total' => $encomenda->total,
+                'payment_method' => $encomenda->payment_method,
+                'payment_methods_split' => $encomenda->payment_methods_split,
+                'amount_received' => $encomenda->amount_received,
+                'change_amount' => $encomenda->change_amount,
             ];
 
             // Obter configurações da impressora
@@ -467,6 +547,12 @@ class EncomendasController extends Controller
             'discount' => (float) $encomenda->discount,
             'discount_formatted' => number_format($encomenda->discount, 2, ',', '.'),
             'delivery_date_formatted' => $encomenda->delivery_date->format('d/m/Y'),
+            // Campos de pagamento
+            'payment_method' => $encomenda->payment_method,
+            'payment_methods_split' => $encomenda->payment_methods_split,
+            'amount_received' => (float) ($encomenda->amount_received ?? 0),
+            'change_amount' => (float) ($encomenda->change_amount ?? 0),
+            'payment_summary' => $encomenda->payment_summary ?? null,
         ];
     }
 }

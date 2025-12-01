@@ -188,6 +188,15 @@ class PageController extends Controller
             })
             ->values();
 
+        // Encomendas finalizadas hoje (pagas/entregues) - sem taxa de entrega
+        $todayEncomendasCount = Encomenda::where('status', 'entregue')
+            ->whereDate('updated_at', $today)
+            ->count();
+        $todayEncomendasTotal = Encomenda::where('status', 'entregue')
+            ->whereDate('updated_at', $today)
+            ->selectRaw('SUM(total - COALESCE(delivery_fee, 0)) as total_sem_taxa')
+            ->value('total_sem_taxa') ?? 0;
+
         // Estatísticas rápidas
         $pendingSalesCount = $pendingSales->count();
         $occupiedTablesCount = $occupiedTables->count();
@@ -212,6 +221,8 @@ class PageController extends Controller
             'occupiedTablesCount',
             'upcomingDeliveriesCount',
             'pendingEncomendasCount',
+            'todayEncomendasCount',
+            'todayEncomendasTotal',
             'recentSales'
         ));
     }
