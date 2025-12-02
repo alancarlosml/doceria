@@ -152,12 +152,23 @@ class CashRegisterController extends Controller
     {
         $cashRegister->load(['user', 'sales.customer', 'sales.items.product', 'sales.motoboy', 'expenses']);
 
-        // Estatísticas do caixa
-        $totalSales = $cashRegister->getTotalSales();
+        // Estatísticas do caixa - Vendas apenas (sem encomendas e sem frete)
+        $totalSalesOnly = $cashRegister->sales()
+            ->whereNotIn('status', ['cancelado'])
+            ->selectRaw('SUM(total - COALESCE(delivery_fee, 0)) as total_sem_frete')
+            ->value('total_sem_frete') ?? 0;
+        
+        // Total de encomendas finalizadas
         $totalEncomendas = $cashRegister->getTotalEncomendas();
+        
+        // Total geral (vendas + encomendas) para o saldo esperado
+        $totalSales = $totalSalesOnly + $totalEncomendas;
+        
         $totalExpenses = $cashRegister->getTotalExpenses();
         $totalRevenues = $cashRegister->getTotalRevenues();
-        $expectedBalance = $cashRegister->getExpectedBalance();
+        
+        // Saldo esperado = abertura + vendas (sem frete) + encomendas + receitas - despesas
+        $expectedBalance = $cashRegister->opening_balance + $totalSalesOnly + $totalEncomendas + $totalRevenues - $totalExpenses;
 
         // Estatísticas adicionais
         $salesCount = $cashRegister->sales()->whereNotIn('status', ['cancelado'])->count();
@@ -167,10 +178,10 @@ class CashRegisterController extends Controller
         // Maior venda do dia
         $topSale = $cashRegister->sales()->whereNotIn('status', ['cancelado'])->orderBy('total', 'desc')->first();
 
-        // Método de pagamento mais usado
+        // Método de pagamento mais usado (apenas vendas)
         $paymentMethods = $cashRegister->sales()
             ->whereNotIn('status', ['cancelado'])
-            ->selectRaw('payment_method, COUNT(*) as count, SUM(total) as total')
+            ->selectRaw('payment_method, COUNT(*) as count, SUM(total - COALESCE(delivery_fee, 0)) as total')
             ->groupBy('payment_method')
             ->orderBy('count', 'desc')
             ->first();
@@ -180,6 +191,7 @@ class CashRegisterController extends Controller
 
         return view('admin.cash_register.cash_register-show', compact(
             'cashRegister',
+            'totalSalesOnly',
             'totalSales',
             'totalEncomendas',
             'totalExpenses',
@@ -235,12 +247,15 @@ class CashRegisterController extends Controller
         // Usar todas as vendas finalizadas do caixa (já carregadas)
         $completedSales = $cashRegister->sales->whereNotIn('status', ['cancelado']);
 
-        // Agrupar formas de pagamento
+        // Agrupar formas de pagamento - apenas vendas (sem frete, sem encomendas)
         $paymentMethods = $completedSales->groupBy('payment_method')->map(function($sales, $method) {
             return [
                 'method' => $method,
                 'count' => $sales->count(),
-                'total' => $sales->sum('total')
+                // Somar total das vendas SEM o frete
+                'total' => $sales->sum(function($sale) {
+                    return $sale->total - ($sale->delivery_fee ?? 0);
+                })
             ];
         })->values();
 
@@ -273,7 +288,7 @@ class CashRegisterController extends Controller
             }
         }
 
-        // Mapear métodos de pagamento para resumo
+        // Mapear métodos de pagamento para resumo (apenas vendas, sem frete)
         $paymentSummary = [
             'pix' => $paymentMethods->firstWhere('method', 'pix')['total'] ?? 0,
             'cartao' => ($paymentMethods->firstWhere('method', 'cartao_credito')['total'] ?? 0) +
@@ -286,20 +301,19 @@ class CashRegisterController extends Controller
         // Determinar data do caixa (abertura) para exibição
         $caixaDateFormatted = $cashRegister->opened_at->format('d/m/Y');
 
-        // Calcular totais usando dados do caixa
-        $totalSales = $cashRegister->getTotalSales();
+        // Calcular totais - vendas sem frete
+        $totalSalesWithoutFee = $completedSales->sum(function($sale) {
+            return $sale->total - ($sale->delivery_fee ?? 0);
+        });
         $totalExpenses = $cashRegister->getTotalExpenses();
         $totalRevenues = $cashRegister->getTotalRevenues();
         
         // Total de encomendas finalizadas
         $totalFinalizedOrders = $finalizedOrders->sum('total');
         
-        // Vendas (todas as vendas são contabilizadas, encomendas são separadas)
-        $salesExcludingOrders = $completedSales->sum('total');
-        
-        // Resultado Final = Saldo Inicial + Vendas (excluindo encomendas) + Encomendas Finalizadas - Despesas + Receitas
+        // Resultado Final = Saldo Inicial + Vendas (sem frete) + Encomendas Finalizadas - Despesas + Receitas
         $finalResult = $cashRegister->opening_balance + 
-                      $salesExcludingOrders + 
+                      $totalSalesWithoutFee + 
                       $totalFinalizedOrders + 
                       $totalRevenues - 
                       $totalExpenses;
@@ -308,10 +322,13 @@ class CashRegisterController extends Controller
         $deliveryOrdersTotalWithoutFees = $deliveryOrders->sum(function($order) {
             return $order->subtotal - ($order->discount ?? 0);
         });
+        
+        // Saldo esperado = abertura + vendas (sem frete) + encomendas + receitas - despesas
+        $currentExpected = $cashRegister->opening_balance + $totalSalesWithoutFee + $totalFinalizedOrders + $totalRevenues - $totalExpenses;
 
         return [
             'date' => $caixaDateFormatted,
-            'total_sales' => $totalSales,
+            'total_sales' => $totalSalesWithoutFee,
             'sales_count' => $completedSales->count(),
             'payment_methods' => $paymentSummary,
             'paid_orders_count' => $finalizedOrders->count(),
@@ -320,7 +337,7 @@ class CashRegisterController extends Controller
             'delivery_orders_total' => $deliveryOrdersTotalWithoutFees,
             'motoboy_earnings' => array_values($motoboyEarnings),
             'opening_balance' => $cashRegister->opening_balance,
-            'current_expected' => $cashRegister->getExpectedBalance(),
+            'current_expected' => $currentExpected,
             'final_result' => $finalResult,
             'total_expenses' => $totalExpenses,
             'total_revenues' => $totalRevenues,
@@ -565,12 +582,16 @@ class CashRegisterController extends Controller
 
         $sales = $query->orderBy('created_at', 'desc')->paginate(15);
 
-        // Estatísticas das vendas do caixa
+        // Estatísticas das vendas do caixa (sem incluir frete)
         $stats = [
             'total_sales_count' => $cashRegister->sales()->whereNotIn('status', ['cancelado'])->count(),
-            'total_sales_amount' => $cashRegister->sales()->whereNotIn('status', ['cancelado'])->sum('total'),
+            'total_sales_amount' => $cashRegister->sales()->whereNotIn('status', ['cancelado'])
+                ->selectRaw('SUM(total - COALESCE(delivery_fee, 0)) as total_sem_frete')
+                ->value('total_sem_frete') ?? 0,
             'cancelled_sales_count' => $cashRegister->sales()->where('status', 'cancelado')->count(),
-            'cancelled_sales_amount' => $cashRegister->sales()->where('status', 'cancelado')->sum('total'),
+            'cancelled_sales_amount' => $cashRegister->sales()->where('status', 'cancelado')
+                ->selectRaw('SUM(total - COALESCE(delivery_fee, 0)) as total_sem_frete')
+                ->value('total_sem_frete') ?? 0,
         ];
 
         return view('admin.cash_register.cash_register_sales', compact('cashRegister', 'sales', 'stats'));

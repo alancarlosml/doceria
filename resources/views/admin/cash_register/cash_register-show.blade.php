@@ -105,7 +105,7 @@
                             <dl>
                                 <dt class="text-sm font-medium text-gray-500 truncate">Ticket Médio</dt>
                                 <dd class="text-2xl font-semibold text-gray-900">
-                                    R$ {{ $salesCount > 0 ? number_format($totalSales / $salesCount, 2, ',', '.') : '0,00' }}
+                                    R$ {{ $salesCount > 0 ? number_format($totalSalesOnly / $salesCount, 2, ',', '.') : '0,00' }}
                                 </dd>
                             </dl>
                         </div>
@@ -187,7 +187,7 @@
                         <dl class="space-y-6">
                             <div>
                                 <dt class="text-sm font-medium text-gray-500">Vendas Realizadas</dt>
-                                <dd class="mt-1 text-xl font-bold text-green-600">R$ {{ number_format($totalSales, 2, ',', '.') }}</dd>
+                                <dd class="mt-1 text-xl font-bold text-green-600">R$ {{ number_format($totalSalesOnly, 2, ',', '.') }}</dd>
                             </div>
                             <div>
                                 <dt class="text-sm font-medium text-gray-500">Encomendas Finalizadas</dt>
@@ -360,8 +360,8 @@
                                 <div>
                                     <p class="text-xs text-indigo-600 font-medium">Lucro Operacional</p>
                                     <p class="text-sm font-bold text-indigo-700">
-                                        {{ $totalSales - $totalExpenses + $totalRevenues >= 0 ? '+' : '-' }}
-                                        R$ {{ number_format(abs($totalSales - $totalExpenses + $totalRevenues), 2, ',', '.') }}
+                                        {{ $totalSalesOnly + $totalEncomendas - $totalExpenses + $totalRevenues >= 0 ? '+' : '-' }}
+                                        R$ {{ number_format(abs($totalSalesOnly + $totalEncomendas - $totalExpenses + $totalRevenues), 2, ',', '.') }}
                                     </p>
                                 </div>
                             </div>
