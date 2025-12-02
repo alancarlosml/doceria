@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Setting;
+use App\Models\CarouselBanner;
 use App\Services\ThermalPrinterService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class SettingController extends Controller
 {
@@ -13,7 +15,8 @@ class SettingController extends Controller
      */
     public function index()
     {
-        return view('admin.settings.index');
+        $carouselBanners = CarouselBanner::orderBy('order')->get();
+        return view('admin.settings.index', compact('carouselBanners'));
     }
 
     /**
@@ -61,6 +64,79 @@ class SettingController extends Controller
         }
 
         return redirect()->back()->with('success', 'Configurações salvas com sucesso!');
+    }
+
+    /**
+     * Store a new carousel banner
+     */
+    public function storeBanner(Request $request)
+    {
+        $request->validate([
+            'banner_image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // max 5MB
+            'banner_title' => 'nullable|string|max:100',
+            'banner_description' => 'nullable|string|max:255',
+            'banner_link' => 'nullable|url|max:255',
+        ]);
+
+        // Upload da imagem
+        $path = $request->file('banner_image')->store('carousel-banners', 'public');
+
+        // Pegar a maior ordem atual e adicionar 1
+        $maxOrder = CarouselBanner::max('order') ?? 0;
+
+        CarouselBanner::create([
+            'image' => $path,
+            'title' => $request->input('banner_title'),
+            'description' => $request->input('banner_description'),
+            'link' => $request->input('banner_link'),
+            'order' => $maxOrder + 1,
+            'active' => true,
+        ]);
+
+        return redirect()->back()->with('success', 'Banner adicionado com sucesso!');
+    }
+
+    /**
+     * Update banner order
+     */
+    public function updateBannerOrder(Request $request)
+    {
+        $request->validate([
+            'banners' => 'required|array',
+            'banners.*.id' => 'required|exists:carousel_banners,id',
+            'banners.*.order' => 'required|integer',
+        ]);
+
+        foreach ($request->input('banners') as $bannerData) {
+            CarouselBanner::where('id', $bannerData['id'])->update(['order' => $bannerData['order']]);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Ordem atualizada!']);
+    }
+
+    /**
+     * Toggle banner active status
+     */
+    public function toggleBanner(CarouselBanner $banner)
+    {
+        $banner->update(['active' => !$banner->active]);
+
+        $status = $banner->active ? 'ativado' : 'desativado';
+        return redirect()->back()->with('success', "Banner {$status} com sucesso!");
+    }
+
+    /**
+     * Delete a carousel banner
+     */
+    public function destroyBanner(CarouselBanner $banner)
+    {
+        // Deletar a imagem do storage
+        $banner->deleteImage();
+        
+        // Deletar o registro
+        $banner->delete();
+
+        return redirect()->back()->with('success', 'Banner removido com sucesso!');
     }
 
     /**

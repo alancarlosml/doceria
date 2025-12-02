@@ -124,6 +124,12 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
         Route::get('configuracoes', [SettingController::class, 'index'])->name('settings.index');
         Route::put('configuracoes', [SettingController::class, 'update'])->name('settings.update');
         Route::post('configuracoes/testar-impressora', [SettingController::class, 'testPrinter'])->name('settings.test-printer');
+        
+        // Carousel Banners
+        Route::post('configuracoes/banner', [SettingController::class, 'storeBanner'])->name('settings.banner.store');
+        Route::post('configuracoes/banner/ordem', [SettingController::class, 'updateBannerOrder'])->name('settings.banner.order');
+        Route::post('configuracoes/banner/{banner}/toggle', [SettingController::class, 'toggleBanner'])->name('settings.banner.toggle');
+        Route::delete('configuracoes/banner/{banner}', [SettingController::class, 'destroyBanner'])->name('settings.banner.destroy');
     });
 
     // ========================================

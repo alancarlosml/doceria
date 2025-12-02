@@ -122,6 +122,170 @@
                     </div>
                 </div>
 
+                <!-- Carousel Banner Section -->
+                <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-8">
+                    <div class="px-6 py-4 bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-200">
+                        <h3 class="text-lg font-medium text-gray-900 flex items-center">
+                            <span class="mr-3">🎠</span>Banners do Carrossel
+                        </h3>
+                        <p class="mt-1 text-sm text-gray-600">Gerencie os banners que aparecem no carrossel da página inicial</p>
+                    </div>
+                    <div class="px-6 py-6 space-y-6">
+                        <!-- Upload Form -->
+                        <form method="POST" action="{{ route('settings.banner.store') }}" enctype="multipart/form-data" class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            @csrf
+                            <h4 class="text-sm font-medium text-gray-900 mb-4">➕ Adicionar Novo Banner</h4>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label for="banner_image" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Imagem do Banner *
+                                    </label>
+                                    <input type="file" 
+                                           id="banner_image" 
+                                           name="banner_image" 
+                                           accept="image/*"
+                                           required
+                                           class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100">
+                                    <p class="mt-1 text-xs text-gray-500">Tamanho recomendado: 1200x400px. Máx: 5MB. Formatos: JPG, PNG, GIF, WebP</p>
+                                </div>
+                                
+                                <div>
+                                    <label for="banner_title" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Título (opcional)
+                                    </label>
+                                    <input type="text" 
+                                           id="banner_title" 
+                                           name="banner_title" 
+                                           maxlength="100"
+                                           placeholder="Ex: Promoção de Natal"
+                                           class="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm">
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label for="banner_description" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Descrição (opcional)
+                                    </label>
+                                    <input type="text" 
+                                           id="banner_description" 
+                                           name="banner_description" 
+                                           maxlength="255"
+                                           placeholder="Ex: 20% de desconto em brigadeiros"
+                                           class="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm">
+                                </div>
+                                
+                                <div>
+                                    <label for="banner_link" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Link (opcional)
+                                    </label>
+                                    <input type="url" 
+                                           id="banner_link" 
+                                           name="banner_link" 
+                                           maxlength="255"
+                                           placeholder="https://..."
+                                           class="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm">
+                                </div>
+                            </div>
+                            
+                            <div class="flex justify-end">
+                                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                                    <svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                    </svg>
+                                    Adicionar Banner
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Current Banners List -->
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-900 mb-4">📋 Banners Atuais ({{ $carouselBanners->count() }})</h4>
+                            
+                            @if($carouselBanners->isEmpty())
+                                <div class="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                                    <span class="text-4xl">🖼️</span>
+                                    <p class="mt-2 text-sm text-gray-500">Nenhum banner cadastrado ainda.</p>
+                                    <p class="text-xs text-gray-400">Adicione banners para aparecerem no carrossel da página inicial.</p>
+                                </div>
+                            @else
+                                <div class="space-y-3" id="banners-list">
+                                    @foreach($carouselBanners as $banner)
+                                        <div class="flex items-center gap-4 p-3 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow {{ !$banner->active ? 'opacity-60' : '' }}" data-banner-id="{{ $banner->id }}">
+                                            <!-- Drag Handle -->
+                                            <div class="cursor-move text-gray-400 hover:text-gray-600" title="Arraste para reordenar">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path>
+                                                </svg>
+                                            </div>
+                                            
+                                            <!-- Thumbnail -->
+                                            <div class="flex-shrink-0 w-24 h-16 bg-gray-100 rounded overflow-hidden">
+                                                @if($banner->image_url)
+                                                    <img src="{{ $banner->image_url }}" alt="{{ $banner->title ?? 'Banner' }}" class="w-full h-full object-cover">
+                                                @else
+                                                    <div class="w-full h-full flex items-center justify-center text-gray-400">
+                                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                        </svg>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                            
+                                            <!-- Info -->
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-sm font-medium text-gray-900 truncate">
+                                                    {{ $banner->title ?? 'Sem título' }}
+                                                </p>
+                                                @if($banner->description)
+                                                    <p class="text-xs text-gray-500 truncate">{{ $banner->description }}</p>
+                                                @endif
+                                                <div class="flex items-center gap-2 mt-1">
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $banner->active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                                                        {{ $banner->active ? '✅ Ativo' : '⏸️ Inativo' }}
+                                                    </span>
+                                                    <span class="text-xs text-gray-400">Ordem: {{ $banner->order }}</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Actions -->
+                                            <div class="flex items-center gap-2">
+                                                <form method="POST" action="{{ route('settings.banner.toggle', $banner) }}" class="inline">
+                                                    @csrf
+                                                    <button type="submit" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="{{ $banner->active ? 'Desativar' : 'Ativar' }}">
+                                                        @if($banner->active)
+                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                            </svg>
+                                                        @else
+                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                                                            </svg>
+                                                        @endif
+                                                    </button>
+                                                </form>
+                                                
+                                                <form method="POST" action="{{ route('settings.banner.destroy', $banner) }}" class="inline" onsubmit="return confirm('Tem certeza que deseja remover este banner?')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors" title="Remover">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                        </svg>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <p class="mt-3 text-xs text-gray-500">💡 Arraste os banners para reorganizar a ordem de exibição.</p>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Announcement Banner Section -->
                 <div class="bg-white shadow-lg rounded-lg overflow-hidden">
                     <div class="px-6 py-4 bg-blue-50 border-b border-blue-200">
@@ -478,5 +642,93 @@ function qzTrayConfig() {
         }
     };
 }
+
+// Drag and drop for banner reordering
+document.addEventListener('DOMContentLoaded', function() {
+    const bannersList = document.getElementById('banners-list');
+    if (!bannersList) return;
+
+    let draggedItem = null;
+
+    bannersList.querySelectorAll('[data-banner-id]').forEach(item => {
+        item.setAttribute('draggable', 'true');
+
+        item.addEventListener('dragstart', function(e) {
+            draggedItem = this;
+            this.classList.add('opacity-50');
+            e.dataTransfer.effectAllowed = 'move';
+        });
+
+        item.addEventListener('dragend', function() {
+            this.classList.remove('opacity-50');
+            draggedItem = null;
+        });
+
+        item.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            this.classList.add('border-purple-400', 'border-2');
+        });
+
+        item.addEventListener('dragleave', function() {
+            this.classList.remove('border-purple-400', 'border-2');
+        });
+
+        item.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('border-purple-400', 'border-2');
+
+            if (draggedItem !== this) {
+                const allItems = [...bannersList.querySelectorAll('[data-banner-id]')];
+                const draggedIndex = allItems.indexOf(draggedItem);
+                const targetIndex = allItems.indexOf(this);
+
+                if (draggedIndex < targetIndex) {
+                    this.parentNode.insertBefore(draggedItem, this.nextSibling);
+                } else {
+                    this.parentNode.insertBefore(draggedItem, this);
+                }
+
+                // Save new order
+                saveBannerOrder();
+            }
+        });
+    });
+
+    function saveBannerOrder() {
+        const items = bannersList.querySelectorAll('[data-banner-id]');
+        const banners = [];
+        
+        items.forEach((item, index) => {
+            banners.push({
+                id: item.dataset.bannerId,
+                order: index + 1
+            });
+        });
+
+        fetch('{{ route("settings.banner.order") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ banners })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update order numbers in UI
+                items.forEach((item, index) => {
+                    const orderSpan = item.querySelector('.text-xs.text-gray-400');
+                    if (orderSpan) {
+                        orderSpan.textContent = 'Ordem: ' + (index + 1);
+                    }
+                });
+            }
+        })
+        .catch(error => console.error('Error saving order:', error));
+    }
+});
 </script>
 @endsection

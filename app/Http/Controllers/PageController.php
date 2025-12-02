@@ -8,6 +8,7 @@ use App\Models\Table;
 use App\Models\Menu;
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\CarouselBanner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -100,6 +101,9 @@ class PageController extends Controller
             ->orderBy('name')
             ->get();
 
+        // Get carousel banners
+        $carouselBanners = CarouselBanner::getActiveBanners();
+
         // Nome formatado do dia para exibição
         $dayNamesDisplay = [
             'segunda' => 'Segunda-feira',
@@ -118,6 +122,7 @@ class PageController extends Controller
             'menuByCategory',
             'featuredProducts',
             'categories',
+            'carouselBanners',
             'currentDayPt',
             'currentDayDisplay'
         ));
