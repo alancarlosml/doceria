@@ -56,7 +56,7 @@ class ProductController extends Controller
             }
         }
 
-        $products = $query->orderBy('name')->get();
+        $products = $query->orderBy('category.order')->get();
 
         return view('admin.product.products', compact('products'));
     }
