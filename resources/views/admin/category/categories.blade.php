@@ -50,6 +50,9 @@
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Descrição
                                     </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Ordem
+                                    </th>
                                     <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Ações
                                     </th>
@@ -70,6 +73,11 @@
                                     <!-- Desription -->
                                     <td class="px-6 py-4">
                                         <div class="text-sm font-medium text-gray-900 max-w-md break-words">{{ $category->description }}</div>
+                                    </td>
+
+                                    <!-- Ordem -->
+                                    <td class="px-6 py-4">
+                                        <div class="text-sm font-medium text-gray-900">{{ $category->order }}</div>
                                     </td>
 
                                     <!-- Actions -->
