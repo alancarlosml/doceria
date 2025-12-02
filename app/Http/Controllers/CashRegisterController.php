@@ -53,6 +53,18 @@ class CashRegisterController extends Controller
         $cashRegisters = $query->orderBy('opened_at', 'desc')->paginate(15);
         $openRegister = CashRegister::where('status', 'aberto')->first();
 
+        // Estatísticas do período - Total de Caixas no período
+        $totalCaixasPeriodo = CashRegister::query()
+            ->when($dateFrom, fn($q) => $q->whereDate('opened_at', '>=', $dateFrom))
+            ->when($dateTo, fn($q) => $q->whereDate('opened_at', '<=', $dateTo))
+            ->count();
+
+        // Caixas abertos no período (caixas que foram abertos no período e ainda estão abertos)
+        $caixasAbertosPeriodo = CashRegister::where('status', 'aberto')
+            ->when($dateFrom, fn($q) => $q->whereDate('opened_at', '>=', $dateFrom))
+            ->when($dateTo, fn($q) => $q->whereDate('opened_at', '<=', $dateTo))
+            ->count();
+
         // Calcular total de encomendas finalizadas no período (sem taxa de entrega)
         $encomendasQuery = Encomenda::where('status', 'entregue');
         if ($dateFrom) {
@@ -68,14 +80,25 @@ class CashRegisterController extends Controller
             ->when($dateTo, fn($q) => $q->whereDate('updated_at', '<=', $dateTo))
             ->count();
 
+        // Total de vendas no período (baseado na data de abertura do caixa)
+        $totalVendasPeriodo = CashRegister::query()
+            ->when($dateFrom, fn($q) => $q->whereDate('opened_at', '>=', $dateFrom))
+            ->when($dateTo, fn($q) => $q->whereDate('opened_at', '<=', $dateTo))
+            ->join('sales', 'cash_registers.id', '=', 'sales.cash_register_id')
+            ->whereNotIn('sales.status', ['cancelado'])
+            ->sum('sales.total');
+
         return view('admin.cash_register.cash_registers', compact(
             'cashRegisters', 
             'openRegister', 
             'periodo', 
             'dateFrom', 
             'dateTo',
+            'totalCaixasPeriodo',
+            'caixasAbertosPeriodo',
             'totalEncomendasPeriodo',
-            'countEncomendasPeriodo'
+            'countEncomendasPeriodo',
+            'totalVendasPeriodo'
         ));
     }
 

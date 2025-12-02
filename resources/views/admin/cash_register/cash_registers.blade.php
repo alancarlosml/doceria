@@ -136,8 +136,8 @@
                         </div>
                         <div class="ml-5 w-0 flex-1">
                             <dl>
-                                <dt class="text-sm font-medium text-gray-500 truncate">Total de Caixas</dt>
-                                <dd class="text-2xl font-semibold text-gray-900">{{ \App\Models\CashRegister::count() }}</dd>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Caixas no Período</dt>
+                                <dd class="text-2xl font-semibold text-gray-900">{{ $totalCaixasPeriodo }}</dd>
                             </dl>
                         </div>
                     </div>
@@ -155,7 +155,7 @@
                         <div class="ml-5 w-0 flex-1">
                             <dl>
                                 <dt class="text-sm font-medium text-gray-500 truncate">Caixas Abertos</dt>
-                                <dd class="text-2xl font-semibold text-gray-900">{{ \App\Models\CashRegister::where('status', 'aberto')->count() }}</dd>
+                                <dd class="text-2xl font-semibold text-gray-900">{{ $caixasAbertosPeriodo }}</dd>
                             </dl>
                         </div>
                     </div>
@@ -189,8 +189,8 @@
                         </div>
                         <div class="ml-5 w-0 flex-1">
                             <dl>
-                                <dt class="text-sm font-medium text-gray-500 truncate">Vendas Totais</dt>
-                                <dd class="text-2xl font-semibold text-gray-900">R$ {{ number_format(\App\Models\CashRegister::join('sales', 'cash_registers.id', '=', 'sales.cash_register_id')->whereNotIn('sales.status', ['cancelado'])->sum('sales.total'), 2, ',', '.') }}</dd>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Vendas no Período</dt>
+                                <dd class="text-2xl font-semibold text-gray-900">R$ {{ number_format($totalVendasPeriodo, 2, ',', '.') }}</dd>
                             </dl>
                         </div>
                     </div>

@@ -29,8 +29,8 @@ class EncomendasController extends Controller
     public function apiIndex(Request $request)
     {
         $query = Encomenda::with(['customer', 'items.product', 'user'])
-            ->orderBy('delivery_date', 'asc')
-            ->orderBy('delivery_time', 'asc');
+            ->orderBy('delivery_date', 'desc')
+            ->orderBy('delivery_time', 'desc');
 
         // Filtros
         if ($request->filled('status')) {
