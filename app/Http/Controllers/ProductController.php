@@ -56,7 +56,12 @@ class ProductController extends Controller
             }
         }
 
-        $products = $query->orderBy('categories.order')->get();
+        $products = $query
+            ->join('categories', 'products.category_id', '=', 'categories.id')
+            ->orderBy('categories.order')
+            ->orderBy('products.name') // Ordenação secundária por nome do produto
+            ->select('products.*')
+            ->get();
 
         return view('admin.product.products', compact('products'));
     }
