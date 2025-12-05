@@ -100,6 +100,49 @@
                 </div>
             </div>
 
+            <!-- Estoque Baixo Alert -->
+            @if($lowStockItems->count() > 0 || $criticalStockItems > 0)
+            <div class="mb-8 {{ $criticalStockItems > 0 ? 'bg-red-50 border-l-4 border-red-400' : 'bg-yellow-50 border-l-4 border-yellow-400' }} p-6 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold {{ $criticalStockItems > 0 ? 'text-red-800' : 'text-yellow-800' }} mb-2">
+                            {{ $criticalStockItems > 0 ? '🚨' : '⚠️' }} Atenção: Estoque Baixo
+                        </h3>
+                        <p class="text-sm {{ $criticalStockItems > 0 ? 'text-red-700' : 'text-yellow-700' }} mb-4">
+                            {{ $criticalStockItems > 0 ? 'Existem itens com estoque crítico que precisam de reposição urgente!' : 'Alguns insumos estão com estoque baixo e precisam ser repostos.' }}
+                        </p>
+                        <div class="space-y-2">
+                            @foreach($lowStockItems as $item)
+                            <div class="flex items-center justify-between bg-white rounded p-3 {{ $item->isCriticalStock() ? 'border-2 border-red-300' : 'border border-yellow-300' }}">
+                                <div class="flex-1">
+                                    <span class="font-medium text-gray-900">{{ $item->name }}</span>
+                                    <span class="text-sm text-gray-600 ml-2">
+                                        ({{ number_format($item->current_quantity, 2, ',', '.') }} {{ $item->unit }} / Mín: {{ number_format($item->min_quantity, 2, ',', '.') }} {{ $item->unit }})
+                                    </span>
+                                </div>
+                                @if($item->isCriticalStock())
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Crítico</span>
+                                @else
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Baixo</span>
+                                @endif
+                            </div>
+                            @endforeach
+                        </div>
+                        @if($lowStockItems->count() >= 5)
+                        <p class="text-xs {{ $criticalStockItems > 0 ? 'text-red-600' : 'text-yellow-600' }} mt-2">
+                            E mais {{ $lowStockItems->count() - 5 }} item(ns) com estoque baixo...
+                        </p>
+                        @endif
+                    </div>
+                    <div class="ml-4">
+                        <a href="{{ route('inventory.index', ['low_stock' => 1]) }}" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white {{ $criticalStockItems > 0 ? 'bg-red-600 hover:bg-red-700' : 'bg-yellow-600 hover:bg-yellow-700' }} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-{{ $criticalStockItems > 0 ? 'red' : 'yellow' }}-500">
+                            Ver Estoque
+                        </a>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             <!-- Main Operational Sections -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
 

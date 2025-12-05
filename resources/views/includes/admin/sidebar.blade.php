@@ -65,6 +65,11 @@
             Produtos
         </a>
 
+        <a href="{{ route('inventory.index') }}" class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('inventory.*') ? 'bg-blue-50 text-blue-600' : '' }}">
+            <span class="mr-3">📋</span>
+            Estoque
+        </a>
+
         <a href="{{ route('customers.index') }}" class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('customers.*') ? 'bg-blue-50 text-blue-600' : '' }}">
             <span class="mr-3">👥</span>
             Clientes
@@ -166,6 +171,11 @@
             <a href="{{ route('products.index') }}" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('products.*') ? 'bg-blue-50 text-blue-600' : '' }}" title="Produtos">
                 <span class="mr-3">📦</span>
                 <span class="sidebar-text">Produtos</span>
+            </a>
+
+            <a href="{{ route('inventory.index') }}" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('inventory.*') ? 'bg-blue-50 text-blue-600' : '' }}" title="Controle de Estoque">
+                <span class="mr-3">📋</span>
+                <span class="sidebar-text">Estoque</span>
             </a>
 
             <a href="{{ route('customers.index') }}" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('customers.*') ? 'bg-blue-50 text-blue-600' : '' }}" title="Clientes">

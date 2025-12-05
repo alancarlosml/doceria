@@ -18,6 +18,7 @@ use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\EncomendasController;
 use App\Http\Controllers\SettingController;
+use App\Http\Controllers\InventoryController;
 
 // ========================================
 // PÚBLICO - Páginas públicas
@@ -114,6 +115,27 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
                 'destroy' => 'expenses.destroy'
             ])->except(['show']);
             Route::get('entradas-saidas-estatisticas', [ExpenseController::class, 'statistics'])->name('expenses.statistics');
+        });
+
+        // ========================================
+        // ESTOQUE (Com permissão)
+        // ========================================
+        Route::middleware('permission:inventory.view')->group(function () {
+            Route::resource('estoque', InventoryController::class)->parameters([
+                'estoque' => 'inventory'
+            ])->names([
+                'index' => 'inventory.index',
+                'create' => 'inventory.create',
+                'store' => 'inventory.store',
+                'show' => 'inventory.show',
+                'edit' => 'inventory.edit',
+                'update' => 'inventory.update',
+                'destroy' => 'inventory.destroy'
+            ]);
+            Route::get('estoque-vistoria', [InventoryController::class, 'inspection'])->name('inventory.inspection');
+            Route::post('estoque-vistoria', [InventoryController::class, 'saveInspection'])->name('inventory.save-inspection');
+            Route::post('estoque/{inventory}/toggle-status', [InventoryController::class, 'toggleStatus'])->name('inventory.toggle-status');
+            Route::post('estoque/{inventory}/update-quantity', [InventoryController::class, 'updateQuantity'])->name('inventory.update-quantity');
         });
     });
 

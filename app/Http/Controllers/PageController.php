@@ -9,6 +9,7 @@ use App\Models\Menu;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\CarouselBanner;
+use App\Models\InventoryItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -215,6 +216,17 @@ class PageController extends Controller
             ->take(5)
             ->get();
 
+        // Itens com estoque baixo
+        $lowStockItems = InventoryItem::where('active', true)
+            ->whereRaw('current_quantity <= min_quantity')
+            ->orderByRaw('current_quantity / NULLIF(min_quantity, 0)')
+            ->take(5)
+            ->get();
+
+        $criticalStockItems = InventoryItem::where('active', true)
+            ->whereRaw('current_quantity < (min_quantity * 0.5)')
+            ->count();
+
         return view('gestor.dashboard', compact(
             'todaySales',
             'todaySalesCount',
@@ -228,7 +240,9 @@ class PageController extends Controller
             'pendingEncomendasCount',
             'todayEncomendasCount',
             'todayEncomendasTotal',
-            'recentSales'
+            'recentSales',
+            'lowStockItems',
+            'criticalStockItems'
         ));
     }
 }
