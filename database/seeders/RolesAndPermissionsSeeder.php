@@ -69,6 +69,14 @@ class RolesAndPermissionsSeeder extends Seeder
             ['name' => 'expenses.edit', 'label' => 'Editar Despesas', 'module' => 'expenses', 'action' => 'edit'],
             ['name' => 'expenses.delete', 'label' => 'Excluir Despesas', 'module' => 'expenses', 'action' => 'delete'],
 
+            // Módulo Estoque
+            ['name' => 'inventory.view', 'label' => 'Visualizar Estoque', 'module' => 'inventory', 'action' => 'view'],
+            ['name' => 'inventory.create', 'label' => 'Criar Insumos', 'module' => 'inventory', 'action' => 'create'],
+            ['name' => 'inventory.edit', 'label' => 'Editar Insumos', 'module' => 'inventory', 'action' => 'edit'],
+            ['name' => 'inventory.delete', 'label' => 'Excluir Insumos', 'module' => 'inventory', 'action' => 'delete'],
+            ['name' => 'inventory.update_quantity', 'label' => 'Atualizar Quantidade', 'module' => 'inventory', 'action' => 'update_quantity'],
+            ['name' => 'inventory.inspection', 'label' => 'Fazer Vistoria', 'module' => 'inventory', 'action' => 'inspection'],
+
             // Módulo Cardápio
             ['name' => 'menu.view', 'label' => 'Visualizar Cardápio', 'module' => 'menu', 'action' => 'view'],
             ['name' => 'menu.create', 'label' => 'Gerenciar Cardápio', 'module' => 'menu', 'action' => 'create'],
@@ -103,7 +111,10 @@ class RolesAndPermissionsSeeder extends Seeder
         ];
 
         foreach ($permissions as $permissionData) {
-            Permission::create($permissionData);
+            Permission::firstOrCreate(
+                ['name' => $permissionData['name']],
+                $permissionData
+            );
         }
 
         $this->command->info('✓ ' . count($permissions) . ' permissões criadas');
@@ -125,8 +136,8 @@ class RolesAndPermissionsSeeder extends Seeder
                 'permissions' => [
                     // Todos os módulos exceto users
                     'categories.*', 'products.*', 'sales.*', 'tables.*',
-                    'motoboys.*', 'customers.*', 'expenses.*', 'menu.*',
-                    'cash_registers.*', 'sale_items.*', 'reports.view', 'analytics.view',
+                    'motoboys.*', 'customers.*', 'expenses.*', 'inventory.*',
+                    'menu.*', 'cash_registers.*', 'sale_items.*', 'reports.view', 'analytics.view',
                     'settings.view',
                 ],
             ],
@@ -138,17 +149,20 @@ class RolesAndPermissionsSeeder extends Seeder
                     'sales.create', 'sales.view', 'sales.edit', 'sales.cancel', 'sales.update_status',
                     'tables.view', 'tables.edit', 'tables.change', 'customers.view', 'customers.create', 'customers.edit',
                     'motoboys.view', 'menu.view', 'sale_items.create', 'sale_items.edit', 'sale_items.delete',
-                    'expenses.create', 'expenses.view', 'reports.view',
+                    'expenses.create', 'expenses.view', 'inventory.view', 'inventory.update_quantity', 'inventory.inspection',
+                    'reports.view',
                 ],
             ],
         ];
 
         foreach ($roles as $roleData) {
-            $role = Role::create([
-                'name' => $roleData['name'],
-                'label' => $roleData['label'],
-                'description' => $roleData['description'],
-            ]);
+            $role = Role::firstOrCreate(
+                ['name' => $roleData['name']],
+                [
+                    'label' => $roleData['label'],
+                    'description' => $roleData['description'],
+                ]
+            );
 
             if (isset($roleData['all_permissions']) && $roleData['all_permissions']) {
                 // Admin tem todas as permissões
@@ -170,6 +184,30 @@ class RolesAndPermissionsSeeder extends Seeder
         }
 
         $this->command->info('✓ ' . count($roles) . ' roles criadas com suas permissões');
+
+        // Atualizar roles existentes com novas permissões de estoque
+        $this->command->info('Atualizando roles existentes com permissões de estoque...');
+        
+        $inventoryPermissions = Permission::where('module', 'inventory')->pluck('name')->toArray();
+        
+        // Atualizar role gestor
+        $gestorRole = Role::where('name', 'gestor')->first();
+        if ($gestorRole && !empty($inventoryPermissions)) {
+            $currentPermissions = $gestorRole->permissions->pluck('name')->toArray();
+            $gestorRole->syncPermissions(array_merge($currentPermissions, $inventoryPermissions));
+            $this->command->info('✓ Permissões de estoque adicionadas ao role gestor');
+        }
+        
+        // Atualizar role atendente (apenas view, update_quantity e inspection)
+        $atendenteRole = Role::where('name', 'atendente')->first();
+        if ($atendenteRole) {
+            $currentPermissions = $atendenteRole->permissions->pluck('name')->toArray();
+            $atendenteInventoryPermissions = array_filter($inventoryPermissions, function($perm) {
+                return in_array($perm, ['inventory.view', 'inventory.update_quantity', 'inventory.inspection']);
+            });
+            $atendenteRole->syncPermissions(array_merge($currentPermissions, $atendenteInventoryPermissions));
+            $this->command->info('✓ Permissões de estoque adicionadas ao role atendente');
+        }
 
         // Atribuir role admin ao primeiro usuário
         $user = \App\Models\User::first();
