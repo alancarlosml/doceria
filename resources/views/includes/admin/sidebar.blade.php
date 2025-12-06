@@ -65,15 +65,19 @@
             Produtos
         </a>
 
+        @if(auth()->user()->hasPermission('inventory.view'))
         <a href="{{ route('inventory.index') }}" class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('inventory.*') ? 'bg-blue-50 text-blue-600' : '' }}">
             <span class="mr-3">📋</span>
             Estoque
         </a>
+        @endif
 
+        @if(auth()->user()->hasPermission('customers.view'))
         <a href="{{ route('customers.index') }}" class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('customers.*') ? 'bg-blue-50 text-blue-600' : '' }}">
             <span class="mr-3">👥</span>
             Clientes
         </a>
+        @endif
 
         <!-- Divider -->
         <div class="border-t border-gray-200 my-4"></div>
@@ -173,15 +177,19 @@
                 <span class="sidebar-text">Produtos</span>
             </a>
 
+            @if(auth()->user()->hasPermission('inventory.view'))
             <a href="{{ route('inventory.index') }}" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('inventory.*') ? 'bg-blue-50 text-blue-600' : '' }}" title="Controle de Estoque">
                 <span class="mr-3">📋</span>
                 <span class="sidebar-text">Estoque</span>
             </a>
+            @endif
 
+            @if(auth()->user()->hasPermission('customers.view'))
             <a href="{{ route('customers.index') }}" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 hover:text-gray-900 {{ request()->routeIs('customers.*') ? 'bg-blue-50 text-blue-600' : '' }}" title="Clientes">
                 <span class="mr-3">👥</span>
                 <span class="sidebar-text">Clientes</span>
             </a>
+            @endif
 
             <!-- Divider -->
             <div class="sidebar-divider border-t border-gray-200 my-4"></div>

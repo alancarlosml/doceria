@@ -13,6 +13,11 @@ class InventoryController extends Controller
      */
     public function index(Request $request)
     {
+        // Debug: verificar se chegou aqui
+        \Log::info('InventoryController@index chamado', [
+            'user_id' => auth()->id(),
+            'user_email' => auth()->user()?->email,
+        ]);
         $query = InventoryItem::with('lastUpdatedBy');
 
         // Filtrar por estoque baixo

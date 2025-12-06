@@ -41,6 +41,15 @@ class Role extends Model
      */
     public function hasPermission($permission)
     {
+        // Se as permissões estão carregadas, verificar na collection primeiro (mais rápido)
+        if ($this->relationLoaded('permissions')) {
+            if (is_string($permission)) {
+                return $this->permissions->contains('name', $permission);
+            }
+            return $this->permissions->contains('id', $permission);
+        }
+
+        // Se não estão carregadas, fazer query no banco
         if (is_string($permission)) {
             return $this->permissions()->where('name', $permission)->exists();
         }

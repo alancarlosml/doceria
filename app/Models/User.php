@@ -278,8 +278,17 @@ class User extends Authenticatable
             return true; // Explicitly granted - ALLOWED
         }
 
-        // Check permissions through roles
+        // Check permissions through roles - ensure roles are loaded with permissions
+        if (!$this->relationLoaded('roles')) {
+            $this->load('roles.permissions');
+        }
+
         foreach ($this->roles as $role) {
+            // Ensure role permissions are loaded
+            if (!$role->relationLoaded('permissions')) {
+                $role->load('permissions');
+            }
+            
             if ($role->hasPermission($permissionId)) {
                 return true; // Granted through role - ALLOWED
             }
