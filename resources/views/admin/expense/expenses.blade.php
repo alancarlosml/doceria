@@ -77,6 +77,78 @@
                 </div>
             </div>
 
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-3 mb-6">
+                <!-- Total Entradas -->
+                <div class="bg-white shadow rounded-lg overflow-hidden {{ request()->input('type') === 'entrada' || !request()->input('type') ? '' : 'opacity-60' }}">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-green-100 rounded-md p-3">
+                                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Total de Entradas</dt>
+                                    <dd class="flex items-baseline">
+                                        <div class="text-2xl font-semibold text-green-600">
+                                            R$ {{ number_format($totalEntradas, 2, ',', '.') }}
+                                        </div>
+                                    </dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Saídas -->
+                <div class="bg-white shadow rounded-lg overflow-hidden {{ request()->input('type') === 'saida' || !request()->input('type') ? '' : 'opacity-60' }}">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-red-100 rounded-md p-3">
+                                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Total de Saídas</dt>
+                                    <dd class="flex items-baseline">
+                                        <div class="text-2xl font-semibold text-red-600">
+                                            R$ {{ number_format($totalSaidas, 2, ',', '.') }}
+                                        </div>
+                                    </dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Saldo Líquido -->
+                <div class="bg-white shadow rounded-lg overflow-hidden border-2 {{ $saldoLiquido >= 0 ? 'border-green-300' : 'border-red-300' }}">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 {{ $saldoLiquido >= 0 ? 'bg-green-100' : 'bg-red-100' }} rounded-md p-3">
+                                <svg class="h-6 w-6 {{ $saldoLiquido >= 0 ? 'text-green-600' : 'text-red-600' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Saldo Líquido</dt>
+                                    <dd class="flex items-baseline">
+                                        <div class="text-2xl font-semibold {{ $saldoLiquido >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                            {{ $saldoLiquido >= 0 ? '+' : '' }}R$ {{ number_format($saldoLiquido, 2, ',', '.') }}
+                                        </div>
+                                    </dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Expenses Table -->
             <div class="bg-white shadow overflow-hidden sm:rounded-md">
                 <div class="px-4 py-4 sm:px-6">

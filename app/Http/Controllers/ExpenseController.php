@@ -10,6 +10,30 @@ use Illuminate\Support\Facades\Auth;
 class ExpenseController extends Controller
 {
     /**
+     * Converte valor brasileiro (vírgula) para formato numérico (ponto)
+     * Exemplos: "25,00" -> "25.00", "1.234,56" -> "1234.56"
+     */
+    private function normalizeAmount($value)
+    {
+        if (empty($value)) {
+            return $value;
+        }
+        
+        // Remove espaços
+        $value = trim($value);
+        
+        // Se já está no formato numérico (tem ponto mas não vírgula), retorna como está
+        if (strpos($value, '.') !== false && strpos($value, ',') === false) {
+            return $value;
+        }
+        
+        // Remove pontos (separadores de milhar) e substitui vírgula por ponto
+        $normalized = str_replace(',', '.', str_replace('.', '', $value));
+        
+        return $normalized;
+    }
+
+    /**
      * Display a listing of expenses.
      */
     public function index(Request $request)
@@ -35,9 +59,32 @@ class ExpenseController extends Controller
             $query->where('description', 'like', "%{$search}%");
         }
 
+        // Calcular totais baseados nos mesmos filtros
+        $totalsQuery = Expense::query();
+        
+        // Aplicar os mesmos filtros para os totais
+        if ($request->filled('type')) {
+            $totalsQuery->where('type', $request->type);
+        }
+        if ($request->filled('date_from')) {
+            $totalsQuery->whereDate('date', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $totalsQuery->whereDate('date', '<=', $request->date_to);
+        }
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $totalsQuery->where('description', 'like', "%{$search}%");
+        }
+
+        // Calcular totais
+        $totalEntradas = (clone $totalsQuery)->where('type', 'entrada')->sum('amount');
+        $totalSaidas = (clone $totalsQuery)->where('type', 'saida')->sum('amount');
+        $saldoLiquido = $totalEntradas - $totalSaidas;
+
         $expenses = $query->orderBy('date', 'desc')->paginate(15);
 
-        return view('admin.expense.expenses', compact('expenses'));
+        return view('admin.expense.expenses', compact('expenses', 'totalEntradas', 'totalSaidas', 'saldoLiquido'));
     }
 
     /**
@@ -55,6 +102,13 @@ class ExpenseController extends Controller
      */
     public function store(Request $request)
     {
+        // Converter valor brasileiro (vírgula) para formato numérico (ponto)
+        if ($request->has('amount')) {
+            $request->merge([
+                'amount' => $this->normalizeAmount($request->amount)
+            ]);
+        }
+
         $validated = $request->validate([
             'type' => 'required|in:entrada,saida',
             'description' => 'required|string|max:255',
@@ -118,6 +172,13 @@ class ExpenseController extends Controller
      */
     public function update(Request $request, Expense $expense)
     {
+        // Converter valor brasileiro (vírgula) para formato numérico (ponto)
+        if ($request->has('amount')) {
+            $request->merge([
+                'amount' => $this->normalizeAmount($request->amount)
+            ]);
+        }
+
         $validated = $request->validate([
             'type' => 'required|in:entrada,saida',
             'description' => 'required|string|max:255',
