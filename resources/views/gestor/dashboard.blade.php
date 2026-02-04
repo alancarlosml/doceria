@@ -374,7 +374,7 @@
                                     <div class="flex items-center justify-between mb-2">
                                         <span class="font-semibold text-gray-800 text-sm">#{{ $encomenda->id }}</span>
                                         <span class="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded-full capitalize">
-                                            {{ $encomenda->status->label() }}
+                                            {{ $encomenda instanceof \App\Models\Sale ? $encomenda->status->label() : ($encomenda->status_label ?? ucfirst($encomenda->status)) }}
                                         </span>
                                     </div>
 
