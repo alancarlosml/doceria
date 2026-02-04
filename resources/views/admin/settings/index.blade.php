@@ -363,6 +363,108 @@
                     </div>
                 </div>
 
+                <!-- Printer Agent Configuration Section -->
+                <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-6" x-data="printerAgentConfig()">
+                    <div class="px-6 py-4 bg-gradient-to-r from-purple-500 to-indigo-600 border-b border-purple-200">
+                        <h3 class="text-lg font-medium text-white flex items-center">
+                            <span class="mr-3">🖨️</span>Doceria Printer Agent (Recomendado)
+                        </h3>
+                        <p class="mt-1 text-sm text-purple-100">Executável local para gerenciar impressoras - Mais confiável que QZ Tray</p>
+                    </div>
+                    <div class="px-6 py-6 space-y-6">
+                        
+                        <!-- Status do Agente -->
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="w-4 h-4 rounded-full mr-3" :class="agentRunning ? 'bg-green-500 animate-pulse' : 'bg-red-500'"></div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">
+                                            Status do Agente: <span x-text="agentRunning ? 'Rodando' : 'Não Detectado'"></span>
+                                        </p>
+                                        <p class="text-xs text-gray-600 mt-1" x-show="!agentRunning">
+                                            ⚠️ Agente não está rodando. Baixe e instale o executável abaixo.
+                                        </p>
+                                        <p class="text-xs text-green-600 mt-1" x-show="agentRunning && agentStatus">
+                                            ✅ <span x-text="agentStatus.printerConfigured ? 'Impressora configurada: ' + agentStatus.printer : 'Pronto para configurar impressora'"></span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <button 
+                                    @click="checkAgentStatus()"
+                                    :disabled="checkingStatus"
+                                    class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50"
+                                >
+                                    <span x-show="!checkingStatus">🔄 Verificar</span>
+                                    <span x-show="checkingStatus">Verificando...</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Seleção de Impressora via Agente -->
+                        <div x-show="agentRunning">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Impressora Padrão
+                            </label>
+                            <div class="flex gap-2">
+                                <select 
+                                    x-model="selectedAgentPrinter"
+                                    @change="setAgentPrinter()"
+                                    class="flex-1 shadow-sm focus:ring-purple-500 focus:border-purple-500 block sm:text-sm border-gray-300 rounded-md"
+                                    :disabled="loadingPrinters || !agentRunning"
+                                >
+                                    <option value="">-- Carregando impressoras --</option>
+                                    <template x-for="printer in agentPrinters" :key="printer.name">
+                                        <option :value="printer.name" x-text="printer.name + (printer.isDefault ? ' (Padrão)' : '')"></option>
+                                    </template>
+                                </select>
+                                <button 
+                                    @click="refreshAgentPrinters()"
+                                    :disabled="!agentRunning || loadingPrinters"
+                                    class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50"
+                                    title="Atualizar lista de impressoras"
+                                >
+                                    <span x-show="!loadingPrinters">🔄</span>
+                                    <span x-show="loadingPrinters">⏳</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Download do Agente -->
+                        <div x-show="!agentRunning" class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-yellow-800 mb-2">📥 Instalar Doceria Printer Agent:</p>
+                                <p class="text-sm text-yellow-700 mb-3">
+                                    O Printer Agent é um executável que roda no seu computador e gerencia as impressoras diretamente. 
+                                    É mais confiável que o QZ Tray e funciona mesmo com o sistema hospedado na nuvem.
+                                </p>
+                                <a 
+                                    href="{{ route('printer.agent.download-page') }}" 
+                                    target="_blank"
+                                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                                >
+                                    📥 Baixar Instalador
+                                </a>
+                                <p class="text-xs text-yellow-600 mt-3">
+                                    Após instalar, o agente iniciará automaticamente. Clique em "Verificar" acima para detectá-lo.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Informações do Agente -->
+                        <div x-show="agentRunning && agentStatus" class="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <div class="text-sm">
+                                <p class="font-medium text-green-800 mb-2">ℹ️ Informações do Agente:</p>
+                                <ul class="text-green-700 space-y-1 text-xs">
+                                    <li><strong>Versão:</strong> <span x-text="agentStatus.version || 'N/A'"></span></li>
+                                    <li><strong>Porta:</strong> <span x-text="agentStatus.serverPort || '8080'"></span></li>
+                                    <li><strong>Status:</strong> <span x-text="agentStatus.status || 'running'"></span></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- QZ Tray Printer Configuration Section -->
                 <div class="bg-white shadow-lg rounded-lg overflow-hidden" x-data="qzTrayConfig()">
                     <div class="px-6 py-4 bg-purple-50 border-b border-purple-200">
@@ -548,6 +650,139 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize
     updatePreview();
 });
+
+// Alpine.js component for Printer Agent configuration
+function printerAgentConfig() {
+    return {
+        agentRunning: false,
+        checkingStatus: false,
+        agentStatus: null,
+        agentPrinters: [],
+        selectedAgentPrinter: '',
+        loadingPrinters: false,
+
+        async init() {
+            await this.checkAgentStatus();
+            if (this.agentRunning) {
+                await this.refreshAgentPrinters();
+            }
+        },
+
+        async checkAgentStatus() {
+            this.checkingStatus = true;
+            try {
+                // Tentar verificar diretamente via agente
+                if (typeof PrinterAgent !== 'undefined') {
+                    const available = await PrinterAgent.checkStatus();
+                    if (available) {
+                        this.agentRunning = true;
+                        this.agentStatus = PrinterAgent.status;
+                        return;
+                    }
+                }
+
+                // Fallback: verificar via API Laravel
+                const response = await fetch('/gestor/api/printer/agent/status', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    this.agentRunning = data.running || false;
+                    this.agentStatus = data.status || null;
+                } else {
+                    this.agentRunning = false;
+                    this.agentStatus = null;
+                }
+            } catch (error) {
+                console.error('Erro ao verificar status do agente:', error);
+                this.agentRunning = false;
+                this.agentStatus = null;
+            } finally {
+                this.checkingStatus = false;
+            }
+        },
+
+        async refreshAgentPrinters() {
+            if (!this.agentRunning) return;
+
+            this.loadingPrinters = true;
+            try {
+                // Tentar via agente direto
+                if (typeof PrinterAgent !== 'undefined') {
+                    const printers = await PrinterAgent.getPrinters();
+                    this.agentPrinters = printers;
+                    
+                    // Selecionar impressora configurada se houver
+                    if (this.agentStatus && this.agentStatus.printer) {
+                        this.selectedAgentPrinter = this.agentStatus.printer;
+                    }
+                    return;
+                }
+
+                // Fallback: via API Laravel
+                const response = await fetch('/gestor/api/printer/agent/printers', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    this.agentPrinters = data.printers || [];
+                    
+                    if (this.agentStatus && this.agentStatus.printer) {
+                        this.selectedAgentPrinter = this.agentStatus.printer;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao listar impressoras do agente:', error);
+                this.agentPrinters = [];
+            } finally {
+                this.loadingPrinters = false;
+            }
+        },
+
+        async setAgentPrinter() {
+            if (!this.selectedAgentPrinter || !this.agentRunning) return;
+
+            try {
+                // Tentar via agente direto
+                if (typeof PrinterAgent !== 'undefined') {
+                    const success = await PrinterAgent.setPrinter(this.selectedAgentPrinter);
+                    if (success) {
+                        // Atualizar status
+                        await this.checkAgentStatus();
+                    }
+                    return;
+                }
+
+                // Fallback: via API Laravel
+                const response = await fetch('/gestor/api/printer/agent/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        printer_name: this.selectedAgentPrinter
+                    })
+                });
+
+                if (response.ok) {
+                    await this.checkAgentStatus();
+                }
+            } catch (error) {
+                console.error('Erro ao configurar impressora no agente:', error);
+            }
+        }
+    };
+}
 
 // Alpine.js component for QZ Tray configuration
 function qzTrayConfig() {

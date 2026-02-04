@@ -9,6 +9,7 @@ use Mike42\Escpos\PrintConnectors\FilePrintConnector;
 use Mike42\Escpos\PrintConnectors\WindowsPrintConnector;
 use Exception;
 use Illuminate\Support\Facades\Log;
+use App\Services\PrinterAgentService;
 
 class ThermalPrinterService
 {
@@ -614,11 +615,31 @@ class ThermalPrinterService
 
     /**
      * Novo método estático para uso rápido
+     * Tenta usar o agente primeiro, depois fallback para métodos diretos
      */
     public static function print($sale, array $config = [])
     {
         Log::channel('printer')->info('=== CHAMADA ESTÁTICA ThermalPrinterService::print ===');
         
+        // Tentar usar o agente primeiro (mais confiável)
+        if (PrinterAgentService::isAgentRunning()) {
+            Log::channel('printer')->info('Agente detectado, tentando impressão via agente...');
+            try {
+                $success = PrinterAgentService::printReceipt($sale);
+                if ($success) {
+                    Log::channel('printer')->info('✅ Impressão via agente concluída com sucesso');
+                    return;
+                }
+            } catch (Exception $e) {
+                Log::channel('printer')->warning('Erro ao imprimir via agente, tentando fallback', [
+                    'error' => $e->getMessage()
+                ]);
+            }
+        } else {
+            Log::channel('printer')->info('Agente não está rodando, usando impressão direta');
+        }
+        
+        // Fallback: impressão direta PHP
         // Se não há config, buscar do banco
         if (empty($config)) {
             Log::channel('printer')->info('Nenhuma config fornecida, buscando do banco...');

@@ -143,7 +143,22 @@
                             <dl>
                                 <dt class="text-sm font-medium text-gray-500 truncate">Método Mais Usado</dt>
                                 <dd class="text-lg font-semibold text-gray-900">
-                                    {{ $paymentMethods ? ($paymentMethods->count . 'x ' . ucfirst(str_replace('_', ' ', $paymentMethods->payment_method))) : 'Sem vendas' }}
+                                    @if($paymentMethods)
+                                        @php
+                                            $paymentMethod = $paymentMethods->payment_method;
+                                            // Tratar enum PaymentMethod
+                                            if ($paymentMethod instanceof \App\Enums\PaymentMethod) {
+                                                $methodLabel = $paymentMethod->label();
+                                            } else {
+                                                // Se for string, converter para enum e obter label
+                                                $enumMethod = \App\Enums\PaymentMethod::tryFrom($paymentMethod);
+                                                $methodLabel = $enumMethod ? $enumMethod->label() : ucfirst(str_replace('_', ' ', $paymentMethod));
+                                            }
+                                        @endphp
+                                        {{ $paymentMethods->count }}x {{ $methodLabel }}
+                                    @else
+                                        Sem vendas
+                                    @endif
                                 </dd>
                             </dl>
                         </div>

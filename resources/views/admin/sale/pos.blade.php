@@ -4,19 +4,19 @@
 
 @section('admin-content')
 <main class="flex-1 relative overflow-hidden bg-gray-50" x-data="posSystem()">
-    <div class="h-screen flex overflow-hidden">
+    <div class="h-screen flex flex-col lg:flex-row overflow-hidden">
         
         <!-- COLUNA 1: Produtos (40%) -->
-        <div class="w-[40%] min-w-[300px] bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+        <div class="w-full lg:w-[40%] lg:min-w-[300px] bg-white border-r border-gray-200 flex flex-col overflow-hidden order-1 lg:order-1">
             <!-- Header -->
-            <div class="p-4 border-b border-gray-200 bg-gradient-to-r from-pink-50 to-purple-50">
-                <div class="flex items-center gap-3 mb-3">
-                    <div class="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center text-white text-xl">
+            <div class="p-3 md:p-4 border-b border-gray-200 bg-gradient-to-r from-pink-50 to-purple-50">
+                <div class="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                    <div class="w-8 h-8 md:w-10 md:h-10 bg-pink-500 rounded-full flex items-center justify-center text-white text-lg md:text-xl flex-shrink-0">
                         🛒
                     </div>
-                    <div>
-                        <h2 class="text-xl font-bold text-gray-800">PDV - Ponto de Venda</h2>
-                        <p class="text-xs text-gray-600">Caixa #{{ $openCashRegister->id }} - {{ Auth::user()->name }}</p>
+                    <div class="min-w-0 flex-1">
+                        <h2 class="text-base md:text-xl font-bold text-gray-800 truncate">PDV - Ponto de Venda</h2>
+                        <p class="text-xs text-gray-600 truncate">Caixa #{{ $openCashRegister->id }} - {{ Auth::user()->name }}</p>
                     </div>
                 </div>
                 
@@ -33,7 +33,7 @@
                 <button
                     @click="selectedCategory = null"
                     :class="selectedCategory === null ? 'bg-pink-500 text-white' : 'bg-white text-gray-700'"
-                    class="px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap"
+                    class="px-3 md:px-4 py-1.5 md:py-2 rounded-lg font-medium text-xs md:text-sm whitespace-nowrap flex-shrink-0"
                 >
                     🍽️ Todos
                 </button>
@@ -41,7 +41,7 @@
                 <button
                     @click="selectedCategory = {{ $category->id }}"
                     :class="selectedCategory === {{ $category->id }} ? 'bg-pink-500 text-white' : 'bg-white text-gray-700'"
-                    class="px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap"
+                    class="px-3 md:px-4 py-1.5 md:py-2 rounded-lg font-medium text-xs md:text-sm whitespace-nowrap flex-shrink-0"
                 >
                     {{ $category->emoji ?? '📦' }} {{ $category->name }}
                 </button>
@@ -49,8 +49,8 @@
             </div>
 
             <!-- Grid de Produtos -->
-            <div class="flex-1 overflow-y-auto p-4">
-                <div class="grid grid-cols-4 gap-2">
+            <div class="flex-1 overflow-y-auto p-2 md:p-4">
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                     @foreach($products as $product)
                     <button
                         @click="addItemWithFeedback({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $product->price }}, '{{ $product->category->name ?? 'Sem categoria' }}')"
@@ -75,7 +75,7 @@
         </div>
 
         <!-- COLUNA 2: Carrinho (40%) -->
-        <div class="w-[40%] min-w-[350px] bg-white flex flex-col border-r border-gray-200 overflow-hidden">
+        <div class="w-full lg:w-[40%] lg:min-w-[350px] bg-white flex flex-col border-r border-gray-200 overflow-hidden order-3 lg:order-2">
             <!-- Header do Carrinho -->
             <div class="p-3 border-b border-gray-200 bg-gradient-to-r from-green-50 to-blue-50 flex-shrink-0 max-h-[35vh] overflow-y-auto">
                 <h3 class="text-base font-bold text-gray-800 mb-2 flex items-center gap-2">
@@ -288,7 +288,7 @@
             </div>
 
             <!-- Lista de Itens -->
-            <div class="overflow-y-auto p-3 min-h-0" style="max-height: calc(100vh - 450px);">
+            <div class="overflow-y-auto p-2 md:p-3 min-h-0" style="max-height: calc(100vh - 450px);">
                 <div x-show="cart.items.length === 0" class="text-center py-6 text-gray-400">
                     <div class="text-3xl mb-2">🛒</div>
                     <p class="text-sm">Carrinho vazio</p>
@@ -362,7 +362,7 @@
             </div>
 
             <!-- Rodapé com Totais e Botões -->
-            <div class="border-t-2 border-gray-300 bg-white p-3 flex-shrink-0">
+            <div class="border-t-2 border-gray-300 bg-white p-2 md:p-3 flex-shrink-0">
                 <div class="mb-2">
                     <label class="text-xs font-medium text-gray-700">Desconto (R$)</label>
                     <input 
@@ -396,7 +396,7 @@
                 <button
                     @click="finalizeSale()"
                     :disabled="cart.items.length === 0 || isLoading"
-                    class="w-full bg-green-600 hover:bg-green-700 active:scale-95 text-white py-2.5 rounded-lg font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg disabled:shadow-none"
+                    class="w-full bg-green-600 hover:bg-green-700 active:scale-95 text-white py-2 md:py-2.5 rounded-lg font-bold text-xs md:text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg disabled:shadow-none"
                 >
                     <span x-show="!isLoading">✅ Finalizar Venda</span>
                     <span x-show="isLoading" class="flex items-center justify-center gap-2">
@@ -411,7 +411,7 @@
         </div>
 
         <!-- COLUNA 3: Pedidos (20%) -->
-        <div class="w-[20%] min-w-[250px] bg-gray-50 flex flex-col overflow-hidden">
+        <div class="w-full lg:w-[20%] lg:min-w-[250px] bg-gray-50 flex flex-col overflow-hidden order-2 lg:order-3 hidden lg:flex">
             <!-- Tabs -->
             <div class="flex border-b">
                 <button
@@ -441,7 +441,7 @@
                                 #{{ $sale->id }}
                             </span>
                             <span class="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
-                                {{ ucfirst($sale->status) }}
+                                {{ $sale->status->label() }}
                             </span>
                         </div>
                         @if($sale->table)
@@ -1328,7 +1328,18 @@ function posSystem() {
 
         async printViaQZTray(saleId) {
             try {
-                // Verificar se QZ Tray está disponível
+                // Tentar usar Printer Agent primeiro (mais confiável)
+                if (typeof PrinterAgent !== 'undefined') {
+                    const result = await PrinterAgent.printSaleReceipt(saleId);
+                    if (result.success) {
+                        const methodName = result.method === 'agent' ? 'Agente' : 
+                                          result.method === 'qz-tray' ? 'QZ Tray' : 'Servidor';
+                        this.showToast(`🖨️ Recibo impresso via ${methodName}!`, 'success');
+                        return;
+                    }
+                }
+
+                // Fallback: método antigo QZ Tray
                 if (typeof QZPrint === 'undefined') {
                     console.log('QZ Tray não carregado - impressão ignorada');
                     return;
@@ -1376,7 +1387,7 @@ function posSystem() {
                 this.showToast('🖨️ Recibo impresso com sucesso!', 'success');
 
             } catch (error) {
-                console.error('Erro ao imprimir via QZ Tray:', error);
+                console.error('Erro ao imprimir:', error);
                 // Não mostrar toast de erro intrusivo, apenas logar
                 // A venda já foi confirmada com sucesso
             }

@@ -1,0 +1,71 @@
+{
+  "name": "doceria-printer-agent",
+  "version": "1.0.0",
+  "description": "Doceria Printer Agent - Gerenciador de Impressoras Térmicas",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:win:dir": "electron-builder --win --dir",
+    "build:win:no-sign": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
+    "dist": "electron-builder --publish=never"
+  },
+  "keywords": [
+    "printer",
+    "thermal",
+    "escpos",
+    "doceria"
+  ],
+  "author": "Doceria",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.7",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "electron-store": "^8.1.0",
+    "uuid": "^9.0.1"
+  },
+  "build": {
+    "appId": "com.doceria.printeragent",
+    "productName": "Doceria Printer Agent",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Doceria Printer Agent",
+      "include": "build/installer.nsh"
+    },
+    "publish": {
+      "provider": "generic",
+      "url": "https://seu-dominio.com/api/printer-agent/updates"
+    }
+  }
+}

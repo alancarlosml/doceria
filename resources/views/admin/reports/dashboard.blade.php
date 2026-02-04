@@ -55,7 +55,7 @@
                         <div class="ml-5 w-0 flex-1">
                             <dl>
                                 <dt class="text-sm font-medium text-gray-500 truncate">Receita Total</dt>
-                                <dd class="text-3xl font-semibold text-gray-900">R$ {{ number_format($kpis['total_revenue'], 2, ',', '.') }}</dd>
+                                <dd class="text-2xl font-semibold text-gray-900">R$ {{ number_format($kpis['total_revenue'], 2, ',', '.') }}</dd>
                                 <dd class="text-sm text-gray-500">{{ $kpis['total_sales'] }} vendas realizadas</dd>
                             </dl>
                         </div>
@@ -75,7 +75,7 @@
                         <div class="ml-5 w-0 flex-1">
                             <dl>
                                 <dt class="text-sm font-medium text-gray-500 truncate">Ticket Médio</dt>
-                                <dd class="text-3xl font-semibold text-gray-900">R$ {{ number_format($kpis['avg_ticket'], 2, ',', '.') }}</dd>
+                                <dd class="text-2xl font-semibold text-gray-900">R$ {{ number_format($kpis['avg_ticket'], 2, ',', '.') }}</dd>
                                 <dd class="text-sm text-gray-500">Média por venda</dd>
                             </dl>
                         </div>
@@ -95,7 +95,7 @@
                         <div class="ml-5 w-0 flex-1">
                             <dl>
                                 <dt class="text-sm font-medium text-gray-500 truncate">Lucro Líquido</dt>
-                                <dd class="text-3xl font-semibold {{ $kpis['net_profit'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                <dd class="text-2xl font-semibold {{ $kpis['net_profit'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
                                     R$ {{ number_format($kpis['net_profit'], 2, ',', '.') }}
                                 </dd>
                                 <dd class="text-sm text-gray-500">Margem: {{ number_format($kpis['profit_margin'], 1) }}%</dd>
@@ -117,7 +117,7 @@
                         <div class="ml-5 w-0 flex-1">
                             <dl>
                                 <dt class="text-sm font-medium text-gray-500 truncate">Itens Vendidos</dt>
-                                <dd class="text-3xl font-semibold text-gray-900">{{ number_format($kpis['total_items']) }}</dd>
+                                <dd class="text-2xl font-semibold text-gray-900">{{ number_format($kpis['total_items']) }}</dd>
                                 <dd class="text-sm text-gray-500">Produtos comercializados</dd>
                             </dl>
                         </div>
@@ -127,6 +127,114 @@
 
             <!-- Gráficos e Análises -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+
+                <!-- Resumo de Vendas por categoria -->
+                <div class="bg-white rounded-lg shadow">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-medium text-gray-900">🏆 Vendas por Categoria</h3>
+                            {{-- <a href="{{ route('reports.products') }}" class="text-sm text-blue-600 hover:text-blue-800">Ver detalhado →</a> --}}
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="space-y-4">
+                            <!-- Métodos de Pagamento -->
+                            <div class="mb-6">
+                                <h4 class="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Métodos de Pagamento</h4>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-100">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                                                <span class="text-green-600 font-bold">P</span>
+                                            </div>
+                                            <span class="font-medium text-gray-900">PIX</span>
+                                        </div>
+                                        <span class="text-lg font-semibold text-green-600">
+                                            R$ {{ number_format($salesByCategory['pix'] ?? 0, 2, ',', '.') }}
+                                        </span>
+                                    </div>
+
+                                    <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                                                </svg>
+                                            </div>
+                                            <span class="font-medium text-gray-900">Cartão</span>
+                                        </div>
+                                        <span class="text-lg font-semibold text-blue-600">
+                                            R$ {{ number_format($salesByCategory['cartao'] ?? 0, 2, ',', '.') }}
+                                        </span>
+                                    </div>
+
+                                    <div class="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center mr-3">
+                                                <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                                </svg>
+                                            </div>
+                                            <span class="font-medium text-gray-900">Dinheiro</span>
+                                        </div>
+                                        <span class="text-lg font-semibold text-yellow-600">
+                                            R$ {{ number_format($salesByCategory['dinheiro'] ?? 0, 2, ',', '.') }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tipos de Venda -->
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Tipos de Venda</h4>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-100">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-3">
+                                                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                                </svg>
+                                            </div>
+                                            <span class="font-medium text-gray-900">Vendas Balcão</span>
+                                        </div>
+                                        <span class="text-lg font-semibold text-purple-600">
+                                            R$ {{ number_format($salesByCategory['balcao'] ?? 0, 2, ',', '.') }}
+                                        </span>
+                                    </div>
+
+                                    <div class="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-100">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mr-3">
+                                                <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                                                </svg>
+                                            </div>
+                                            <span class="font-medium text-gray-900">Vendas Delivery</span>
+                                        </div>
+                                        <span class="text-lg font-semibold text-orange-600">
+                                            R$ {{ number_format($salesByCategory['delivery'] ?? 0, 2, ',', '.') }}
+                                        </span>
+                                    </div>
+
+                                    <div class="flex items-center justify-between p-3 bg-pink-50 rounded-lg border border-pink-100">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center mr-3">
+                                                <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                                </svg>
+                                            </div>
+                                            <span class="font-medium text-gray-900">Encomendas</span>
+                                        </div>
+                                        <span class="text-lg font-semibold text-pink-600">
+                                            R$ {{ number_format($salesByCategory['encomenda'] ?? 0, 2, ',', '.') }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Top Produtos -->
                 <div class="bg-white rounded-lg shadow">
                     <div class="px-6 py-4 border-b border-gray-200">

@@ -1,0 +1,12 @@
+Este arquivo é um placeholder.
+Para gerar o instalador, você precisa criar um arquivo icon.ico na pasta build/.
+Você pode usar ferramentas online como:
+- https://convertio.co/png-ico/
+- https://www.icoconverter.com/
+
+Ou criar manualmente usando ferramentas como:
+- GIMP
+- Photoshop
+- Online ICO Converter
+
+O ícone deve ter pelo menos 256x256 pixels para melhor qualidade.

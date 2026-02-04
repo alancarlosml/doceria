@@ -79,7 +79,15 @@
                             @if($expense->payment_method)
                             <div>
                                 <dt class="text-sm font-medium text-gray-500">Método de Pagamento</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ ucfirst(str_replace('_', ' ', $expense->payment_method)) }}</dd>
+                                <dd class="mt-1 text-sm text-gray-900">
+                                    @php
+                                        // Tratar como string (Expense não usa enum), mas pode ser convertido para enum
+                                        $paymentMethod = $expense->payment_method;
+                                        $enumMethod = \App\Enums\PaymentMethod::tryFrom($paymentMethod);
+                                        $methodLabel = $enumMethod ? $enumMethod->label() : ucfirst(str_replace('_', ' ', $paymentMethod));
+                                    @endphp
+                                    {{ $methodLabel }}
+                                </dd>
                             </div>
                             @endif
                             @if($expense->user)

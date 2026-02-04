@@ -29,8 +29,7 @@ class EncomendasController extends Controller
     public function apiIndex(Request $request)
     {
         $query = Encomenda::with(['customer', 'items.product', 'user'])
-            ->orderBy('delivery_date', 'desc')
-            ->orderBy('delivery_time', 'desc');
+            ->orderBy('created_at', 'desc');
 
         // Filtros
         if ($request->filled('status')) {
@@ -78,10 +77,14 @@ class EncomendasController extends Controller
             return $encomenda->delivery_date->format('Y-m-d');
         })->map(function($group, $date) {
             $first = $group->first();
+            // Ordenar encomendas dentro do grupo por data de cadastro decrescente
+            $sortedGroup = $group->sortByDesc(function($encomenda) {
+                return $encomenda->created_at;
+            })->values();
             return [
                 'date' => $date,
                 'date_formatted' => $first->delivery_date->locale('pt_BR')->translatedFormat('l, d \d\e F \d\e Y'),
-                'encomendas' => $group->map(function($encomenda) {
+                'encomendas' => $sortedGroup->map(function($encomenda) {
                     return $this->formatEncomendaForApi($encomenda);
                 })->values()
             ];

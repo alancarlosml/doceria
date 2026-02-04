@@ -124,25 +124,24 @@
                         <div class="flex justify-between">
                             <dt class="text-sm text-gray-500">Pagamento:</dt>
                             <dd class="text-sm font-medium text-gray-900 capitalize">
-                                @switch($sale->payment_method)
-                                    @case('dinheiro')
-                                        💵 Dinheiro
-                                        @break
-                                    @case('cartao_credito')
-                                        💳 Crédito
-                                        @break
-                                    @case('cartao_debito')
-                                        💳 Débito
-                                        @break
-                                    @case('pix')
-                                        📱 PIX
-                                        @break
-                                    @case('transferencia')
-                                        🏦 Transferência
-                                        @break
-                                    @default
-                                        {{ $sale->payment_method }}
-                                @endswitch
+                                @php
+                                    $paymentMethod = $sale->payment_method;
+                                    $methodValue = $paymentMethod instanceof \App\Enums\PaymentMethod 
+                                        ? $paymentMethod->value 
+                                        : $paymentMethod;
+                                    $paymentIcons = [
+                                        'dinheiro' => '💵',
+                                        'cartao_credito' => '💳',
+                                        'cartao_debito' => '💳',
+                                        'pix' => '📱',
+                                        'transferencia' => '🏦'
+                                    ];
+                                    $icon = $paymentIcons[$methodValue] ?? '💳';
+                                    $methodLabel = $paymentMethod instanceof \App\Enums\PaymentMethod 
+                                        ? $paymentMethod->label() 
+                                        : \App\Enums\PaymentMethod::tryFrom($methodValue)?->label() ?? ucfirst(str_replace('_', ' ', $methodValue));
+                                @endphp
+                                {{ $icon }} {{ $methodLabel }}
                             </dd>
                         </div>
                         @endif

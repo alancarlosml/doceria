@@ -220,23 +220,37 @@
                 </div>
             </div>
 
-            <!-- Gráfico Resumo (placeholder para futuro) -->
-            <div class="mt-8 bg-white rounded-lg shadow p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-medium text-gray-900">📈 Análise Visual</h3>
+            <!-- Análise Visual - Gráficos -->
+            <div class="mt-8">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Gráfico: Receitas vs Despesas -->
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-medium text-gray-900">📊 Receitas vs Despesas</h3>
+                        </div>
+                        <div class="relative" style="height: 300px;">
+                            <canvas id="revenueExpenseChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Gráfico: Lucro Líquido Diário -->
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-medium text-gray-900">💰 Lucro Líquido Diário</h3>
+                        </div>
+                        <div class="relative" style="height: 300px;">
+                            <canvas id="netProfitChart"></canvas>
+                        </div>
+                    </div>
                 </div>
-                <div class="bg-gray-50 rounded-lg p-8 text-center">
-                    <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                    </svg>
-                    <h3 class="text-sm font-medium text-gray-900 mb-2">Gráficos Interativos</h3>
-                    <p class="text-sm text-gray-500 mb-4">
-                        Gráficos visuais serão implementados em uma atualização futura para visualização clara das tendências de receita e despesa.
-                    </p>
-                    <div class="flex justify-center space-x-4 text-sm text-gray-500">
-                        <span>• Receitas vs Despesas</span>
-                        <span>• Lucro Líquido Diário</span>
-                        <span>• Tendências Mensais</span>
+
+                <!-- Gráfico: Evolução do Fluxo de Caixa -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-medium text-gray-900">📈 Evolução do Fluxo de Caixa</h3>
+                    </div>
+                    <div class="relative" style="height: 350px;">
+                        <canvas id="cashFlowEvolutionChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -244,13 +258,204 @@
     </div>
 </main>
 
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Cash Flow Report loaded successfully');
 
-    // Futuramente implementar gráficos com Chart.js
-    // const ctx = document.getElementById('cashFlowChart').getContext('2d');
-    // new Chart(ctx, { /* ... */ });
+    // Preparar dados dos gráficos
+    const daysData = @json($days);
+    const labels = daysData.map(day => day.formatted_date);
+    const revenues = daysData.map(day => parseFloat(day.revenue));
+    const expenses = daysData.map(day => parseFloat(day.expenses));
+    const netProfits = daysData.map(day => parseFloat(day.net));
+
+    // Configuração comum
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top',
+            },
+            tooltip: {
+                mode: 'index',
+                intersect: false,
+                callbacks: {
+                    label: function(context) {
+                        let label = context.dataset.label || '';
+                        if (label) {
+                            label += ': ';
+                        }
+                        label += 'R$ ' + context.parsed.y.toLocaleString('pt-BR', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        });
+                        return label;
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return 'R$ ' + value.toLocaleString('pt-BR', {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0
+                        });
+                    }
+                },
+                grid: {
+                    color: 'rgba(0, 0, 0, 0.05)'
+                }
+            },
+            x: {
+                grid: {
+                    display: false
+                }
+            }
+        }
+    };
+
+    // Gráfico 1: Receitas vs Despesas (Linha)
+    const revenueExpenseCtx = document.getElementById('revenueExpenseChart').getContext('2d');
+    new Chart(revenueExpenseCtx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Receitas',
+                    data: revenues,
+                    borderColor: 'rgb(34, 197, 94)',
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: 'rgb(34, 197, 94)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                },
+                {
+                    label: 'Despesas',
+                    data: expenses,
+                    borderColor: 'rgb(239, 68, 68)',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: 'rgb(239, 68, 68)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                }
+            ]
+        },
+        options: chartOptions
+    });
+
+    // Gráfico 2: Lucro Líquido Diário (Barras)
+    const netProfitCtx = document.getElementById('netProfitChart').getContext('2d');
+    new Chart(netProfitCtx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Lucro Líquido',
+                data: netProfits,
+                backgroundColor: netProfits.map(profit => 
+                    profit >= 0 ? 'rgba(34, 197, 94, 0.7)' : 'rgba(239, 68, 68, 0.7)'
+                ),
+                borderColor: netProfits.map(profit => 
+                    profit >= 0 ? 'rgb(34, 197, 94)' : 'rgb(239, 68, 68)'
+                ),
+                borderWidth: 2,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            ...chartOptions,
+            plugins: {
+                ...chartOptions.plugins,
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+
+    // Gráfico 3: Evolução do Fluxo de Caixa (Área)
+    const cashFlowEvolutionCtx = document.getElementById('cashFlowEvolutionChart').getContext('2d');
+    new Chart(cashFlowEvolutionCtx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Receitas',
+                    data: revenues,
+                    borderColor: 'rgb(34, 197, 94)',
+                    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 5
+                },
+                {
+                    label: 'Despesas',
+                    data: expenses,
+                    borderColor: 'rgb(239, 68, 68)',
+                    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 5
+                },
+                {
+                    label: 'Lucro Líquido',
+                    data: netProfits,
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    borderDash: [5, 5]
+                }
+            ]
+        },
+        options: {
+            ...chartOptions,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            plugins: {
+                ...chartOptions.plugins,
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                }
+            }
+        }
+    });
 });
 </script>
 @endsection

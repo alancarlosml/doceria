@@ -4,6 +4,8 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -49,82 +51,124 @@ class User extends Authenticatable
         ];
     }
 
-    /**
-     * Get the cash registers opened by this user.
-     */
-    public function cashRegisters()
+    // Relationships
+    public function cashRegisters(): HasMany
     {
         return $this->hasMany(CashRegister::class);
     }
 
-    /**
-     * Get the sales made by this user.
-     */
-    public function sales()
+    public function sales(): HasMany
     {
         return $this->hasMany(Sale::class);
     }
 
-    /**
-     * Get the expenses recorded by this user.
-     */
-    public function expenses()
+    public function expenses(): HasMany
     {
         return $this->hasMany(Expense::class);
     }
 
-    /**
-     * Check if user is admin.
-     */
-    public function isAdmin()
-    {
-        return $this->role === 'admin';
-    }
-
-    /**
-     * Check if user is gestor.
-     */
-    public function isGestor()
-    {
-        return $this->role === 'gestor';
-    }
-
-    /**
-     * Check if user is atendente.
-     */
-    public function isAtendente()
-    {
-        return $this->role === 'atendente';
-    }
-
-    /**
-     * Check if user is active.
-     */
-    public function isActive()
-    {
-        return $this->active;
-    }
-
-    /**
-     * Get user's roles.
-     */
-    public function roles()
+    public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class, 'user_role');
     }
 
-    /**
-     * Get user's direct permissions.
-     */
-    public function permissions()
+    public function permissions(): BelongsToMany
     {
         return $this->belongsToMany(Permission::class, 'user_permission');
+    }
+
+    public function authTokens(): HasMany
+    {
+        return $this->hasMany(AuthToken::class);
+    }
+
+    // Query Scopes
+    public function scopeActive($query): void
+    {
+        $query->where('active', true);
+    }
+
+    public function scopeInactive($query): void
+    {
+        $query->where('active', false);
+    }
+
+    public function scopeSearch($query, string $search): void
+    {
+        $query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+              ->orWhere('email', 'like', "%{$search}%");
+        });
+    }
+
+    // Business Logic Methods
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isGestor(): bool
+    {
+        return $this->role === 'gestor';
+    }
+
+    public function isAtendente(): bool
+    {
+        return $this->role === 'atendente';
+    }
+
+    public function isActive(): bool
+    {
+        return $this->active;
+    }
+
+    public function hasAnyRole(): bool
+    {
+        return $this->roles()->count() > 0;
+    }
+
+    public static function hasActiveAdmin(): bool
+    {
+        $adminRole = Role::where('name', 'admin')->first();
+        if (!$adminRole) {
+            return false;
+        }
+
+        return self::whereHas('roles', function($q) use ($adminRole) {
+            $q->where('roles.id', $adminRole->id);
+        })->where('active', true)->count() > 0;
+    }
+
+    public function auditPermissionChange(string $actionType, ?Permission $permission = null, ?Role $role = null, ?string $details = null): void
+    {
+        $auditData = [
+            'action_type' => $actionType,
+            'performed_by' => auth()->id(),
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+            'details' => $details,
+        ];
+
+        if ($permission) {
+            $auditData['permission_id'] = $permission->id;
+        }
+
+        if ($role) {
+            $auditData['role_id'] = $role->id;
+        }
+
+        $this->permissionAudits()->create($auditData);
+    }
+
+    public function permissionAudits()
+    {
+        return $this->hasMany(PermissionAudit::class);
     }
 
     /**
      * Assign a role to user.
      */
-    public function assignRole($role)
+    public function assignRole(Role|string|int $role): void
     {
         if (is_string($role)) {
             $role = Role::where('name', $role)->first();
@@ -138,7 +182,7 @@ class User extends Authenticatable
     /**
      * Remove a role from user.
      */
-    public function revokeRole($role)
+    public function revokeRole(Role|string|int $role): void
     {
         if (is_string($role)) {
             $role = Role::where('name', $role)->first();
@@ -152,7 +196,7 @@ class User extends Authenticatable
     /**
      * Sync user's roles.
      */
-    public function syncRoles($roles)
+    public function syncRoles(array $roles): void
     {
         $roleIds = [];
 
@@ -173,7 +217,7 @@ class User extends Authenticatable
     /**
      * Sync user's direct permissions.
      */
-    public function syncPermissions($permissions, $throughRoles = false)
+    public function syncPermissions(array $permissions, bool $throughRoles = false): void
     {
         $permissionIds = [];
 
@@ -194,7 +238,7 @@ class User extends Authenticatable
     /**
      * Assign a permission directly to user.
      */
-    public function assignPermission($permission)
+    public function assignPermission(Permission|string|int $permission): void
     {
         if (is_string($permission)) {
             $permission = Permission::where('name', $permission)->first();
@@ -208,7 +252,7 @@ class User extends Authenticatable
     /**
      * Remove a permission from user.
      */
-    public function revokePermission($permission)
+    public function revokePermission(Permission|string|int $permission): void
     {
         if (is_string($permission)) {
             $permission = Permission::where('name', $permission)->first();
@@ -222,15 +266,15 @@ class User extends Authenticatable
     /**
      * Revoke permission from user (alias for revokePermission).
      */
-    public function revokePermissionTo($permission)
+    public function revokePermissionTo(Permission|string|int $permission): void
     {
-        return $this->revokePermission($permission);
+        $this->revokePermission($permission);
     }
 
     /**
      * Check if user has a specific role.
      */
-    public function hasRole($role)
+    public function hasRole(Role|string|int $role): bool
     {
         if (is_string($role)) {
             return $this->roles()->where('name', $role)->exists();
@@ -249,8 +293,13 @@ class User extends Authenticatable
      *
      * Direct permissions OVERRIDE role permissions (can add or remove)
      */
-    public function hasPermission($permission)
+    public function hasPermission(Permission|string|int $permission): bool
     {
+        // Admin tem acesso total
+        if ($this->hasRole('admin')) {
+            return true;
+        }
+
         // Get permission ID regardless of input type
         $permissionId = null;
         if (is_string($permission)) {
@@ -261,46 +310,41 @@ class User extends Authenticatable
         }
 
         if (!$permissionId) {
-            return false; // Permission doesn't exist
+            return false;
         }
 
-        // Get user's permission relation with pivot data
-        $userPermissionPivot = $this->permissions()
-            ->where('permission_id', $permissionId)
-            ->first();
-
-        // If user has direct permission assigned, check if it's granted or revoked
-        if ($userPermissionPivot) {
-            $action = $userPermissionPivot->pivot->action ?? 'grant';
-            if ($action === 'revoke') {
-                return false; // Explicitly revoked - DENIED
-            }
-            return true; // Explicitly granted - ALLOWED
-        }
-
-        // Check permissions through roles - ensure roles are loaded with permissions
+        // Check permissions through roles first (roles usually have more permissions)
         if (!$this->relationLoaded('roles')) {
             $this->load('roles.permissions');
         }
 
         foreach ($this->roles as $role) {
-            // Ensure role permissions are loaded
             if (!$role->relationLoaded('permissions')) {
                 $role->load('permissions');
             }
-            
             if ($role->hasPermission($permissionId)) {
-                return true; // Granted through role - ALLOWED
+                return true;
             }
         }
 
-        return false; // No permission found - DENIED
+        // Check direct permissions (can override role permissions)
+        $userPermission = $this->permissions()
+            ->where('permission_id', $permissionId)
+            ->first();
+
+        if ($userPermission) {
+            // Direct permission overrides role permissions
+            $action = $userPermission->pivot->action ?? 'grant';
+            return $action !== 'revoke';
+        }
+
+        return false;
     }
 
     /**
      * Check if user has a specific permission for a module.
      */
-    public function canAccess($module, $action = null)
+    public function canAccess(string $module, ?string $action = null): bool
     {
         $permissionName = $action ? "{$module}.{$action}" : $module;
         return $this->hasPermission($permissionName);
@@ -330,23 +374,15 @@ class User extends Authenticatable
     /**
      * Check if user can perform admin operations.
      */
-    public function isAdminOrGestor()
+    public function isAdminOrGestor(): bool
     {
         return $this->hasRole('admin') || $this->hasRole('gestor');
     }
 
     /**
-     * Get user's auth tokens.
-     */
-    public function authTokens()
-    {
-        return $this->hasMany(AuthToken::class);
-    }
-
-    /**
      * Generate a new auth token.
      */
-    public function createAuthToken($name = 'api-token', $abilities = null, $expiresAt = null)
+    public function createAuthToken(string $name = 'api-token', ?string $abilities = null, ?\DateTime $expiresAt = null): AuthToken
     {
         return $this->authTokens()->create([
             'token' => AuthToken::generateToken(),
@@ -359,7 +395,7 @@ class User extends Authenticatable
     /**
      * Revoke a specific token.
      */
-    public function revokeToken($token)
+    public function revokeToken(AuthToken|string $token): bool
     {
         if ($token instanceof AuthToken) {
             return $token->revoke();
@@ -371,7 +407,7 @@ class User extends Authenticatable
     /**
      * Revoke all tokens.
      */
-    public function revokeAllTokens()
+    public function revokeAllTokens(): int
     {
         return $this->authTokens()->delete();
     }
@@ -379,7 +415,7 @@ class User extends Authenticatable
     /**
      * Find user by token.
      */
-    public static function findByToken($token)
+    public static function findByToken(string $token): ?self
     {
         $authToken = AuthToken::findByToken($token);
 

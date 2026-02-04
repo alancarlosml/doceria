@@ -19,7 +19,7 @@ class PermissionController extends Controller
 
         $roles = Role::with('permissions')->get();
 
-        return view('permissions.index', compact('permissions', 'permissionsByModule', 'roles'));
+        return view('admin.permissions.index', compact('permissions', 'permissionsByModule', 'roles'));
     }
 
     /**
@@ -27,7 +27,7 @@ class PermissionController extends Controller
      */
     public function create()
     {
-        return view('permissions.create');
+        return view('admin.permissions.create');
     }
 
     /**
@@ -55,7 +55,7 @@ class PermissionController extends Controller
     public function show(Permission $permission)
     {
         $permission->load(['roles', 'users']);
-        return view('permissions.show', compact('permission'));
+        return view('admin.permissions.show', compact('permission'));
     }
 
     /**
@@ -63,7 +63,7 @@ class PermissionController extends Controller
      */
     public function edit(Permission $permission)
     {
-        return view('permissions.edit', compact('permission'));
+        return view('admin.permissions.edit', compact('permission'));
     }
 
     /**
@@ -218,12 +218,21 @@ class PermissionController extends Controller
     public function assignPermissionsToUser(Request $request, User $user)
     {
         try {
+            // Prevent users from modifying their own permissions
+            if ($user->id === auth()->id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Você não pode modificar suas próprias permissões!'
+                ], 403);
+            }
+
             $validated = $request->validate([
                 'permission_ids' => 'array',
                 'permission_ids.*' => 'exists:permissions,id',
             ]);
 
             $permissionIds = $request->permission_ids ?? [];
+            $previousPermissions = $user->permissions()->pluck('id')->toArray();
 
             // Clear all direct permissions first
             $user->permissions()->detach();
@@ -242,6 +251,44 @@ class PermissionController extends Controller
                 ->wherePivot('action', 'grant')
                 ->pluck('name')
                 ->toArray();
+
+            // Audit the changes
+            $addedPermissions = array_diff($permissionIds, $previousPermissions);
+            $removedPermissions = array_diff($previousPermissions, $permissionIds);
+
+            if (!empty($addedPermissions)) {
+                foreach ($addedPermissions as $permissionId) {
+                    $permission = Permission::find($permissionId);
+                    if ($permission) {
+                        $user->auditPermissionChange(
+                            'permission_granted',
+                            $permission,
+                            null,
+                            json_encode([
+                                'permission_name' => $permission->name,
+                                'permission_label' => $permission->label
+                            ])
+                        );
+                    }
+                }
+            }
+
+            if (!empty($removedPermissions)) {
+                foreach ($removedPermissions as $permissionId) {
+                    $permission = Permission::find($permissionId);
+                    if ($permission) {
+                        $user->auditPermissionChange(
+                            'permission_revoked',
+                            $permission,
+                            null,
+                            json_encode([
+                                'permission_name' => $permission->name,
+                                'permission_label' => $permission->label
+                            ])
+                        );
+                    }
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -263,16 +310,33 @@ class PermissionController extends Controller
      */
     public function removePermissionFromUser(Request $request, User $user)
     {
+        // Prevent users from modifying their own permissions
+        if ($user->id === auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Você não pode modificar suas próprias permissões!'
+            ], 403);
+        }
+
         $validated = $request->validate([
             'permission_id' => 'required|exists:permissions,id',
         ]);
 
         $permission = Permission::find($request->permission_id);
 
-        // Update or insert the pivot with revoke action (overwrites any existing grant)
-        $user->permissions()->syncWithoutDetaching([
-            $permission->id => ['action' => 'revoke']
-        ]);
+        // Detach permission directly instead of marking as revoke
+        $user->permissions()->detach($permission->id);
+
+        // Audit the change
+        $user->auditPermissionChange(
+            'permission_revoked',
+            $permission,
+            null,
+            json_encode([
+                'permission_name' => $permission->name,
+                'permission_label' => $permission->label
+            ])
+        );
 
         return response()->json([
             'success' => true,
@@ -282,6 +346,7 @@ class PermissionController extends Controller
     }
 
     /**
+
      * Get all users with complete permissions info.
      */
     public function getUsersPermissions()
@@ -310,5 +375,13 @@ class PermissionController extends Controller
         });
 
         return response()->json($users);
+    }
+
+    public function getRolePermissions(Role $role)
+    {
+        return response()->json([
+            'role' => $role->name,
+            'permissions' => $role->permissions->pluck('id')->toArray()
+        ]);
     }
 }

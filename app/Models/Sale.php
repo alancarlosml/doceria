@@ -2,8 +2,13 @@
 
 namespace App\Models;
 
+use App\Enums\PaymentMethod;
+use App\Enums\SaleStatus;
+use App\Enums\SaleType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Sale extends Model
@@ -34,150 +39,161 @@ class Sale extends Model
     ];
 
     protected $casts = [
+        'type' => SaleType::class,
+        'status' => SaleStatus::class,
+        'payment_method' => PaymentMethod::class,
         'subtotal' => 'decimal:2',
         'discount' => 'decimal:2',
         'delivery_fee' => 'decimal:2',
         'total' => 'decimal:2',
         'amount_received' => 'decimal:2',
         'change_amount' => 'decimal:2',
-        'payment_methods_split' => 'array', // JSON para array
+        'payment_methods_split' => 'array',
         'delivery_date' => 'date',
     ];
 
-    protected static function boot()
+    protected static function booted(): void
     {
-        parent::boot();
-
-        static::creating(function ($sale) {
+        static::creating(function (Sale $sale): void {
             if (empty($sale->code)) {
                 $sale->code = 'VEN-' . strtoupper(uniqid());
             }
         });
     }
 
-    public function cashRegister()
+    // Relationships
+    public function cashRegister(): BelongsTo
     {
         return $this->belongsTo(CashRegister::class);
     }
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function customer()
+    public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
     }
 
-    public function table()
+    public function table(): BelongsTo
     {
         return $this->belongsTo(Table::class);
     }
 
-    public function motoboy()
+    public function motoboy(): BelongsTo
     {
         return $this->belongsTo(Motoboy::class);
     }
 
-    public function items()
+    public function items(): HasMany
     {
         return $this->hasMany(SaleItem::class);
     }
 
-    public function calculateTotal()    
+    // Query Scopes
+    public function scopeByStatus($query, SaleStatus $status): void
+    {
+        $query->where('status', $status);
+    }
+
+    public function scopeByType($query, SaleType $type): void
+    {
+        $query->where('type', $type);
+    }
+
+    public function scopeActive($query): void
+    {
+        $query->whereNotIn('status', [
+            SaleStatus::FINALIZADO->value,
+            SaleStatus::CANCELADO->value,
+            SaleStatus::ENTREGUE->value,
+        ]);
+    }
+
+    public function scopePending($query): void
+    {
+        $query->whereIn('status', [
+            SaleStatus::PENDENTE->value,
+            SaleStatus::EM_PREPARO->value,
+            SaleStatus::PRONTO->value,
+        ]);
+    }
+
+    public function scopeDeliveries($query): void
+    {
+        $query->where('type', SaleType::DELIVERY->value);
+    }
+
+    public function scopeBalcao($query): void
+    {
+        $query->where('type', SaleType::BALCAO->value);
+    }
+
+    // Business Logic Methods
+    public function calculateTotal(): float
     {
         $this->subtotal = $this->items->sum('subtotal');
-        $this->total = $this->subtotal - $this->discount + $this->delivery_fee;
+        $this->total = round($this->subtotal - ($this->discount ?? 0) + ($this->delivery_fee ?? 0), 2);
         $this->save();
 
-        return $this->total;
+        return (float) $this->total;
     }
 
-    public function isBalcao()
+    public function isBalcao(): bool
     {
-        return $this->type === 'balcao';
+        return $this->type === SaleType::BALCAO;
     }
 
-    public function isDelivery()
+    public function isDelivery(): bool
     {
-        return $this->type === 'delivery';
+        return $this->type === SaleType::DELIVERY;
     }
 
-    public function isEncomenda()
+    public function isEncomenda(): bool
     {
-        return $this->type === 'encomenda';
+        return $this->type === SaleType::ENCOMENDA;
     }
 
-    public function isPendente()
+    public function isPendente(): bool
     {
-        return $this->status === 'pendente';
+        return $this->status === SaleStatus::PENDENTE;
     }
 
-    public function isCancelado()
+    public function isCancelado(): bool
     {
-        return $this->status === 'cancelado';
+        return $this->status === SaleStatus::CANCELADO;
     }
 
-    public function isFinalizado()
+    public function isFinalizado(): bool
     {
-        return $this->status === 'finalizado';
+        return $this->status === SaleStatus::FINALIZADO;
     }
 
-    public static function getStatusConfig($status)
+    public function canBeEdited(): bool
     {
-        $configs = [
-            'pendente' => [
-                'label' => 'Pendente',
-                'icon' => '⏳',
-                'bg' => 'bg-yellow-100'
-            ],
-            'em_preparo' => [
-                'label' => 'Em Preparo',
-                'icon' => '👨‍🍳',
-                'bg' => 'bg-orange-100'
-            ],
-            'pronto' => [
-                'label' => 'Pronto',
-                'icon' => '✅',
-                'bg' => 'bg-blue-100'
-            ],
-            'saiu_entrega' => [
-                'label' => 'Saiu para Entrega',
-                'icon' => '🚴',
-                'bg' => 'bg-purple-100'
-            ],
-            'entregue' => [
-                'label' => 'Entregue',
-                'icon' => '📦',
-                'bg' => 'bg-green-100'
-            ],
-            'cancelado' => [
-                'label' => 'Cancelado',
-                'icon' => '❌',
-                'bg' => 'bg-red-100'
-            ],
-            'finalizado' => [
-                'label' => 'Finalizado',
-                'icon' => '💰',
-                'bg' => 'bg-green-100'
-            ],
-        ];
-
-        return $configs[$status] ?? $configs['pendente'];
+        return !in_array($this->status, [
+            SaleStatus::FINALIZADO,
+            SaleStatus::CANCELADO,
+            SaleStatus::ENTREGUE,
+        ], true);
     }
 
-    public static function getAvailableStatuses()
+    public static function getStatusConfig(SaleStatus|string $status): array
     {
+        $statusEnum = $status instanceof SaleStatus ? $status : SaleStatus::tryFrom($status) ?? SaleStatus::PENDENTE;
+        
         return [
-            'pendente' => 'Pendente',
-            'em_preparo' => 'Em Preparo',
-            'pronto' => 'Pronto',
-            'saiu_entrega' => 'Saiu para Entrega',
-            'entregue' => 'Entregue',
-            'cancelado' => 'Cancelado',
-            'finalizado' => 'Finalizado'
+            'label' => $statusEnum->label(),
+            'icon' => $statusEnum->icon(),
+            'bg' => $statusEnum->bgClass(),
         ];
+    }
+
+    public static function getAvailableStatuses(): array
+    {
+        return SaleStatus::options();
     }
 
     /**
@@ -191,17 +207,14 @@ class Sale extends Model
     /**
      * Obter nome legível do método de pagamento
      */
-    public static function getPaymentMethodName($method): string
+    public static function getPaymentMethodName(PaymentMethod|string $method): string
     {
-        $methods = [
-            'dinheiro' => 'Dinheiro',
-            'cartao_credito' => 'Cartão Crédito',
-            'cartao_debito' => 'Cartão Débito',
-            'pix' => 'PIX',
-            'transferencia' => 'Transferência',
-        ];
+        if ($method instanceof PaymentMethod) {
+            return $method->label();
+        }
 
-        return $methods[$method] ?? $method;
+        $paymentMethod = PaymentMethod::tryFrom($method);
+        return $paymentMethod?->label() ?? $method;
     }
 
     /**
@@ -212,14 +225,17 @@ class Sale extends Model
         if ($this->isSplitPayment()) {
             $parts = [];
             foreach ($this->payment_methods_split as $payment) {
-                $methodName = self::getPaymentMethodName($payment['method']);
-                $value = number_format($payment['value'], 2, ',', '.');
+                $method = PaymentMethod::tryFrom($payment['method'] ?? '');
+                $methodName = $method?->label() ?? $payment['method'] ?? '';
+                $value = number_format($payment['value'] ?? 0, 2, ',', '.');
                 $parts[] = "{$methodName}: R$ {$value}";
             }
             return implode(' + ', $parts);
         }
         
-        return self::getPaymentMethodName($this->payment_method);
+        return $this->payment_method instanceof PaymentMethod 
+            ? $this->payment_method->label() 
+            : self::getPaymentMethodName($this->payment_method);
     }
 
     /**

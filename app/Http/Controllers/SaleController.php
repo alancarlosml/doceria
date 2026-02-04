@@ -2,6 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\SaleStatus;
+use App\Enums\SaleType;
+use App\Http\Requests\StoreSaleRequest;
+use App\Http\Requests\UpdateSaleRequest;
+use App\Http\Requests\UpdateSaleStatusRequest;
 use App\Models\Sale;
 use App\Models\Customer;
 use App\Models\Table;
@@ -10,13 +15,20 @@ use App\Models\CashRegister;
 use App\Models\Product;
 use App\Models\SaleItem;
 use App\Models\Category;
+use App\Services\SaleService;
 use App\Services\ThermalPrinterService;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class SaleController extends Controller
 {
+    public function __construct(
+        private readonly SaleService $saleService
+    ) {}
     /**
      * Display the POS interface
      */
@@ -131,39 +143,9 @@ class SaleController extends Controller
     /**
      * Update an existing sale
      */
-    public function update(Request $request, Sale $sale)
+    public function update(UpdateSaleRequest $request, Sale $sale): JsonResponse
     {
-        $validated = $request->validate([
-            'type' => 'required|in:balcao,delivery',
-            'table_id' => 'nullable|exists:tables,id',
-            'customer_id' => 'nullable|exists:customers,id',
-            'motoboy_id' => 'nullable|exists:motoboys,id',
-            'delivery_address' => 'nullable|string',
-            'delivery_fee' => 'nullable|numeric|min:0',
-            'discount' => 'nullable|numeric|min:0',
-            'payment_method' => 'required|in:dinheiro,pix,cartao_debito,cartao_credito,split',
-            'payment_methods_split' => 'nullable|array', // Array de pagamentos divididos
-            'payment_methods_split.*.method' => 'required_with:payment_methods_split|in:dinheiro,pix,cartao_debito,cartao_credito',
-            'payment_methods_split.*.value' => 'required_with:payment_methods_split|numeric|min:0',
-            'payment_methods_split.*.amount_received' => 'nullable|numeric|min:0',
-            'payment_methods_split.*.change_amount' => 'nullable|numeric|min:0',
-            'amount_received' => 'nullable|numeric|min:0', // Valor recebido (dinheiro)
-            'change_amount' => 'nullable|numeric|min:0', // Troco
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|integer|min:1',
-            'finalize' => 'nullable|boolean',
-        ]);
-
-        // Validações específicas
-        if ($validated['type'] === 'delivery') {
-            if (empty($validated['motoboy_id'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Selecione um motoboy!'
-                ], 422);
-            }
-        }
+        $validated = $request->validated();
 
         $openCashRegister = CashRegister::where('status', 'aberto')->first();
         if (!$openCashRegister) {
@@ -180,40 +162,25 @@ class SaleController extends Controller
             ], 403);
         }
 
+        // Validar se venda pode ser editada
+        if (!$sale->canBeEdited()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Não é possível editar uma venda que já foi finalizada, cancelada ou entregue!'
+            ], 422);
+        }
+
         // Validar mesa se table_id foi alterado ou fornecido
         $oldTableId = $sale->table_id;
         $newTableId = $validated['table_id'] ?? null;
         
         if ($newTableId && $newTableId != $oldTableId) {
-            // Mesa foi alterada, validar nova mesa
-            $newTable = Table::find($newTableId);
-            
-            if (!$newTable) {
+            try {
+                $this->saleService->validateTableAvailability($newTableId, $sale->id);
+            } catch (\Exception $e) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Mesa não encontrada!'
-                ], 404);
-            }
-
-            // Verificar se nova mesa está disponível
-            if ($newTable->status !== 'disponivel') {
-                return response()->json([
-                    'success' => false,
-                    'message' => "A mesa {$newTable->number} não está disponível! Status atual: " . ucfirst($newTable->status)
-                ], 422);
-            }
-
-            // Verificar se nova mesa não tem venda ativa (exceto a atual)
-            $activeSale = $newTable->sales()
-                ->where('status', '!=', 'finalizado')
-                ->where('status', '!=', 'cancelado')
-                ->where('id', '!=', $sale->id)
-                ->first();
-
-            if ($activeSale) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "A mesa {$newTable->number} já possui uma venda ativa (Pedido #{$activeSale->id})!"
+                    'message' => $e->getMessage()
                 ], 422);
             }
         }
@@ -221,155 +188,59 @@ class SaleController extends Controller
         try {
             DB::beginTransaction();
 
-            // Recalcular subtotal
-            $subtotal = 0;
-            foreach ($validated['items'] as $item) {
-                $product = Product::find($item['product_id']);
-                $subtotal += $product->price * $item['quantity'];
-            }
-
-            // Calcular total
+            // Calcular valores usando service
+            $subtotal = $this->saleService->calculateSubtotal($validated['items']);
             $deliveryFee = $validated['delivery_fee'] ?? 0;
             $discount = $validated['discount'] ?? 0;
-            $total = $subtotal + $deliveryFee - $discount;
+            $total = $this->saleService->calculateTotal($subtotal, $deliveryFee, $discount);
 
-            // Determinar status da venda
+            // Determinar status da venda usando service
             $finalize = $validated['finalize'] ?? false;
-            $closeAccount = $request->input('close_account', false); // Indica se quer fechar a conta da mesa
-            $currentStatus = $sale->status;
+            $closeAccount = $request->input('close_account', false);
+            $type = SaleType::from($validated['type']);
+            $currentStatus = $sale->status instanceof SaleStatus ? $sale->status : SaleStatus::from($sale->status);
             
-            if ($finalize) {
-                // Se está finalizando, determinar status apropriado
-                if ($validated['type'] === 'delivery') {
-                    $status = 'saiu_entrega'; // Delivery vai direto para entrega
-                } else {
-                    // Balcão
-                    if (empty($validated['table_id'])) {
-                        $status = 'finalizado'; // Venda rápida sem mesa
-                    } else {
-                        // Com mesa: verificar se quer fechar a conta ou apenas atualizar o pedido
-                        // close_account = true → finaliza (fechar conta/imprimir recibo)
-                        // close_account = false → permanece pendente (apenas atualizar itens)
-                        $status = $closeAccount ? 'finalizado' : 'pendente';
-                    }
-                }
-            } else {
-                // Não está finalizando, manter status atual se a venda ainda não foi finalizada/cancelada
-                // Caso contrário, permitir apenas atualizações em vendas pendentes
-                if (in_array($currentStatus, ['finalizado', 'cancelado', 'entregue'])) {
-                    // Não permitir alterar venda já finalizada/cancelada/entregue
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Não é possível editar uma venda que já foi finalizada, cancelada ou entregue!'
-                    ], 422);
-                }
-                // Manter o status atual
-                $status = $currentStatus;
-            }
+            $status = $this->saleService->determineStatus(
+                $type,
+                $finalize,
+                $closeAccount,
+                $currentStatus
+            );
 
-            // Limpar itens antigos e recriar
-            $sale->items()->delete();
-
-            // Determinar método de pagamento principal
-            $paymentMethod = $validated['payment_method'];
-            $paymentMethodsSplit = null;
-            $amountReceived = null;
-            $changeAmount = null;
-            
-            // Se for pagamento dividido
-            if ($paymentMethod === 'split' && !empty($validated['payment_methods_split'])) {
-                $paymentMethodsSplit = $validated['payment_methods_split'];
-                // Usar o primeiro método como principal para compatibilidade
-                $paymentMethod = $paymentMethodsSplit[0]['method'] ?? 'dinheiro';
-                // Calcular troco total para pagamentos em dinheiro
-                $totalChange = 0;
-                foreach ($paymentMethodsSplit as $split) {
-                    if ($split['method'] === 'dinheiro' && isset($split['change_amount'])) {
-                        $totalChange += $split['change_amount'];
-                    }
-                }
-                $changeAmount = $totalChange > 0 ? $totalChange : ($validated['change_amount'] ?? null);
-            } else {
-                // Pagamento simples
-                $amountReceived = $validated['amount_received'] ?? null;
-                $changeAmount = $validated['change_amount'] ?? null;
-            }
+            // Processar método de pagamento usando service
+            $paymentData = $this->saleService->processPaymentMethod(
+                \App\Enums\PaymentMethod::from($validated['payment_method']),
+                $validated['payment_methods_split'] ?? null
+            );
 
             // Atualizar venda
             $sale->update([
                 'customer_id' => $validated['customer_id'] ?? null,
                 'table_id' => $validated['table_id'] ?? null,
                 'motoboy_id' => $validated['motoboy_id'] ?? null,
-                'type' => $validated['type'],
+                'type' => $type,
                 'status' => $status,
                 'subtotal' => $subtotal,
                 'discount' => $discount,
                 'delivery_fee' => $deliveryFee,
                 'total' => $total,
-                'payment_method' => $paymentMethod,
-                'payment_methods_split' => $paymentMethodsSplit,
-                'amount_received' => $amountReceived,
-                'change_amount' => $changeAmount,
+                'payment_method' => $paymentData['payment_method'],
+                'payment_methods_split' => $paymentData['payment_methods_split'],
+                'amount_received' => $validated['amount_received'] ?? $paymentData['amount_received'],
+                'change_amount' => $validated['change_amount'] ?? $paymentData['change_amount'],
                 'delivery_address' => $validated['delivery_address'] ?? null,
             ]);
 
-            // Criar itens novamente
-            foreach ($validated['items'] as $item) {
-                $product = Product::find($item['product_id']);
-                $itemSubtotal = $product->price * $item['quantity'];
+            // Atualizar itens usando service
+            $this->saleService->updateSaleItems($sale, $validated['items']);
 
-                SaleItem::create([
-                    'sale_id' => $sale->id,
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $product->price,
-                    'subtotal' => $itemSubtotal,
-                ]);
-            }
-
-            // Gerenciar status das mesas
-            // Se a venda está sendo finalizada
-            if ($sale->status === 'finalizado') {
-                // Liberar mesa atual se houver
-                if ($sale->table_id) {
-                    $sale->table->update(['status' => 'disponivel']);
-                }
-            } else {
-                // Venda ainda está ativa, gerenciar mudança de mesa
-                if ($oldTableId != $newTableId) {
-                    // Mesa foi alterada
-                    if ($oldTableId) {
-                        // Liberar mesa antiga
-                        $oldTable = Table::find($oldTableId);
-                        if ($oldTable) {
-                            // Verificar se não há outras vendas ativas na mesa antiga
-                            $otherActiveSales = Sale::where('table_id', $oldTableId)
-                                ->where('status', '!=', 'finalizado')
-                                ->where('status', '!=', 'cancelado')
-                                ->where('id', '!=', $sale->id)
-                                ->count();
-                            
-                            if ($otherActiveSales == 0) {
-                                $oldTable->update(['status' => 'disponivel']);
-                            }
-                        }
-                    }
-                    
-                    // Ocupar nova mesa
-                    if ($newTableId) {
-                        $newTable = Table::find($newTableId);
-                        if ($newTable) {
-                            $newTable->update(['status' => 'ocupada']);
-                        }
-                    }
-                } else if ($newTableId && !$oldTableId) {
-                    // Nova mesa foi atribuída (sem ter mesa antes)
-                    $newTable = Table::find($newTableId);
-                    if ($newTable) {
-                        $newTable->update(['status' => 'ocupada']);
-                    }
-                }
-            }
+            // Gerenciar status das mesas usando service
+            $this->saleService->manageTableStatus(
+                $sale,
+                $oldTableId,
+                $newTableId,
+                $status
+            );
 
             DB::commit();
 
@@ -379,12 +250,28 @@ class SaleController extends Controller
                 'sale' => $sale
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\RuntimeException $e) {
             DB::rollBack();
+            Log::warning('Erro de validação ao atualizar venda', [
+                'sale_id' => $sale->id ?? null,
+                'error' => $e->getMessage()
+            ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erro: ' . $e->getMessage()
+                'message' => $e->getMessage()
+            ], 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erro ao atualizar venda', [
+                'sale_id' => $sale->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao processar a solicitação. Tente novamente.'
             ], 500);
         }
     }
@@ -392,39 +279,9 @@ class SaleController extends Controller
     /**
      * Store a new sale
      */
-    public function store(Request $request)
+    public function store(StoreSaleRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'type' => 'required|in:balcao,delivery',
-            'table_id' => 'nullable|exists:tables,id',
-            'customer_id' => 'nullable|exists:customers,id',
-            'motoboy_id' => 'nullable|exists:motoboys,id',
-            'delivery_address' => 'nullable|string',
-            'delivery_fee' => 'nullable|numeric|min:0',
-            'discount' => 'nullable|numeric|min:0',
-            'payment_method' => 'required|in:dinheiro,pix,cartao_debito,cartao_credito,split',
-            'payment_methods_split' => 'nullable|array', // Array de pagamentos divididos
-            'payment_methods_split.*.method' => 'required_with:payment_methods_split|in:dinheiro,pix,cartao_debito,cartao_credito',
-            'payment_methods_split.*.value' => 'required_with:payment_methods_split|numeric|min:0',
-            'payment_methods_split.*.amount_received' => 'nullable|numeric|min:0',
-            'payment_methods_split.*.change_amount' => 'nullable|numeric|min:0',
-            'amount_received' => 'nullable|numeric|min:0', // Valor recebido (dinheiro)
-            'change_amount' => 'nullable|numeric|min:0', // Troco
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|integer|min:1',
-            'finalize' => 'nullable|boolean',
-        ]);
-
-        // Validações específicas
-        if ($validated['type'] === 'delivery') {
-            if (empty($validated['motoboy_id'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Selecione um motoboy!'
-                ], 422);
-            }
-        }
+        $validated = $request->validated();
 
         $openCashRegister = CashRegister::where('status', 'aberto')->first();
         if (!$openCashRegister) {
@@ -436,33 +293,12 @@ class SaleController extends Controller
 
         // Validar mesa ocupada se table_id foi fornecido
         if (!empty($validated['table_id'])) {
-            $table = Table::find($validated['table_id']);
-            
-            if (!$table) {
+            try {
+                $this->saleService->validateTableAvailability($validated['table_id']);
+            } catch (\Exception $e) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Mesa não encontrada!'
-                ], 404);
-            }
-
-            // Verificar se mesa está disponível
-            if ($table->status !== 'disponivel') {
-                return response()->json([
-                    'success' => false,
-                    'message' => "A mesa {$table->number} não está disponível! Status atual: " . ucfirst($table->status)
-                ], 422);
-            }
-
-            // Verificar se mesa não tem venda ativa
-            $activeSale = $table->sales()
-                ->where('status', '!=', 'finalizado')
-                ->where('status', '!=', 'cancelado')
-                ->first();
-
-            if ($activeSale) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "A mesa {$table->number} já possui uma venda ativa (Pedido #{$activeSale->id})!"
+                    'message' => $e->getMessage()
                 ], 422);
             }
         }
@@ -470,61 +306,22 @@ class SaleController extends Controller
         try {
             DB::beginTransaction();
 
-            // Calcular subtotal
-            $subtotal = 0;
-            foreach ($validated['items'] as $item) {
-                $product = Product::find($item['product_id']);
-                $subtotal += $product->price * $item['quantity'];
-            }
-
-            // Calcular total
+            // Calcular valores usando service
+            $subtotal = $this->saleService->calculateSubtotal($validated['items']);
             $deliveryFee = $validated['delivery_fee'] ?? 0;
             $discount = $validated['discount'] ?? 0;
-            $total = $subtotal + $deliveryFee - $discount;
+            $total = $this->saleService->calculateTotal($subtotal, $deliveryFee, $discount);
 
-            // Determinar status inicial
+            // Determinar status inicial usando service
             $finalize = $validated['finalize'] ?? false;
-            
-            if ($finalize) {
-                // Se está finalizando
-                if ($validated['type'] === 'delivery') {
-                    $status = 'saiu_entrega'; // Delivery vai direto para entrega
-                } else {
-                    // Balcão
-                    if (empty($validated['table_id'])) {
-                        $status = 'finalizado'; // Venda rápida sem mesa
-                    } else {
-                        $status = 'pendente'; // Com mesa, fica pendente
-                    }
-                }
-            } else {
-                $status = 'pendente'; // Salvando sem finalizar
-            }
+            $type = SaleType::from($validated['type']);
+            $status = $this->saleService->determineStatus($type, $finalize);
 
-            // Determinar método de pagamento principal
-            $paymentMethod = $validated['payment_method'];
-            $paymentMethodsSplit = null;
-            $amountReceived = null;
-            $changeAmount = null;
-            
-            // Se for pagamento dividido
-            if ($paymentMethod === 'split' && !empty($validated['payment_methods_split'])) {
-                $paymentMethodsSplit = $validated['payment_methods_split'];
-                // Usar o primeiro método como principal para compatibilidade
-                $paymentMethod = $paymentMethodsSplit[0]['method'] ?? 'dinheiro';
-                // Calcular troco total para pagamentos em dinheiro
-                $totalChange = 0;
-                foreach ($paymentMethodsSplit as $split) {
-                    if ($split['method'] === 'dinheiro' && isset($split['change_amount'])) {
-                        $totalChange += $split['change_amount'];
-                    }
-                }
-                $changeAmount = $totalChange > 0 ? $totalChange : ($validated['change_amount'] ?? null);
-            } else {
-                // Pagamento simples
-                $amountReceived = $validated['amount_received'] ?? null;
-                $changeAmount = $validated['change_amount'] ?? null;
-            }
+            // Processar método de pagamento usando service
+            $paymentData = $this->saleService->processPaymentMethod(
+                \App\Enums\PaymentMethod::from($validated['payment_method']),
+                $validated['payment_methods_split'] ?? null
+            );
 
             // Criar venda
             $sale = Sale::create([
@@ -533,36 +330,25 @@ class SaleController extends Controller
                 'customer_id' => $validated['customer_id'] ?? null,
                 'table_id' => $validated['table_id'] ?? null,
                 'motoboy_id' => $validated['motoboy_id'] ?? null,
-                'type' => $validated['type'],
+                'type' => $type,
                 'status' => $status,
                 'subtotal' => $subtotal,
                 'discount' => $discount,
                 'delivery_fee' => $deliveryFee,
                 'total' => $total,
-                'payment_method' => $paymentMethod,
-                'payment_methods_split' => $paymentMethodsSplit,
-                'amount_received' => $amountReceived,
-                'change_amount' => $changeAmount,
+                'payment_method' => $paymentData['payment_method'],
+                'payment_methods_split' => $paymentData['payment_methods_split'],
+                'amount_received' => $validated['amount_received'] ?? $paymentData['amount_received'],
+                'change_amount' => $validated['change_amount'] ?? $paymentData['change_amount'],
                 'delivery_address' => $validated['delivery_address'] ?? null,
             ]);
 
-            // Criar itens
-            foreach ($validated['items'] as $item) {
-                $product = Product::find($item['product_id']);
-                $itemSubtotal = $product->price * $item['quantity'];
+            // Criar itens usando service
+            $this->saleService->createSaleItems($sale, $validated['items']);
 
-                SaleItem::create([
-                    'sale_id' => $sale->id,
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $product->price,
-                    'subtotal' => $itemSubtotal,
-                ]);
-            }
-
-            // Atualizar mesa se necessário
-            if ($sale->table_id && $status !== 'finalizado') {
-                $sale->table->update(['status' => 'ocupada']);
+            // Atualizar mesa se necessário usando service
+            if ($sale->table_id && $status !== SaleStatus::FINALIZADO) {
+                $this->saleService->manageTableStatus($sale, null, $sale->table_id, $status);
             }
 
             DB::commit();
@@ -624,29 +410,28 @@ class SaleController extends Controller
     /**
      * Update sale status
      */
-    public function updateStatus(Request $request, Sale $sale)
+    public function updateStatus(UpdateSaleStatusRequest $request, Sale $sale): JsonResponse
     {
-        $validated = $request->validate([
-            'status' => 'required|in:pendente,em_preparo,pronto,saiu_entrega,entregue,cancelado,finalizado',
-        ]);
+        $validated = $request->validated();
+        $status = SaleStatus::from($validated['status']);
 
-        $oldStatus = $sale->status;
-        $sale->update(['status' => $validated['status']]);
+        $oldStatus = $sale->status instanceof SaleStatus ? $sale->status : SaleStatus::from($sale->status);
+        $sale->update(['status' => $status]);
 
         // Recarregar o objeto do banco para garantir dados atualizados
         $sale->refresh();
 
-        // Liberar mesa se finalizado/cancelado/entregue
-        if (in_array($validated['status'], ['finalizado', 'entregue', 'cancelado']) && $sale->table_id) {
-            $sale->table->update(['status' => 'disponivel']);
+        // Liberar mesa se finalizado/cancelado/entregue usando service
+        if (in_array($status, [SaleStatus::FINALIZADO, SaleStatus::ENTREGUE, SaleStatus::CANCELADO]) && $sale->table_id) {
+            $this->saleService->manageTableStatus($sale, $sale->table_id, null, $status);
         }
 
         // Log para debug
-        \Log::info('Status da venda atualizado', [
+        Log::info('Status da venda atualizado', [
             'sale_id' => $sale->id,
-            'old_status' => $oldStatus,
-            'new_status' => $sale->status,
-            'type' => $sale->type
+            'old_status' => $oldStatus->value,
+            'new_status' => $status->value,
+            'type' => $sale->type instanceof SaleType ? $sale->type->value : $sale->type
         ]);
 
         return response()->json([
@@ -733,8 +518,8 @@ class SaleController extends Controller
                 'discount' => $sale->discount ?? 0,
                 'delivery_fee' => $sale->delivery_fee ?? 0,
                 'total' => $sale->total,
-                'payment_method' => $sale->payment_method,
-                'order_type' => $sale->type,
+                'payment_method' => $sale->payment_method instanceof \App\Enums\PaymentMethod ? $sale->payment_method->value : $sale->payment_method,
+                'order_type' => $sale->type instanceof SaleType ? $sale->type->value : $sale->type,
                 'footer' => 'Obrigado pela preferencia!'
             ];
 

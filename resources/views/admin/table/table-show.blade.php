@@ -169,12 +169,26 @@
                                     <div class="flex items-center justify-between mb-3">
                                         <div class="flex items-center space-x-3">
                                             <span class="font-semibold text-gray-900">#{{ $sale->id }}</span>
-                                            <span class="px-2 py-1 text-xs rounded-full
-                                                @if($sale->status === 'finalizado') bg-green-100 text-green-800
-                                                @elseif($sale->status === 'cancelado') bg-red-100 text-red-800
-                                                @else bg-yellow-100 text-yellow-800
-                                                @endif">
-                                                {{ ucfirst($sale->status) }}
+                                            @php
+                                                $statusEnum = $sale->status instanceof \App\Enums\SaleStatus 
+                                                    ? $sale->status 
+                                                    : \App\Enums\SaleStatus::tryFrom($sale->status);
+                                                
+                                                if ($statusEnum) {
+                                                    $statusClasses = $statusEnum->statusClasses();
+                                                    $statusLabel = $statusEnum->label();
+                                                } else {
+                                                    $statusValue = $sale->status ?? 'pendente';
+                                                    $statusClasses = match($statusValue) {
+                                                        'finalizado' => 'bg-green-100 text-green-800',
+                                                        'cancelado' => 'bg-red-100 text-red-800',
+                                                        default => 'bg-yellow-100 text-yellow-800'
+                                                    };
+                                                    $statusLabel = ucfirst($statusValue);
+                                                }
+                                            @endphp
+                                            <span class="px-2 py-1 text-xs rounded-full {{ $statusClasses }}">
+                                                {{ $statusLabel }}
                                             </span>
                                         </div>
                                         <div class="text-right">

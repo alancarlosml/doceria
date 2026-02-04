@@ -145,27 +145,57 @@
                                     <div class="p-4">
                                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                             @foreach($permissions as $permission)
-                                                <label class="inline-flex items-start cursor-pointer">
+                                                <?php
+                                                    $hasPermission = in_array($permission->id, $userPermissions);
+                                                    $viaRole = in_array($permission->id, $grantedByRoles);
+                                                    $boxClass = 'border-gray-300';
+                                                    $bgClass = '';
+                                                    if ($viaRole) {
+                                                        $boxClass = 'border-blue-400';
+                                                        $bgClass = 'bg-blue-50';
+                                                    } elseif ($hasPermission) {
+                                                        $boxClass = 'border-green-500';
+                                                        $bgClass = 'bg-green-50';
+                                                    }
+                                                ?>
+                                                <label class="inline-flex items-start cursor-pointer rounded-lg border-2 p-3 transition-colors hover:bg-gray-50 {{ $boxClass }} {{ $bgClass }}">
                                                     <input
                                                         type="checkbox"
                                                         name="permission_ids[]"
                                                         value="{{ $permission->id }}"
-                                                        {{ in_array($permission->id, $userPermissions) ? 'checked' : '' }}
-                                                        class="rounded border-gray-300 text-purple-600 shadow-sm focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50 mt-0.5"
+                                                        {{ $viaRole ? 'disabled' : '' }}
+                                                        {{ $hasPermission ? 'checked' : '' }}
+                                                        class="rounded border-gray-300 text-purple-600 shadow-sm focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50 mt-0.5 {{ $viaRole ? 'opacity-50 cursor-not-allowed' : '' }}"
                                                     >
-                                                    <div class="ml-2">
-                                                        <span class="text-sm font-medium text-gray-900 block">{{ $permission->label }}</span>
-                                                        <span class="text-xs text-gray-500 block">[{{ $permission->module }}.{{ $permission->action }}]</span>
+                                                    <div class="ml-2 flex-1">
+                                                        <div class="flex items-start justify-between">
+                                                            <div>
+                                                                <span class="text-sm font-medium text-gray-900 block">{{ $permission->label }}</span>
+                                                                <span class="text-xs text-gray-500 block">[{{ $permission->module }}.{{ $permission->action }}]</span>
+                                                            </div>
+                                                        </div>
 
-                                                        @if(in_array($permission->id, $grantedByRoles))
-                                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mt-1">
-                                                                Via Role
-                                                            </span>
-                                                        @elseif(in_array($permission->id, $userPermissions))
-                                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 mt-1">
-                                                                Direta
-                                                            </span>
-                                                        @endif
+                                                        <div class="mt-2 flex flex-wrap gap-1">
+                                                            @if($viaRole)
+                                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                                        <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                                                                    </svg>
+                                                                    Via Role
+                                                                </span>
+                                                            @elseif($hasPermission)
+                                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                                                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                                                    </svg>
+                                                                    Concedida
+                                                                </span>
+                                                            @else
+                                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                                                                    Não concedida
+                                                                </span>
+                                                            @endif
+                                                        </div>
                                                     </div>
                                                 </label>
                                             @endforeach
@@ -288,12 +318,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const formData = new FormData();
             formData.append('permission_id', permissionId);
 
-            fetch(`/permissions/users/${{ $user->id }}/permissions/remove`, {
+            fetch(`{{ route('users.permissions.remove', $user) }}`, {
                 method: 'DELETE',
                 headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Content-Type': 'application/json'
                 },
-                body: formData
+                body: JSON.stringify({
+                    permission_id: permissionId
+                })
             })
             .then(response => response.json())
             .then(data => {

@@ -19,6 +19,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\EncomendasController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\PrinterController;
 
 // ========================================
 // PÚBLICO - Páginas públicas
@@ -63,24 +64,25 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
             'destroy' => 'users.destroy'
         ]);
         Route::post('usuarios/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
+        Route::middleware('role:admin')->group(function () {
+            Route::get('usuarios/check-integrity', [UserController::class, 'checkIntegrity'])->name('users.check-integrity');
+            Route::get('usuarios/auditoria', [UserController::class, 'auditLog'])->name('users.audit');
+        });
 
         // Permissões
-        Route::resource('permissoes', PermissionController::class)->parameters([
-            'permissoes' => 'permission'
-        ])->names([
-            'index' => 'permissions.index',
-            'create' => 'permissions.create',
-            'store' => 'permissions.store',
-            'show' => 'permissions.show',
-            'edit' => 'permissions.edit',
-            'update' => 'permissions.update',
-            'destroy' => 'permissions.destroy'
-        ]);
+        Route::get('permissoes', [PermissionController::class, 'index'])->name('permissions.index');
+        Route::get('permissoes/criar', [PermissionController::class, 'create'])->name('permissions.create');
+        Route::post('permissoes', [PermissionController::class, 'store'])->name('permissions.store');
+        Route::get('permissoes/{permission}', [PermissionController::class, 'show'])->name('permissions.show');
+        Route::get('permissoes/{permission}/editar', [PermissionController::class, 'edit'])->name('permissions.edit');
+        Route::put('permissoes/{permission}', [PermissionController::class, 'update'])->name('permissions.update');
+        Route::delete('permissoes/{permission}', [PermissionController::class, 'destroy'])->name('permissions.destroy');
         Route::post('permissoes/assign-to-role', [PermissionController::class, 'assignToRole'])->name('permissions.assign-to-role');
         Route::post('permissoes/assign-role-to-user', [PermissionController::class, 'assignRoleToUser'])->name('permissions.assign-role-to-user');
         Route::get('permissoes/usuarios/api', [PermissionController::class, 'getUsersWithPermissions'])->name('permissions.users.api');
         Route::patch('permissoes/usuarios/{user}/role', [PermissionController::class, 'updateUserRole'])->name('permissions.users.update-role');
         Route::get('permissoes/usuarios-completos', [PermissionController::class, 'getUsersPermissions'])->name('permissions.users.complete');
+        Route::get('api/roles/{role}/permissions', [PermissionController::class, 'getRolePermissions'])->name('permissions.role-permissions');
 
         // Permissões granulares por usuário
         Route::get('usuarios/{user}/permissoes', [PermissionController::class, 'manageUserPermissions'])->name('users.permissions.manage');
@@ -152,6 +154,16 @@ Route::prefix('gestor')->middleware('auth')->group(function () {
         Route::post('configuracoes/banner/ordem', [SettingController::class, 'updateBannerOrder'])->name('settings.banner.order');
         Route::post('configuracoes/banner/{banner}/toggle', [SettingController::class, 'toggleBanner'])->name('settings.banner.toggle');
         Route::delete('configuracoes/banner/{banner}', [SettingController::class, 'destroyBanner'])->name('settings.banner.destroy');
+        
+        // Printer Agent Routes
+        Route::get('api/printer/agent/status', [PrinterController::class, 'agentStatus'])->name('printer.agent.status');
+        Route::get('api/printer/agent/printers', [PrinterController::class, 'agentPrinters'])->name('printer.agent.printers');
+        Route::post('api/printer/agent/config', [PrinterController::class, 'setAgentPrinter'])->name('printer.agent.config');
+        Route::get('api/printer/agent/config', [PrinterController::class, 'agentConfig'])->name('printer.agent.get-config');
+        
+        // Printer Agent Download
+        Route::get('printer-agent/download', [PrinterController::class, 'downloadPage'])->name('printer.agent.download-page');
+        Route::get('printer-agent/download-file', [PrinterController::class, 'download'])->name('printer.agent.download');
     });
 
     // ========================================
@@ -463,6 +475,7 @@ Route::middleware('auth.api')->prefix('api')->group(function () {
         Route::post('permissions/assign-role-to-user', [PermissionController::class, 'assignRoleToUser']);
         Route::get('permissions/users/api', [PermissionController::class, 'getUsersWithPermissions']);
         Route::patch('permissions/users/{user}/role', [PermissionController::class, 'updateUserRole']);
+        Route::get('roles/{role}/permissions', [PermissionController::class, 'getRolePermissions']);
     });
 
     // Users API (Admin only)

@@ -3,18 +3,20 @@
 @section('content')
 <div class="min-h-screen bg-gray-100">
     <!-- Sidebar -->
-    <div class="flex h-screen">
+    <div class="flex h-screen overflow-hidden">
         @include('includes.admin.sidebar')
 
         <!-- Main content -->
-        <div class="flex flex-col w-0 flex-1 overflow-hidden">
+        <div class="flex flex-col flex-1 min-w-0 overflow-hidden w-full md:w-auto">
             @include('includes.admin.header')
 
             <!-- Flash Messages -->
             @include('includes.flash-messages')
 
             <!-- Main Content Area -->
-            @yield('admin-content')
+            <div class="flex-1 overflow-y-auto">
+                @yield('admin-content')
+            </div>
         </div>
     </div>
 </div>
@@ -149,24 +151,77 @@
 </script>
 
 <style>
-    /* Sidebar width transitions */
+    /* Enhanced Sidebar Styles */
     .sidebar-content {
-        transition: width 0.3s ease-in-out;
+        transition: width var(--transition-base), box-shadow var(--transition-base);
         min-width: 80px;
         max-width: 256px;
+        background: linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+        border-right: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Responsive sidebar adjustments */
+    @media (max-width: 767px) {
+        .sidebar-content {
+            min-width: 0;
+            max-width: 100%;
+        }
     }
 
     .sidebar-expanded {
         width: 256px;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
     }
 
     .sidebar-collapsed {
         width: 80px;
     }
 
+    /* Enhanced Sidebar Links */
+    .sidebar-link {
+        position: relative;
+        transition: all var(--transition-base);
+        border-radius: 0.5rem;
+        margin: 0.25rem 0.5rem;
+    }
+
+    .sidebar-link::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 0;
+        background: linear-gradient(180deg, var(--color-primary-500), var(--color-accent-500));
+        border-radius: 0 3px 3px 0;
+        transition: height var(--transition-base);
+    }
+
+    .sidebar-link:hover {
+        background: rgba(236, 72, 153, 0.08);
+        transform: translateX(2px);
+    }
+
+    .sidebar-link:hover::before {
+        height: 60%;
+    }
+
+    .sidebar-link.bg-blue-50::before,
+    .sidebar-link.bg-blue-50 {
+        background: linear-gradient(135deg, rgba(236, 72, 153, 0.15), rgba(245, 158, 11, 0.1));
+        color: var(--color-primary-700);
+    }
+
+    .sidebar-link.bg-blue-50::before {
+        height: 70%;
+        background: linear-gradient(180deg, var(--color-primary-500), var(--color-accent-500));
+    }
+
     /* Hide text when collapsed */
     .sidebar-collapsed .sidebar-text {
         display: none;
+        opacity: 0;
     }
 
     .sidebar-collapsed .sidebar-divider {
@@ -177,6 +232,40 @@
     .sidebar-collapsed .sidebar-link {
         justify-content: center;
         padding: 0.75rem 0.5rem;
+        margin: 0.25rem;
+    }
+
+    .sidebar-collapsed .sidebar-link::before {
+        left: 50%;
+        top: auto;
+        bottom: 0;
+        transform: translateX(-50%);
+        width: 0;
+        height: 3px;
+    }
+
+    .sidebar-collapsed .sidebar-link:hover::before,
+    .sidebar-collapsed .sidebar-link.bg-blue-50::before {
+        width: 60%;
+        height: 3px;
+    }
+
+    /* Enhanced Logo */
+    #sidebarLogoExpanded,
+    #sidebarLogoCollapsed {
+        transition: all var(--transition-base);
+    }
+
+    /* Smooth Header */
+    .bg-white.shadow {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        backdrop-filter: blur(10px);
+        background: rgba(255, 255, 255, 0.95);
+    }
+
+    /* Enhanced Main Content */
+    .flex-1.relative.overflow-y-auto {
+        background: var(--color-neutral-50);
     }
 </style>
 @endpush

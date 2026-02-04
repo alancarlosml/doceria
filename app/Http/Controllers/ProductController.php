@@ -2,42 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreProductRequest;
+use App\Http\Requests\UpdateProductRequest;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Menu;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
 
 class ProductController extends Controller
 {
-    /**
-     * Normaliza valor monetário brasileiro para formato numérico
-     * Converte "1.234,56" ou "10,50" para "1234.56" ou "10.50"
-     */
-    private function normalizeMonetaryValue($value)
-    {
-        if (empty($value)) {
-            return null;
-        }
-
-        $value = trim($value);
-        
-        // Se contém vírgula, assume formato brasileiro (1.234,56)
-        if (strpos($value, ',') !== false) {
-            // Remove pontos (separadores de milhar) e substitui vírgula por ponto
-            $value = str_replace('.', '', $value);
-            $value = str_replace(',', '.', $value);
-        }
-        // Se não tem vírgula mas tem ponto, pode ser formato internacional (10.50)
-        // Nesse caso, mantém como está
-        
-        return $value;
-    }
 
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         $query = Product::with('category');
 
@@ -69,7 +51,7 @@ class ProductController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(): View
     {
         $categories = Category::where('active', true)->get();
 
@@ -79,24 +61,9 @@ class ProductController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreProductRequest $request): RedirectResponse
     {
-        // Normalizar valores monetários (converter vírgula para ponto)
-        $request->merge([
-            'price' => $this->normalizeMonetaryValue($request->price),
-            'cost_price' => $this->normalizeMonetaryValue($request->cost_price),
-        ]);
-
-        $validated = $request->validate([
-            'category_id' => 'required|exists:categories,id',
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'cost_price' => 'nullable|numeric|min:0',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'active' => 'boolean',
-        ]);
-
+        $validated = $request->validated();
         $validated['active'] = $request->has('active');
 
         // Handle image upload
@@ -123,14 +90,22 @@ class ProductController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Product $product)
+    public function show(Product $product): View
     {
         $product->load('category');
 
-        // Estatísticas do produto
-        $totalSales = $product->saleItems()->sum('quantity');
-        $totalRevenue = $product->saleItems()->sum('subtotal');
-        $totalOrders = $product->saleItems()->distinct('sale_id')->count();
+        // Otimização: calcular todas as estatísticas em uma única query usando agregados
+        $stats = $product->saleItems()
+            ->selectRaw('
+                SUM(quantity) as total_sales,
+                SUM(subtotal) as total_revenue,
+                COUNT(DISTINCT sale_id) as total_orders
+            ')
+            ->first();
+
+        $totalSales = (int) ($stats->total_sales ?? 0);
+        $totalRevenue = (float) ($stats->total_revenue ?? 0);
+        $totalOrders = (int) ($stats->total_orders ?? 0);
 
         // Produtos similares (mesma categoria)
         $similarProducts = Product::where('category_id', $product->category_id)
@@ -152,7 +127,7 @@ class ProductController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Product $product)
+    public function edit(Product $product): View
     {
         $categories = Category::where('active', true)->get();
 
@@ -162,24 +137,9 @@ class ProductController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Product $product)
+    public function update(UpdateProductRequest $request, Product $product): RedirectResponse
     {
-        // Normalizar valores monetários (converter vírgula para ponto)
-        $request->merge([
-            'price' => $this->normalizeMonetaryValue($request->price),
-            'cost_price' => $this->normalizeMonetaryValue($request->cost_price),
-        ]);
-
-        $validated = $request->validate([
-            'category_id' => 'required|exists:categories,id',
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'cost_price' => 'nullable|numeric|min:0',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'active' => 'boolean',
-        ]);
-
+        $validated = $request->validated();
         $validated['active'] = $request->has('active');
 
         // Handle image upload
@@ -200,7 +160,7 @@ class ProductController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Product $product)
+    public function destroy(Product $product): RedirectResponse
     {
         // Check if product has sales
         if ($product->saleItems()->count() > 0) {
@@ -222,7 +182,7 @@ class ProductController extends Controller
     /**
      * Toggle product active status.
      */
-    public function toggleStatus(Product $product)
+    public function toggleStatus(Product $product): JsonResponse
     {
         $product->update(['active' => !$product->active]);
 
@@ -236,7 +196,7 @@ class ProductController extends Controller
     /**
      * Update product availability for specific day.
      */
-    public function updateAvailability(Request $request, Product $product)
+    public function updateAvailability(Request $request, Product $product): JsonResponse
     {
         $validated = $request->validate([
             'day_of_week' => 'required|in:segunda,terca,quarta,quinta,sexta,sabado,domingo',

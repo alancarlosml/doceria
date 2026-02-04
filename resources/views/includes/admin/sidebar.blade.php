@@ -9,7 +9,7 @@
             <div class="w-10 h-10 bg-gradient-to-br from-pink-500 to-pink-600 rounded-full flex items-center justify-center">
                 <img class="rounded-full" src="{{ asset('imgs/logo_docedoce.jpeg') }}" alt="">
             </div>
-            <span class="font-bold text-gray-800 text-sm">Doce Doce Brigaderia</span>
+            <span class="font-display font-bold text-gray-800 text-sm">Doce Doce Brigaderia</span>
         </div>
         <button type="button" id="closeMobileMenuBtn" class="text-gray-500 hover:text-gray-700 focus:outline-none">
             <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,16 +116,16 @@
         <!-- Logo Expanded -->
         <div id="sidebarLogoExpanded" class="flex items-center justify-center h-16 px-4 py-4 border-b border-gray-200">
             <div class="flex items-center gap-3">
-                <div class="w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-600 rounded-full flex items-center justify-center">
+                <div class="w-12 h-12 rounded-full flex items-center justify-center">
                     <img class="rounded-full" src="{{ asset('imgs/logo_docedoce.jpeg') }}" alt="">
                 </div>
-                <span class="font-bold text-gray-800">Doce Doce Brigaderia</span>
+                <span class="font-display font-bold text-gray-800 text-sm">Doce Doce Brigaderia</span>
             </div>
         </div>
 
         <!-- Logo Collapsed -->
         <div id="sidebarLogoCollapsed" class="hidden flex items-center justify-center h-16 px-4 py-4 border-b border-gray-200">
-            <div class="w-8 h-8 bg-gradient-to-br from-pink-500 to-pink-600 rounded-full flex items-center justify-center">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center">
                 <img class="rounded-full" src="{{ asset('imgs/logo_docedoce.jpeg') }}" alt="">
             </div>
         </div>

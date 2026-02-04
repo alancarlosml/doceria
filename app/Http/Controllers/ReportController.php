@@ -69,11 +69,15 @@ class ReportController extends Controller
             ->orderByDesc('total_revenue')
             ->get();
 
+        // Vendas por categoria (método de pagamento e tipo de venda)
+        $salesByCategory = $this->calculateSalesByCategory($startDate, $endDate);
+
         return view('admin.reports.dashboard', compact(
             'kpis',
             'salesByDay',
             'topProducts',
             'salesByEmployee',
+            'salesByCategory',
             'period'
         ));
     }
@@ -528,6 +532,81 @@ class ReportController extends Controller
             ->groupBy('users.id')
             ->orderByDesc('total_revenue')
             ->get();
+    }
+
+    /**
+     * Calcular vendas por categoria (método de pagamento e tipo de venda)
+     */
+    private function calculateSalesByCategory($startDate, $endDate)
+    {
+        $sales = Sale::whereBetween('created_at', [$startDate, $endDate])
+            ->where('status', '!=', 'cancelado')
+            ->get();
+
+        $stats = [
+            // Métodos de pagamento
+            'pix' => 0,
+            'cartao' => 0,
+            'dinheiro' => 0,
+            // Tipos de venda
+            'balcao' => 0,
+            'delivery' => 0,
+            'encomenda' => 0,
+        ];
+
+        foreach ($sales as $sale) {
+            /** @var \App\Models\Sale $sale */
+            // Subtrair frete do total (consistente com cálculo do caixa)
+            $total = (float) $sale->total - (float) ($sale->delivery_fee ?? 0);
+
+            // Processar métodos de pagamento
+            $isSplitPayment = !empty($sale->payment_methods_split) && is_array($sale->payment_methods_split) && count($sale->payment_methods_split) > 0;
+            
+            if ($isSplitPayment) {
+                // Pagamento dividido - processar cada método
+                // Em pagamentos divididos, os valores já estão sem frete
+                foreach ($sale->payment_methods_split as $payment) {
+                    $method = $payment['method'] ?? '';
+                    $value = (float) ($payment['value'] ?? 0);
+
+                    if ($method === 'pix') {
+                        $stats['pix'] += $value;
+                    } elseif (in_array($method, ['cartao_debito', 'cartao_credito'])) {
+                        $stats['cartao'] += $value;
+                    } elseif ($method === 'dinheiro') {
+                        $stats['dinheiro'] += $value;
+                    }
+                }
+            } else {
+                // Pagamento único
+                $method = $sale->payment_method instanceof \App\Enums\PaymentMethod 
+                    ? $sale->payment_method->value 
+                    : $sale->payment_method;
+
+                if ($method === 'pix') {
+                    $stats['pix'] += $total;
+                } elseif (in_array($method, ['cartao_debito', 'cartao_credito'])) {
+                    $stats['cartao'] += $total;
+                } elseif ($method === 'dinheiro') {
+                    $stats['dinheiro'] += $total;
+                }
+            }
+
+            // Processar tipos de venda (usando total sem frete para consistência)
+            $type = $sale->type instanceof \App\Enums\SaleType 
+                ? $sale->type->value 
+                : $sale->type;
+
+            if ($type === 'balcao') {
+                $stats['balcao'] += $total;
+            } elseif ($type === 'delivery') {
+                $stats['delivery'] += $total;
+            } elseif ($type === 'encomenda') {
+                $stats['encomenda'] += $total;
+            }
+        }
+
+        return $stats;
     }
 
     /**

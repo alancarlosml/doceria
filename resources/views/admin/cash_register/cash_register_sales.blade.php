@@ -315,33 +315,65 @@
                                         <!-- Payment Method -->
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm text-gray-900">
-                                                @php
-                                                    $paymentLabels = [
-                                                        'dinheiro' => '💵 Dinheiro',
-                                                        'cartao_credito' => '💳 Crédito',
-                                                        'cartao_debito' => '💳 Débito',
-                                                        'pix' => '📱 PIX'
-                                                    ];
-                                                @endphp
-                                                {{ $paymentLabels[$sale->payment_method] ?? ucfirst(str_replace('_', ' ', $sale->payment_method)) }}
+                                                @if($sale->isSplitPayment())
+                                                    @php
+                                                        $paymentIcons = [
+                                                            'dinheiro' => '💵',
+                                                            'cartao_credito' => '💳',
+                                                            'cartao_debito' => '💳',
+                                                            'pix' => '📱',
+                                                            'transferencia' => '🏦'
+                                                        ];
+                                                        $parts = [];
+                                                        foreach ($sale->payment_methods_split as $payment) {
+                                                            $method = $payment['method'] ?? '';
+                                                            $icon = $paymentIcons[$method] ?? '💳';
+                                                            $methodName = \App\Enums\PaymentMethod::tryFrom($method)?->label() ?? ucfirst(str_replace('_', ' ', $method));
+                                                            $parts[] = $icon . ' ' . $methodName;
+                                                        }
+                                                    @endphp
+                                                    {{ implode(' + ', $parts) }}
+                                                @else
+                                                    @php
+                                                        $paymentIcons = [
+                                                            'dinheiro' => '💵',
+                                                            'cartao_credito' => '💳',
+                                                            'cartao_debito' => '💳',
+                                                            'pix' => '📱',
+                                                            'transferencia' => '🏦'
+                                                        ];
+                                                        $methodValue = $sale->payment_method instanceof \App\Enums\PaymentMethod 
+                                                            ? $sale->payment_method->value 
+                                                            : $sale->payment_method;
+                                                        $icon = $paymentIcons[$methodValue] ?? '💳';
+                                                        $methodLabel = $sale->payment_method instanceof \App\Enums\PaymentMethod 
+                                                            ? $sale->payment_method->label() 
+                                                            : \App\Enums\PaymentMethod::tryFrom($methodValue)?->label() ?? ucfirst(str_replace('_', ' ', $methodValue));
+                                                    @endphp
+                                                    {{ $icon }} {{ $methodLabel }}
+                                                @endif
                                             </div>
                                         </td>
 
                                         <!-- Status -->
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             @php
-                                                $statusColors = [
-                                                    'pendente' => 'bg-yellow-100 text-yellow-800',
-                                                    'confirmada' => 'bg-blue-100 text-blue-800',
-                                                    'preparando' => 'bg-orange-100 text-orange-800',
-                                                    'pronta' => 'bg-indigo-100 text-indigo-800',
-                                                    'entregando' => 'bg-purple-100 text-purple-800',
-                                                    'finalizada' => 'bg-green-100 text-green-800',
-                                                    'cancelada' => 'bg-red-100 text-red-800'
-                                                ];
+                                                // Obter o enum do status
+                                                $statusEnum = $sale->status instanceof \App\Enums\SaleStatus 
+                                                    ? $sale->status 
+                                                    : \App\Enums\SaleStatus::tryFrom($sale->status);
+                                                
+                                                // Obter classes CSS e label do status
+                                                if ($statusEnum) {
+                                                    $statusClasses = $statusEnum->statusClasses();
+                                                    $statusLabel = $statusEnum->label();
+                                                } else {
+                                                    $statusClasses = 'bg-gray-100 text-gray-800';
+                                                    $statusLabel = ucfirst($sale->status ?? 'Desconhecido');
+                                                }
                                             @endphp
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColors[$sale->status] ?? 'bg-gray-100 text-gray-800' }}">
-                                                {{ ucfirst($sale->status) }}
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusClasses }}">
+                                                {{ $statusLabel }}
                                             </span>
                                         </td>
 

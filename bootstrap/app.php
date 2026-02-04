@@ -18,6 +18,13 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\RoleMiddleware::class,
             'auth.api' => \App\Http\Middleware\APITokenMiddleware::class,
         ]);
+
+        $middleware->redirectGuestsTo(function ($request) {
+            if ($request->expectsJson()) {
+                return null;
+            }
+            return route('gestor.login');
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Customizar redirecionamento quando não autenticado
